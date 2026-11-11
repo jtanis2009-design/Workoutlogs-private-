@@ -3383,46 +3383,67 @@ function syncNow(){
 function syncSoon(ms){ if(!syncOn()||!AUTH) return; clearTimeout(SY.t); SY.t=setTimeout(syncNow,ms==null?2500:ms); }
 
 /* ---- screens ---- */
+function authRead(){
+  var em=document.getElementById('au-email'), pw=document.getElementById('au-pw');
+  var a=S.auth||(S.auth={});
+  if(em&&typeof em.value==='string') a.email=em.value.trim();
+  if(pw&&typeof pw.value==='string') a.pw=pw.value;          /* kept in memory only, so a redraw never wipes what was typed */
+  return a;
+}
 function loginView(){
-  var a=S.auth||{};
-  return '<div style="max-width:420px;margin:7vh auto 0">'
+  var a=S.auth||{}, up=a.mode==='signup';
+  var seg=function(m,label){
+    var on=(m==='signup')===up;
+    return '<button data-act="au-mode" data-m="'+m+'" style="flex:1;padding:11px 6px;border-radius:10px;border:0;font:inherit;font-weight:700;font-size:14px;cursor:pointer;'
+      + (on?'background:var(--acc);color:#111':'background:transparent;color:var(--mut)')+'">'+label+'</button>';
+  };
+  return '<div style="max-width:420px;margin:5vh auto 0">'
     + '<div style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px">Workout Log</div>'
-    + '<div style="color:var(--mut);font-size:14px;line-height:1.5;margin-bottom:18px">Log in and your workouts, meals and plan follow you to every device.</div>'
+    + '<div style="color:var(--mut);font-size:14px;line-height:1.5;margin-bottom:16px">'
+    + (up?'Make an account and your workouts, meals and plan follow you to every device.'
+         :'Log in and your workouts, meals and plan follow you to every device.')+'</div>'
+    + '<div style="display:flex;gap:4px;padding:4px;border-radius:13px;background:var(--card2);border:1px solid var(--line);margin-bottom:12px">'
+    + seg('login','I have an account')+seg('signup','I am new')+'</div>'
     + '<div class="card"><div class="card-b" style="padding-top:15px">'
     + '<div class="fld" style="margin-bottom:9px"><label>Email</label>'
-    + '<input id="au-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" value="'+esc(a.email||'')+'" placeholder="you@example.com"></div>'
-    + '<div class="fld"><label>Password</label>'
-    + '<input id="au-pw" type="password" autocomplete="current-password" placeholder="at least 6 characters"></div>'
+    + '<input id="au-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" value="'+esc(a.email||'')+'" placeholder="you@example.com"></div>'
+    + '<div class="fld"><label>'+(up?'Choose a password':'Password')+'</label>'
+    + '<div style="display:flex;gap:8px"><input id="au-pw" type="'+(a.show?'text':'password')+'" autocomplete="'+(up?'new-password':'current-password')+'" autocapitalize="none" autocorrect="off" spellcheck="false" value="'+esc(a.pw||'')+'" placeholder="at least 6 characters" style="flex:1;min-width:0">'
+    + '<button class="btn" style="width:auto;padding-left:14px;padding-right:14px" data-act="au-show">'+(a.show?'Hide':'Show')+'</button></div></div>'
     + (a.err?'<div class="banner" style="margin:12px 0 0">'+esc(a.err)+'</div>':'')
     + (a.note?'<div class="hint" style="margin-top:12px">'+esc(a.note)+'</div>':'')
-    + '<button class="btn p" style="margin-top:14px" data-act="au-login"'+(a.busy?' disabled':'')+'>'
-    + (a.busy==='login'?'<span class="spin"></span>Logging in…':'Log in')+'</button>'
-    + '<button class="btn" style="margin-top:8px" data-act="au-signup"'+(a.busy?' disabled':'')+'>'
-    + (a.busy==='signup'?'<span class="spin"></span>Creating…':'Create account')+'</button>'
-    + '<button class="btn g" style="margin-top:8px" data-act="au-reset"'+(a.busy?' disabled':'')+'>Forgot password</button>'
+    + '<button class="btn p" style="margin-top:14px" data-act="'+(up?'au-signup':'au-login')+'"'+(a.busy?' disabled':'')+'>'
+    + (a.busy?'<span class="spin"></span>'+(up?'Creating your account…':'Logging in…'):(up?'Create account':'Log in'))+'</button>'
+    + (up?'':'<button class="btn g" style="margin-top:8px" data-act="au-reset"'+(a.busy?' disabled':'')+'>Forgot password</button>')
     + '</div></div>'
     + '<button class="btn g" data-act="au-skip">Use without an account</button>'
     + '<div class="hint" style="text-align:center;margin-top:8px">Without an account everything stays on this device only.</div>'
     + '</div>';
 }
 function authSubmit(kind){
-  var em=document.getElementById('au-email'), pw=document.getElementById('au-pw');
-  var email=String(em&&em.value||'').trim(), pass=String(pw&&pw.value||'');
-  S.auth={email:email};
+  var a=authRead(), email=a.email||'', pass=a.pw||'';
+  a.err=''; a.note=''; a.busy=null;
   if(kind==='reset'){
-    if(!email){ S.auth.err='Type your email first, then tap Forgot password.'; render(); return; }
-    S.auth.busy='reset'; render();
-    sendReset(email).then(function(){ S.auth={email:email,note:'If that email has an account, a reset link is on its way.'}; render(); },
-      function(e){ S.auth={email:email,err:/EMAIL_NOT_FOUND/.test((e&&e.fb)||'')?'If that email has an account, a reset link is on its way.':authErr(e)}; render(); });
+    if(!email){ a.err='Type your email first, then tap Forgot password.'; render(); return; }
+    a.busy='reset'; render();
+    var sent=function(){ a.busy=null; a.note='If that email has an account, a reset link is on its way.'; render(); };
+    sendReset(email).then(sent,function(e){ if(/EMAIL_NOT_FOUND/.test((e&&e.fb)||'')) return sent(); a.busy=null; a.err=authErr(e); render(); });
     return;
   }
-  if(!email||!pass){ S.auth.err='Fill in both your email and a password.'; render(); return; }
-  if(kind==='signup'&&pass.length<6){ S.auth.err='Use a password of at least 6 characters.'; render(); return; }
-  S.auth.busy=kind; render();
+  a.mode=kind;
+  if(!email||!pass){ a.err='Fill in both your email and a password.'; render(); return; }
+  if(kind==='signup'&&pass.length<6){ a.err='Use a password of at least 6 characters.'; render(); return; }
+  a.busy=kind; render();
   authCall(kind,email,pass).then(function(){
     S.auth=null; try{ localStorage.removeItem('wl_nologin'); }catch(e){}
     render(); toast(kind==='signup'?'Account created':'Logged in'); syncNow();
-  },function(e){ S.auth={email:email,err:authErr(e)}; render(); });
+  },function(e){
+    a.busy=null; a.err=authErr(e);
+    var c=(e&&e.fb)||'';
+    if(kind==='login'&&/INVALID_LOGIN_CREDENTIALS|EMAIL_NOT_FOUND/.test(c)) a.err+=' No account yet? Tap “I am new” above.';
+    if(kind==='signup'&&/EMAIL_EXISTS/.test(c)) a.mode='login';
+    render();
+  });
 }
 function changePassword(){
   var el=document.getElementById('au-newpw'), pw=String(el&&el.value||'');
@@ -4058,6 +4079,8 @@ document.addEventListener('click',function(ev){
   if(act==='au-login'){ authSubmit('login'); return; }
   if(act==='au-signup'){ authSubmit('signup'); return; }
   if(act==='au-reset'){ authSubmit('reset'); return; }
+  if(act==='au-mode'){ var am=authRead(); am.mode=t.dataset.m==='signup'?'signup':'login'; am.err=''; am.note=''; render(); return; }
+  if(act==='au-show'){ var as=authRead(); as.show=!as.show; render(); return; }
   if(act==='au-skip'){ try{ localStorage.setItem('wl_nologin','1'); }catch(e){} S.auth=null; render(); return; }
   if(act==='au-open'){ try{ localStorage.removeItem('wl_nologin'); }catch(e){} S.auth=null; render(); return; }
   if(act==='au-sync'){ syncNow(); return; }
@@ -4238,7 +4261,7 @@ document.addEventListener('keydown',function(ev){
   if(ev.key==='Enter'&&!ev.shiftKey){
     var el=ev.target;
     if(el&&el.dataset&&el.dataset['in']==='draft'){ ev.preventDefault(); coachSend(S.draft); }
-    if(el&&(el.id==='au-pw'||el.id==='au-email')){ ev.preventDefault(); authSubmit('login'); }
+    if(el&&(el.id==='au-pw'||el.id==='au-email')){ ev.preventDefault(); authSubmit(S.auth&&S.auth.mode==='signup'?'signup':'login'); }
     if(el&&el.id==='au-newpw'){ ev.preventDefault(); changePassword(); }
   }
 });
