@@ -3424,6 +3424,24 @@ function authSubmit(kind){
     render(); toast(kind==='signup'?'Account created':'Logged in'); syncNow();
   },function(e){ S.auth={email:email,err:authErr(e)}; render(); });
 }
+function changePassword(){
+  var el=document.getElementById('au-newpw'), pw=String(el&&el.value||'');
+  if(pw.length<6){ S.pwMsg='Use a password of at least 6 characters.'; render(); return; }
+  S.pwBusy=true; S.pwMsg=''; render();
+  idToken().then(function(tok){
+    return fbPost('https://identitytoolkit.googleapis.com/v1/accounts:update?key='+FB.apiKey,{idToken:tok,password:pw,returnSecureToken:true});
+  }).then(function(d){
+    if(AUTH&&d){ if(d.idToken) AUTH.it=d.idToken; if(d.refreshToken) AUTH.rt=d.refreshToken;
+      AUTH.exp=Date.now()+(num(d.expiresIn)||3600)*1000; saveAuth(); }
+    S.pwBusy=false; S.pwOpen=false; S.pwMsg='Password changed. Use the new one on your other devices.'; render(); toast('Password changed');
+  },function(e){
+    S.pwBusy=false;
+    S.pwMsg=/CREDENTIAL_TOO_OLD|TOKEN_EXPIRED|INVALID_ID_TOKEN/.test((e&&e.fb)||'')
+      ?'For safety this needs a fresh login. Log out, log back in, then change it straight away.'
+      :(e&&e.expired)?'You were signed out. Log in again first.':authErr(e).replace('Could not sign in','Could not change it');
+    render();
+  });
+}
 function wipeDevice(){
   clearTimeout(SY.t);
   DATA_KEYS.forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
@@ -3448,6 +3466,13 @@ function accountPanel(){
       + '<button class="btn" data-act="au-sync">Sync now</button>'
       + '<button class="btn d" data-act="arm" data-key="logout"'+(S.logoutBusy?' disabled':'')+'>'
       + (S.logoutBusy?'Logging out…':arm?'Tap again to log out':'Log out')+'</button></div>'
+      + (S.pwOpen
+          ? '<div class="fld" style="margin-top:12px"><label>New password</label>'
+            + '<input id="au-newpw" type="password" autocomplete="new-password" placeholder="at least 6 characters"></div>'
+            + '<div class="duo" style="margin-top:8px"><button class="btn p" data-act="au-pw-save"'+(S.pwBusy?' disabled':'')+'>'
+            + (S.pwBusy?'Saving…':'Save new password')+'</button><button class="btn" data-act="au-pw-toggle">Cancel</button></div>'
+          : '<button class="btn" style="margin-top:8px" data-act="au-pw-toggle">Change password</button>')
+      + (S.pwMsg?'<div class="hint">'+esc(S.pwMsg)+'</div>':'')
       + '<div class="hint">'+(arm?'Logging out clears this device so the next person starts clean. '
           + (n?n+' change'+(n===1?'':'s')+' not uploaded yet will be sent first if there is signal.':'Everything is already in your account.')
         :'Anyone else can create their own account on this same address and gets their own separate data.')+'</div>';
@@ -4036,6 +4061,8 @@ document.addEventListener('click',function(ev){
   if(act==='au-skip'){ try{ localStorage.setItem('wl_nologin','1'); }catch(e){} S.auth=null; render(); return; }
   if(act==='au-open'){ try{ localStorage.removeItem('wl_nologin'); }catch(e){} S.auth=null; render(); return; }
   if(act==='au-sync'){ syncNow(); return; }
+  if(act==='au-pw-toggle'){ S.pwOpen=!S.pwOpen; S.pwMsg=''; render(); return; }
+  if(act==='au-pw-save'){ changePassword(); return; }
   if(act==='scan'){ openScanner(); return; }
   if(act==='pick-food'){
     var sr=S.food.search&&S.food.search.results&&S.food.search.results[parseInt(t.dataset.i,10)];
@@ -4212,6 +4239,7 @@ document.addEventListener('keydown',function(ev){
     var el=ev.target;
     if(el&&el.dataset&&el.dataset['in']==='draft'){ ev.preventDefault(); coachSend(S.draft); }
     if(el&&(el.id==='au-pw'||el.id==='au-email')){ ev.preventDefault(); authSubmit('login'); }
+    if(el&&el.id==='au-newpw'){ ev.preventDefault(); changePassword(); }
   }
 });
 
