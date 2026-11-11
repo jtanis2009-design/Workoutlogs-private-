@@ -49,6 +49,7 @@
     font-weight:600;font-size:14px;background:var(--card2);color:var(--txt);border:1px solid var(--line);width:100%}
   .btn:active{transform:scale(.985)}
   label.btn{cursor:pointer;box-sizing:border-box}
+  body.gated nav{display:none}
   .tri3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .tri3 .btn{padding-left:6px;padding-right:6px;font-size:13.5px;text-align:center}
   .fsres{margin-top:8px}
@@ -501,6 +502,7 @@ function saveLocal(){
     ls.setItem('wl_skips',JSON.stringify(S.skips)); ls.setItem('wl_chars',JSON.stringify(S.chars));
     ls.setItem('wl_prof',JSON.stringify(S.profile));
   }catch(e){}
+  try{ if(!SY.applying) syncSoon(); }catch(e){}
 }
 function sortDays(a){ return a.slice().sort(function(x,y){ return (x.date||'9999')<(y.date||'9999')?-1:1; }); }
 
@@ -3079,6 +3081,7 @@ function viewYou(){
   });
 
   var ns=notifyState();
+  h+=accountPanel();
   h+=panel('set','Settings','rest timer, weight jumps, reminders',function(){
     return '<div class="duo" style="margin-top:0">'
       + '<div class="fld"><label>Rest timer (seconds)</label><input data-fkey="s-rest" data-in="set-rest" '
@@ -3141,11 +3144,315 @@ function viewYou(){
       + (backupAge()==null?'':', last saved '+(backupAge()===0?'today':backupAge()+' days ago'))+'. '
       + (offlineReady()?'This app is saved on the device and opens without a connection. ':'')
       + (hosted()?'It is also how you move data into the browser version.'
+          :(typeof AUTH!=='undefined'&&AUTH)?'Your account already keeps a copy online; a file is an extra safety net.'
           :'Your data lives in this browser only, so export one every couple of weeks.')+'</div>';
   });
   return h;
 }
 
+
+/* ================= ACCOUNT + SYNC (Firebase through plain web requests, no SDK) ================= */
+/* This config only says which project to talk to. Access is decided by the Firestore rules. */
+var FB={apiKey:'AIzaSyDYVE8Uk3s277R3fYXH3adm6w_HMnS3EPE',projectId:'workout-log-jasontanis'};
+var SYNC_COLLS=['days','routines','sessions','chat','meals','weights','skips','chars'];
+var DATA_KEYS=['wl_days','wl_rt','wl_ses','wl_chat','wl_set','wl_meals','wl_wt','wl_prof','wl_skips','wl_chars',
+               'wl_sync_sh','wl_sync_da','wl_sync_cur','wl_auth','wl_lastbackup'];
+var AUTH=null, SY={busy:false,again:false,err:'',last:0,t:0,applying:false};
+
+function syncOn(){ return !hosted()&&!!(FB&&FB.apiKey); }
+function lsJ(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)||'null'); return v==null?d:v; }catch(e){ return d; } }
+function lsS(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function loadAuth(){ AUTH=lsJ('wl_auth',null); if(AUTH&&!(AUTH.uid&&AUTH.rt)) AUTH=null; }
+function saveAuth(){ try{ if(AUTH) localStorage.setItem('wl_auth',JSON.stringify(AUTH)); else localStorage.removeItem('wl_auth'); }catch(e){} }
+function needLogin(){
+  if(!syncOn()||AUTH) return false;
+  var skipped=false; try{ skipped=localStorage.getItem('wl_nologin')==='1'; }catch(e){}
+  return !skipped;
+}
+function hashStr(s){ var h=5381,i=s.length; while(i) h=(h*33)^s.charCodeAt(--i); return (h>>>0).toString(36)+'.'+s.length; }
+
+function fbReq(url,opts){
+  return fetch(url,opts).then(function(r){
+    return r.text().then(function(tx){
+      var j=null; try{ j=tx?JSON.parse(tx):null; }catch(e){}
+      if(!r.ok){
+        var er=Array.isArray(j)?(j[0]&&j[0].error):(j&&j.error);
+        var e=new Error((er&&er.message)||('http '+r.status));
+        e.status=r.status; e.code=String((er&&(er.status||er.message))||''); e.fb=String((er&&er.message)||'');
+        throw e;
+      }
+      return j;
+    });
+  });
+}
+function fbPost(url,body,token){
+  var h={'Content-Type':'application/json'}; if(token) h.Authorization='Bearer '+token;
+  return fbReq(url,{method:'POST',headers:h,body:JSON.stringify(body)});
+}
+function authCall(kind,email,pw){
+  return fbPost('https://identitytoolkit.googleapis.com/v1/accounts:'+(kind==='signup'?'signUp':'signInWithPassword')+'?key='+FB.apiKey,
+    {email:email,password:pw,returnSecureToken:true}).then(function(d){
+      AUTH={uid:d.localId,email:d.email||email,rt:d.refreshToken,it:d.idToken,exp:Date.now()+(num(d.expiresIn)||3600)*1000};
+      saveAuth();
+    });
+}
+function sendReset(email){
+  return fbPost('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key='+FB.apiKey,{requestType:'PASSWORD_RESET',email:email});
+}
+function idToken(){
+  if(!AUTH) return Promise.reject(new Error('signed-out'));
+  if(AUTH.it&&Date.now()<AUTH.exp-60000) return Promise.resolve(AUTH.it);
+  return fbReq('https://securetoken.googleapis.com/v1/token?key='+FB.apiKey,{method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(AUTH.rt)})
+    .then(function(d){
+      if(!AUTH) throw new Error('signed-out');
+      AUTH.it=d.id_token; AUTH.rt=d.refresh_token||AUTH.rt; AUTH.exp=Date.now()+(num(d.expires_in)||3600)*1000; saveAuth();
+      return AUTH.it;
+    },function(e){
+      if(e&&e.status===400&&/TOKEN_EXPIRED|USER_DISABLED|USER_NOT_FOUND|INVALID_REFRESH_TOKEN/.test(e.fb||'')){
+        AUTH=null; saveAuth(); var x=new Error('signed-out'); x.expired=true; throw x;   /* data stays on the device */
+      }
+      throw e;
+    });
+}
+function authErr(e){
+  var c=(e&&e.fb)||'';
+  if(!e||(!e.status&&!c)) return 'No connection. Check your signal and try again.';
+  return /EMAIL_EXISTS/.test(c)?'That email already has an account. Log in instead.'
+    : /INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(c)?'Email or password is not right.'
+    : /INVALID_EMAIL|MISSING_EMAIL/.test(c)?'That does not look like an email address.'
+    : /WEAK_PASSWORD|MISSING_PASSWORD/.test(c)?'Use a password of at least 6 characters.'
+    : /TOO_MANY_ATTEMPTS/.test(c)?'Too many tries. Wait a few minutes.'
+    : /OPERATION_NOT_ALLOWED|CONFIGURATION_NOT_FOUND|ADMIN_ONLY/.test(c)?'Email login is not switched on in Firebase yet (Authentication, Sign-in method).'
+    : /USER_DISABLED/.test(c)?'This account has been disabled.'
+    : /API_KEY|PERMISSION_DENIED/.test(c)?'Firebase refused this app’s key ('+c.slice(0,60)+').'
+    : 'Could not sign in ('+(c||e.status)+').';
+}
+function syncErr(e){
+  if(e&&e.expired) return 'You were signed out. Log in again to keep syncing.';
+  if(!e||!e.status) return 'Offline. Changes are kept on this device and upload when you are back online.';
+  if(e.status===403) return 'Signed in, but the database rules block saving. Paste the rules into Firestore, Rules.';
+  if(e.status===404) return 'Signed in, but the Firestore database has not been created yet.';
+  if(e.status===429) return 'Sync is being rate limited. It will retry.';
+  return 'Sync failed ('+e.status+' '+(e.code||'')+'). It will retry.';
+}
+
+/* ---- what is on this device, one string per record ---- */
+function syncSnapshot(){
+  var m={};
+  SYNC_COLLS.forEach(function(c){
+    var list=c==='chat'?S.chat.slice(-60):store(c);
+    (list||[]).forEach(function(o){ if(o&&o.id!=null&&o.id!=='') m[c+'/'+o.id]=JSON.stringify(o); });
+  });
+  m['profile/me']=JSON.stringify(S.profile||{});
+  m['settings/app']=JSON.stringify(S.settings||{});
+  return m;
+}
+/* dirty = differs from what the cloud last confirmed. da[key]={h:hash now,t:when it last changed} */
+function markDirty(snap){
+  var sh=lsJ('wl_sync_sh',{}), da=lsJ('wl_sync_da',{}), now=Date.now(), k, h;
+  for(k in snap){
+    h=hashStr(snap[k]);
+    if(sh[k]===h){ if(da[k]) delete da[k]; }
+    else if(!da[k]||da[k].h!==h) da[k]={h:h,t:now};
+  }
+  for(k in sh){ if(snap[k]==null&&(!da[k]||da[k].h!=='x')) da[k]={h:'x',t:now}; }
+  for(k in da){ if(snap[k]==null&&sh[k]==null) delete da[k]; }
+  lsS('wl_sync_da',da);
+  return {sh:sh,da:da};
+}
+function pendingCount(){ try{ return Object.keys(markDirty(syncSnapshot()).da).length; }catch(e){ return 0; } }
+
+function fbDocs(){ return 'projects/'+FB.projectId+'/databases/(default)/documents'; }
+function docId(key){ return key.replace(/[^A-Za-z0-9_-]/g,function(c){ return '~'+c.charCodeAt(0).toString(16); }); }
+
+function pullChanges(tok){
+  var out=[], cur=lsJ('wl_sync_cur','');
+  var page=function(){
+    var q={from:[{collectionId:'items'}],orderBy:[{field:{fieldPath:'s'},direction:'ASCENDING'}],limit:300};
+    if(cur) q.where={fieldFilter:{field:{fieldPath:'s'},op:'GREATER_THAN',value:{timestampValue:cur}}};
+    return fbPost('https://firestore.googleapis.com/v1/'+fbDocs()+'/users/'+AUTH.uid+':runQuery',{structuredQuery:q},tok)
+    .then(function(rows){
+      var n=0;
+      (rows||[]).forEach(function(r){
+        var f=r&&r.document&&r.document.fields; if(!f||!f.k) return;
+        n++;
+        out.push({key:f.k.stringValue,j:f.j?f.j.stringValue:null,t:num(f.t&&f.t.integerValue),d:!!(f.d&&f.d.booleanValue)});
+        if(f.s&&f.s.timestampValue) cur=f.s.timestampValue;
+      });
+      return n>=300?page():{docs:out,cur:cur};
+    });
+  };
+  return page();
+}
+function setLocal(key,obj){
+  var i=key.indexOf('/'), coll=key.slice(0,i), id=key.slice(i+1);
+  if(coll==='profile'){ S.profile=obj||{}; return; }
+  if(coll==='settings'){ if(obj) S.settings=obj; return; }
+  if(SYNC_COLLS.indexOf(coll)<0) return;
+  var out=[], hit=false;
+  (S[coll]||[]).forEach(function(o){
+    if(String(o.id)===id){ hit=true; if(obj) out.push(obj); } else out.push(o);
+  });
+  if(!hit&&obj) out.push(obj);
+  S[coll]=out;
+}
+function applyRemote(docs,first){
+  if(!docs.length) return false;
+  var snap=syncSnapshot(), st=markDirty(snap), sh=st.sh, da=st.da, changed=false;
+  docs.forEach(function(d){
+    var loc=snap[d.key], dirty=da[d.key], obj=null;
+    if(!d.d&&d.j==null) return;
+    if(!d.d&&loc===d.j){ sh[d.key]=hashStr(d.j); delete da[d.key]; return; }
+    if(d.d&&loc==null){ delete sh[d.key]; delete da[d.key]; return; }
+    if(dirty&&!first&&dirty.t>=d.t) return;            /* this device changed it more recently: ours goes up instead */
+    if(!d.d){ try{ obj=JSON.parse(d.j); }catch(e){ return; } }
+    setLocal(d.key,obj);
+    if(d.d) delete sh[d.key]; else sh[d.key]=hashStr(d.j);
+    delete da[d.key]; snap[d.key]=d.d?null:d.j;
+    changed=true;
+  });
+  lsS('wl_sync_sh',sh); lsS('wl_sync_da',da);
+  if(changed){
+    S.days=sortDays(S.days);
+    S.chat=S.chat.slice().sort(function(a,b){ return (a.at||0)-(b.at||0); });
+    SY.applying=true; try{ saveLocal(); } finally{ SY.applying=false; }
+    try{ applyTheme(); }catch(e){}
+  }
+  return changed;
+}
+function pushChanges(tok){
+  var snap=syncSnapshot(), st=markDirty(snap), keys=Object.keys(st.da);
+  if(!keys.length) return Promise.resolve(0);
+  var base=fbDocs()+'/users/'+AUTH.uid+'/items/', chunks=[], sent=0;
+  for(var i=0;i<keys.length;i+=100) chunks.push(keys.slice(i,i+100));
+  var run=function(ci){
+    if(ci>=chunks.length) return Promise.resolve(sent);
+    var part=chunks[ci], stamp={};
+    var writes=part.map(function(k){
+      var gone=snap[k]==null, f={k:{stringValue:k},t:{integerValue:String(st.da[k].t)},d:{booleanValue:gone}};
+      if(!gone) f.j={stringValue:snap[k]};
+      stamp[k]=st.da[k].h;
+      return {update:{name:base+docId(k),fields:f},updateTransforms:[{fieldPath:'s',setToServerValue:'REQUEST_TIME'}]};
+    });
+    return fbPost('https://firestore.googleapis.com/v1/'+fbDocs()+':commit',{writes:writes},tok).then(function(){
+      var sh=lsJ('wl_sync_sh',{}), da=lsJ('wl_sync_da',{});
+      part.forEach(function(k){
+        if(stamp[k]==='x') delete sh[k]; else sh[k]=stamp[k];
+        if(da[k]&&da[k].h===stamp[k]) delete da[k];       /* typed again meanwhile? then it stays queued */
+      });
+      lsS('wl_sync_sh',sh); lsS('wl_sync_da',da);
+      sent+=part.length;
+      return run(ci+1);
+    });
+  };
+  return run(0);
+}
+function paintSync(){
+  var el=document.getElementById('syncline'); if(el) el.textContent=syncLine();
+}
+function syncLine(){
+  if(!AUTH) return '';
+  if(SY.busy) return 'Syncing…';
+  if(SY.err) return SY.err;
+  if(!SY.last) return 'Not synced yet on this device.';
+  var m=Math.round((Date.now()-SY.last)/60000);
+  return 'Synced '+(m<1?'just now':m===1?'a minute ago':m<60?m+' minutes ago':'over an hour ago')+'.';
+}
+function syncNow(){
+  if(!syncOn()||!AUTH||!S.ready) return Promise.resolve();
+  if(SY.busy){ SY.again=true; return Promise.resolve(); }
+  SY.busy=true; SY.again=false; paintSync();
+  var first=!lsJ('wl_sync_cur','');
+  return idToken().then(function(tok){
+    return pullChanges(tok).then(function(r){
+      var changed=applyRemote(r.docs,first);
+      lsS('wl_sync_cur',r.cur||'');
+      if(changed) renderSoft();
+      return pushChanges(tok);
+    });
+  }).then(function(){ SY.err=''; SY.last=Date.now(); },function(e){
+    SY.err=syncErr(e);
+    if(e&&e.expired) render();
+  }).then(function(){
+    SY.busy=false; paintSync();
+    if(SY.again) syncSoon(800);
+  });
+}
+function syncSoon(ms){ if(!syncOn()||!AUTH) return; clearTimeout(SY.t); SY.t=setTimeout(syncNow,ms==null?2500:ms); }
+
+/* ---- screens ---- */
+function loginView(){
+  var a=S.auth||{};
+  return '<div style="max-width:420px;margin:7vh auto 0">'
+    + '<div style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px">Workout Log</div>'
+    + '<div style="color:var(--mut);font-size:14px;line-height:1.5;margin-bottom:18px">Log in and your workouts, meals and plan follow you to every device.</div>'
+    + '<div class="card"><div class="card-b" style="padding-top:15px">'
+    + '<div class="fld" style="margin-bottom:9px"><label>Email</label>'
+    + '<input id="au-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" value="'+esc(a.email||'')+'" placeholder="you@example.com"></div>'
+    + '<div class="fld"><label>Password</label>'
+    + '<input id="au-pw" type="password" autocomplete="current-password" placeholder="at least 6 characters"></div>'
+    + (a.err?'<div class="banner" style="margin:12px 0 0">'+esc(a.err)+'</div>':'')
+    + (a.note?'<div class="hint" style="margin-top:12px">'+esc(a.note)+'</div>':'')
+    + '<button class="btn p" style="margin-top:14px" data-act="au-login"'+(a.busy?' disabled':'')+'>'
+    + (a.busy==='login'?'<span class="spin"></span>Logging in…':'Log in')+'</button>'
+    + '<button class="btn" style="margin-top:8px" data-act="au-signup"'+(a.busy?' disabled':'')+'>'
+    + (a.busy==='signup'?'<span class="spin"></span>Creating…':'Create account')+'</button>'
+    + '<button class="btn g" style="margin-top:8px" data-act="au-reset"'+(a.busy?' disabled':'')+'>Forgot password</button>'
+    + '</div></div>'
+    + '<button class="btn g" data-act="au-skip">Use without an account</button>'
+    + '<div class="hint" style="text-align:center;margin-top:8px">Without an account everything stays on this device only.</div>'
+    + '</div>';
+}
+function authSubmit(kind){
+  var em=document.getElementById('au-email'), pw=document.getElementById('au-pw');
+  var email=String(em&&em.value||'').trim(), pass=String(pw&&pw.value||'');
+  S.auth={email:email};
+  if(kind==='reset'){
+    if(!email){ S.auth.err='Type your email first, then tap Forgot password.'; render(); return; }
+    S.auth.busy='reset'; render();
+    sendReset(email).then(function(){ S.auth={email:email,note:'If that email has an account, a reset link is on its way.'}; render(); },
+      function(e){ S.auth={email:email,err:/EMAIL_NOT_FOUND/.test((e&&e.fb)||'')?'If that email has an account, a reset link is on its way.':authErr(e)}; render(); });
+    return;
+  }
+  if(!email||!pass){ S.auth.err='Fill in both your email and a password.'; render(); return; }
+  if(kind==='signup'&&pass.length<6){ S.auth.err='Use a password of at least 6 characters.'; render(); return; }
+  S.auth.busy=kind; render();
+  authCall(kind,email,pass).then(function(){
+    S.auth=null; try{ localStorage.removeItem('wl_nologin'); }catch(e){}
+    render(); toast(kind==='signup'?'Account created':'Logged in'); syncNow();
+  },function(e){ S.auth={email:email,err:authErr(e)}; render(); });
+}
+function wipeDevice(){
+  clearTimeout(SY.t);
+  DATA_KEYS.forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
+  AUTH=null;
+  try{ location.reload(); }catch(e){}
+}
+function logout(){
+  S.logoutBusy=true; render();
+  var done=function(){ wipeDevice(); };
+  syncNow().then(done,done);
+}
+function accountPanel(){
+  if(!syncOn()) return '';
+  if(!AUTH) return panel('acct','Account','not logged in',function(){
+    return '<div class="hint" style="margin-top:0">Log in to sync between your phone and other devices. What is already on this device is uploaded to your account.</div>'
+      + '<button class="btn p" style="margin-top:10px" data-act="au-open">Log in or create account</button>';
+  });
+  return panel('acct','Account',AUTH.email,function(){
+    var arm=S.confirm==='logout', n=arm?pendingCount():0;
+    return '<div class="hint" id="syncline" style="margin-top:0">'+esc(syncLine())+'</div>'
+      + '<div class="duo" style="margin-top:10px">'
+      + '<button class="btn" data-act="au-sync">Sync now</button>'
+      + '<button class="btn d" data-act="arm" data-key="logout"'+(S.logoutBusy?' disabled':'')+'>'
+      + (S.logoutBusy?'Logging out…':arm?'Tap again to log out':'Log out')+'</button></div>'
+      + '<div class="hint">'+(arm?'Logging out clears this device so the next person starts clean. '
+          + (n?n+' change'+(n===1?'':'s')+' not uploaded yet will be sent first if there is signal.':'Everything is already in your account.')
+        :'Anyone else can create their own account on this same address and gets their own separate data.')+'</div>';
+  });
+}
 
 /* ---------------- views ---------------- */
 function head(){
@@ -3611,7 +3918,9 @@ function render(){
   var a=document.activeElement;
   var fk=(a&&a.dataset)?a.dataset.fkey:null,pos=null;
   try{ if(a&&a.selectionStart!=null) pos=a.selectionStart; }catch(e){}
-  var body;
+  var body, gate=S.ready&&needLogin();
+  document.body.classList.toggle('gated',!!gate);
+  if(gate){ app.innerHTML=loginView(); return; }
   if(!S.ready) body='<div class="card"><div class="empty"><p><span class="spin"></span>Loading your workouts…</p></div></div>';
   else if(S.view==='plan') body=viewPlan();
   else if(S.view==='food') body=viewFood();
@@ -3640,6 +3949,7 @@ document.addEventListener('click',function(ev){
     var key=t.dataset.key;
     if(S.confirm!==key){ S.confirm=key; render(); return; }
     S.confirm=null;
+    if(key==='logout'){ logout(); return; }
     if(key==='discard'){ var s=active(); S.parked=false; if(s) drop('sessions',s.id); return; }
     if(key==='clearchat'){ S.chat.slice().forEach(function(m){ drop('chat',m.id); }); return; }
     var p=key.split(':');
@@ -3720,6 +4030,12 @@ document.addEventListener('click',function(ev){
   if(act==='imp-merge'){ applyBackup(S.importing,'merge'); return; }
   if(act==='imp-replace'){ applyBackup(S.importing,'replace'); return; }
   if(act==='photo'){ var fi=document.getElementById('photoin'); if(fi){ fi.value=''; fi.click(); } return; }
+  if(act==='au-login'){ authSubmit('login'); return; }
+  if(act==='au-signup'){ authSubmit('signup'); return; }
+  if(act==='au-reset'){ authSubmit('reset'); return; }
+  if(act==='au-skip'){ try{ localStorage.setItem('wl_nologin','1'); }catch(e){} S.auth=null; render(); return; }
+  if(act==='au-open'){ try{ localStorage.removeItem('wl_nologin'); }catch(e){} S.auth=null; render(); return; }
+  if(act==='au-sync'){ syncNow(); return; }
   if(act==='scan'){ openScanner(); return; }
   if(act==='pick-food'){
     var sr=S.food.search&&S.food.search.results&&S.food.search.results[parseInt(t.dataset.i,10)];
@@ -3895,6 +4211,7 @@ document.addEventListener('keydown',function(ev){
   if(ev.key==='Enter'&&!ev.shiftKey){
     var el=ev.target;
     if(el&&el.dataset&&el.dataset['in']==='draft'){ ev.preventDefault(); coachSend(S.draft); }
+    if(el&&(el.id==='au-pw'||el.id==='au-email')){ ev.preventDefault(); authSubmit('login'); }
   }
 });
 
@@ -4075,7 +4392,14 @@ try{
 function offlineReady(){ try{ return !!(navigator.serviceWorker&&navigator.serviceWorker.controller); }catch(e){ return false; } }
 applyTheme();
 render();
+try{ if(syncOn()) loadAuth(); }catch(e){}
 initDb();
+if(syncOn()){
+  syncSoon(400);
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) syncSoon(300); });
+  window.addEventListener('online',function(){ syncSoon(300); });
+  setInterval(function(){ if(!document.hidden) syncNow(); },120000);
+}
 </script>
 </body>
 </html>
