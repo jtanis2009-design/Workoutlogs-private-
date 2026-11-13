@@ -545,6 +545,7 @@ function goLocal(){
   S.local=true; S.ready=true;
   if(!S.days.length&&!S.sessions.length&&!S.routines.length) loadLocal();
   render();
+  setTimeout(normalizeNames,0);
 }
 var setT;
 function saveSettings(){
@@ -2669,6 +2670,36 @@ function exGlossary(){
   }).join('\n');
 }
 
+/* ---- your naming: plain curls are the machine; dumbbell ones get their own name ---- */
+function canonExName(n){
+  var l=exLib(n); if(!l) return n;
+  if(l.id==='bicep-machine'&&!/machine|preacher/i.test(n)) return 'Bicep Curl Machine';
+  if(l.id==='db-curl'&&/dumbbell|\bdb\b/i.test(n)) return 'Dumbbell Bicep Curls';
+  return n;
+}
+function normalizeNames(){
+  if(!S.ready) return 0;
+  var n=0;
+  [['sessions','ex'],['days','exercises'],['routines','exercises']].forEach(function(cf){
+    store(cf[0]).slice().forEach(function(doc){
+      var list=doc[cf[1]]||[], hit=false;
+      list.forEach(function(e){ if(e.kind!=='protocol'&&e.name&&canonExName(e.name)!==e.name) hit=true; });
+      if(!hit) return;
+      var c=JSON.parse(JSON.stringify(doc));
+      c[cf[1]].forEach(function(e){ if(e.kind!=='protocol'&&e.name) e.name=canonExName(e.name); });
+      put(cf[0],c,true); n++;
+    });
+  });
+  return n;
+}
+var _parsePlan0=null, _parseResults0=null;
+function wrapParsers(){
+  if(_parsePlan0) return;
+  _parsePlan0=parsePlan; _parseResults0=parseResults;
+  parsePlan=function(t){ return _parsePlan0(t).map(function(e){ if(e.kind!=='protocol') e.name=canonExName(e.name); return e; }); };
+  parseResults=function(t){ return _parseResults0(t).map(function(e){ if(e.kind!=='protocol') e.name=canonExName(e.name); return e; }); };
+}
+
 /* ---- finding an exercise in the plan from loose wording ---- */
 var EXSTOP={the:1,my:1,a:1,an:1,machine:1,exercise:1,exercises:1,one:1,thing:1,'the machine':1};
 function exWords(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').split(' ').filter(function(w){ return w&&!EXSTOP[w]; })
@@ -2744,7 +2775,7 @@ function changeExercise(o){
   var action=String(o.action||'replace').toLowerCase(), scope=o.when==='date'?'date':'all';
   var date=String(o.date||ymd()), today=ymd();
   if(scope==='date'&&(!/^\d{4}-\d{2}-\d{2}$/.test(date))) throw new Error('Unreadable date: '+date);
-  var newName=o.new_exercise?titleCase(o.new_exercise):'', lib=newName?exLib(newName):null;
+  var newName=o.new_exercise?canonExName(titleCase(o.new_exercise)):'', lib=newName?exLib(newName):null;
   if(lib&&/^(crunch(es)?|ab ?machine|abs?)$/i.test(String(o.new_exercise).trim())) newName=lib.name;
   if((action==='replace'||action==='add')&&!newName) throw new Error('Which exercise should go in?');
   var key='';
@@ -3006,7 +3037,7 @@ function logSetsToday(entries){
   } else how='live';
   var ses=JSON.parse(JSON.stringify(s)), plan=plannedFor(today), done=[];
   entries.forEach(function(en){
-    var name=nameForToday(en.name||'',[ses.ex,plan&&plan.exercises]);
+    var name=canonExName(nameForToday(en.name||'',[ses.ex,plan&&plan.exercises]));
     var key=exKey(name), e=ses.ex.filter(function(x){ return x.kind!=='protocol'&&exKey(x.name)===key; })[0];
     var sets=en.sets.map(function(x){ return {kg:fmt(x.kg),reps:String(x.reps),rir:'',done:true}; });
     var planned=e?(e.target&&e.target.sets)||e.sets.length:0;
@@ -3937,6 +3968,7 @@ function applyRemote(docs,first){
     S.chat=S.chat.slice().sort(function(a,b){ return (a.at||0)-(b.at||0); });
     SY.applying=true; try{ saveLocal(); } finally{ SY.applying=false; }
     try{ applyTheme(); }catch(e){}
+    setTimeout(normalizeNames,0);
   }
   return changed;
 }
@@ -4903,7 +4935,10 @@ document.addEventListener('pointerdown',function(){ PDOWN=true; },true);
 ['pointerup','pointercancel'].forEach(function(t){
   document.addEventListener(t,function(){ setTimeout(function(){ PDOWN=false; flushSoon(); },0); },true);
 });
-document.addEventListener('focusout',function(){ flushSoon(); });
+document.addEventListener('focusout',function(ev){
+  flushSoon();
+  var t=ev&&ev.target; if(t&&t.dataset&&t.dataset['in']==='ex-name') setTimeout(normalizeNames,250);
+});
 document.addEventListener('change',function(ev){
   var t=ev.target;
   if(DIRTY&&t&&(t.type==='date'||t.type==='time')) render();   /* a picker has closed, nothing is being typed */
@@ -5076,6 +5111,7 @@ try{
 function offlineReady(){ try{ return !!(navigator.serviceWorker&&navigator.serviceWorker.controller); }catch(e){ return false; } }
 applyTheme();
 render();
+try{ wrapParsers(); }catch(e){}
 try{ if(syncOn()) loadAuth(); }catch(e){}
 initDb();
 if(syncOn()){
