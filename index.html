@@ -663,11 +663,11 @@ function nextWorkouts(n){
 
 /* ---- weight progression: learn from what was actually logged ---- */
 function historyFor(name){
-  var key=String(name||'').trim().toLowerCase(), out=[];
+  var key=String(name||'').trim()?exKey(name):'', out=[];
   if(!key) return out;
   finished().forEach(function(s){
     (s.ex||[]).forEach(function(e){
-      if(String(e.name||'').trim().toLowerCase()!==key) return;
+      if(exKey(e.name)!==key) return;
       var done=(e.sets||[]).filter(function(x){return x.done;});
       if(done.length) out.push({at:s.finishedAt,target:e.target||{},sets:done.map(function(x){
         return {kg:num(x.kg),reps:num(x.reps)}; })});
@@ -809,18 +809,19 @@ function exerciseNames(){
     (s.ex||[]).forEach(function(e){
       if(e.kind==='protocol') return;
       if(!(e.sets||[]).filter(function(x){return x.done;}).length) return;
-      var k=String(e.name||'').trim();
-      if(!k||seen[k]) return;
-      seen[k]=1; out.push(k);
+      var k=String(e.name||'').trim(), ky=exKey(k);
+      if(!k) return;
+      if(ky in seen){ out[seen[ky]]=k; return; }     /* same exercise under another name: show the newest name */
+      seen[ky]=out.length; out.push(k);
     });
   });
   return out;
 }
 function progData(name){
-  var key=String(name||'').trim().toLowerCase(), out=[];
+  var key=exKey(name), out=[];
   finished().slice().reverse().forEach(function(s){      /* oldest first */
     (s.ex||[]).forEach(function(e){
-      if(String(e.name||'').trim().toLowerCase()!==key) return;
+      if(exKey(e.name)!==key) return;
       var done=(e.sets||[]).filter(function(x){return x.done;});
       if(!done.length) return;
       var top=0,vol=0,best=0;
@@ -921,10 +922,10 @@ function stallInfo(rows){
     newPR:newPR, stalled:pct<1&&!newPR};
 }
 function repPRs(name){
-  var key=String(name||'').trim().toLowerCase(), best={};
+  var key=exKey(name), best={};
   finished().forEach(function(s){
     (s.ex||[]).forEach(function(e){
-      if(String(e.name||'').trim().toLowerCase()!==key) return;
+      if(exKey(e.name)!==key) return;
       (e.sets||[]).forEach(function(x){
         if(!x.done) return;
         var w=Math.round((num(x.kg)+exBase(e))*100)/100, r=num(x.reps);
@@ -1301,6 +1302,25 @@ function coachTools(){
         volume_kg:fmt(volume(ses)),replaced:!!old};
     }},
 
+  { name:'change_exercise',
+    description:'Swap, remove or add ONE exercise without rewriting whole workouts. Keeps sets, reps and cues, and also updates a workout in progress. Use this whenever they say swap X for Y, replace X, do Y instead of X, drop X, or add X to a day. when:"all" changes every upcoming week (routines and dated days); when:"date" changes only that date.',
+    inputSchema:{type:'object',properties:{
+      action:{type:'string',description:'replace, remove or add'},
+      exercise:{type:'string',description:'For replace/remove: the exercise now in the plan, in their words'},
+      new_exercise:{type:'string',description:'For replace/add: the exercise to put in, e.g. "Abdominal Crunches"'},
+      when:{type:'string',description:'"all" (default, from now on) or "date" (one day only)'},
+      date:{type:'string',description:'YYYY-MM-DD, needed when when is "date"'},
+      weekday:{type:'string',description:'For add with when "all": which weekday, e.g. "thursday"'},
+      sets:{type:'string'},reps:{type:'string'},kg:{type:'string',description:'Optional starting weight'},
+      cue:{type:'string',description:'Optional short coaching cue'}
+    },required:['action']},
+    execute:function(a){ var r=changeExercise(a); delete r.lib; return r; }},
+
+  { name:'undo_last_change',
+    description:'Undo the last change_exercise.',
+    inputSchema:{type:'object',properties:{}},
+    execute:function(){ return undoChange(); }},
+
   { name:'get_exercise_history',
     description:'Every logged set for one exercise, newest first, so you can pick the next weight from real data.',
     inputSchema:{type:'object',properties:{name:{type:'string'}},required:['name']},
@@ -1365,6 +1385,8 @@ function coachPreamble(){
   '- Respect their main training days (Tuesday, Thursday, Sunday) unless they say otherwise. Leave at least one rest day between hard sessions for the same muscles where you can.',
   '- Pick weights from what they have ACTUALLY LOGGED, never from the old targets. If every rep was hit at the top of the range, add about '+STEP+'kg. If they fell short, keep the weight and tell them to beat the reps. Call get_exercise_history when you need the detail.',
   '- Keep their coaching cues when you reuse an exercise, and write a short cue for anything new.',
+  '- To swap, drop or add a single exercise, call change_exercise instead of rewriting whole days. Use when:"all" unless they name a day or say just today or this time. After it, say what changed and that they can say "undo".',
+  '- Names below refer to the same thing; never treat them as unknown. If they ask what an exercise is or how to do it, explain it in two or three plain sentences.',
   '- If a standing day is empty, build it from the equipment and lifts that already appear in their plan and history. Do not invent machines they have never used.',
   '- Workouts are written as plain lines, one exercise per line, in the format each tool describes. Weights are plain numbers.',
   '- Never claim you changed something unless the tool call came back ok. If a tool errors, say so plainly and give the advice anyway.',
@@ -1373,6 +1395,9 @@ function coachPreamble(){
   'That voice governs your wording and nothing else. It never changes the numbers you report, the tools you call, '
    + 'whether you point out a missed set or a stalled lift, or your honesty about what you do not know. '
    + 'If the character and the facts ever pull in different directions, the facts win.',
+  '',
+  'EXERCISE GLOSSARY:',
+  exGlossary(),
   '',
   'Their data:',
   planSnapshot()
@@ -2441,7 +2466,297 @@ function busy(ds){ var p=plannedFor(ds); return !!(sessionOn(ds)||(p&&(p.exercis
 function shiftYmd(ds,n){ var d=fromYmd(ds); return ymd(new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)); }
 function cloneEx(list){ return JSON.parse(JSON.stringify(list||[])).map(function(e){ e.id=uid(); return e; }); }
 
+/* ================= EXERCISE LIBRARY: names, what they are, and swapping ================= */
+/* First match wins, so the specific entries sit above the general ones. load: kg | bw (bodyweight) | cardio */
+var EXLIB=[
+ ['cable-crunch','Cable Crunch',/cable ?crunch|kneeling ?(cable )?crunch|rope ?crunch/i,'abs','Kneel facing a high cable with a rope by your head. Curl your ribs toward your hips by rounding the spine; the hips stay still.','kg',['ab-machine','decline-crunch','leg-raise']],
+ ['decline-crunch','Decline Crunch',/decline ?(crunch|sit.?up)/i,'abs','Feet hooked on a decline bench. Curl up until your lower back just lifts, then lower slowly. Hold a plate on your chest to add load.','bw',['ab-machine','cable-crunch','floor-crunch']],
+ ['reverse-crunch','Reverse Crunch',/reverse ?crunch/i,'lower abs','Lie on your back, knees bent. Roll your hips off the floor toward your chest using the abs, not a leg swing, then lower slowly.','bw',['leg-raise','floor-crunch','plank']],
+ ['ab-machine','Abdominal Crunch Machine',/\babdominals?\b|\bab ?(crunch )?machine|crunch ?machine|ab ?crunch(es)?\b/i,'abs (rectus abdominis)','The seated crunch machine, also called abdominal crunches or the ab machine. Pads on your chest or shoulders, feet hooked. Curl your ribs down toward your hips by rounding the upper back, breathe out at the bottom, pause, come back slowly. Do not pull with the arms or just bend at the hips.','kg',['cable-crunch','decline-crunch','floor-crunch']],
+ ['floor-crunch','Crunches (floor)',/\bcrunch(es)?\b|sit.?ups?/i,'abs','On your back, knees bent, hands by your temples. Lift your shoulder blades by curling the ribs toward the hips, breathe out at the top, lower slowly. Do not yank your neck.','bw',['ab-machine','reverse-crunch','plank']],
+ ['plank','Plank',/plank/i,'abs and deep core','Forearms under the shoulders, body in one straight line. Squeeze your glutes and brace like someone is about to poke your stomach. Stop when the hips start to sag.','bw',['ab-machine','floor-crunch','leg-raise']],
+ ['leg-raise','Leg Raise',/\b(hanging |lying |captain'?s? chair )?(leg|knee) ?raises?\b/i,'lower abs and hip flexors','Hang or lie flat, then lift your legs by tilting the pelvis up, not by swinging. Lower slowly without arching your back.','bw',['reverse-crunch','cable-crunch','ab-machine']],
+ ['torso-rotation','Torso Rotation Machine',/torso ?rotation|rotary ?torso|oblique ?machine/i,'obliques','Sit tall with the pad against you and turn from the ribs, not the arms. Slow both ways, no bouncing at the end. Do both sides.','kg',['russian-twist','cable-crunch','plank']],
+ ['russian-twist','Russian Twist',/russian ?twist/i,'obliques','Sit leaning back with feet up or anchored and rotate your shoulders side to side. Hold a plate to make it harder.','bw',['torso-rotation','plank']],
+ ['assisted-pullup','Assisted Pull-up',/assisted ?(pull|chin)/i,'lats, biceps','Knees on the pad. More assist weight makes it easier. Pull your chest to the bar and lower all the way.','kg',['lat-pulldown','pullup']],
+ ['lat-pulldown','Lat Pulldown',/lat ?pull.?down|\bpull.?down\b(?! ?tricep)/i,'lats, biceps, rear delts','Thighs under the pads, chest up. Drive your elbows down toward your ribs and bring the bar to the top of the chest. Full stretch at the top.','kg',['assisted-pullup','pullup','seated-row']],
+ ['pullup','Pull-up',/pull.?ups?|chin.?ups?/i,'lats, biceps','Hang from straight arms, pull until your chin clears the bar, lower all the way.','bw',['lat-pulldown','assisted-pullup']],
+ ['low-row','Low Row Machine',/low ?row/i,'lats, mid back','Chest on the pad, pull low toward your hip pockets and squeeze at the back. Long stretch at the front.','kg',['seated-row','db-row','lat-pulldown']],
+ ['db-row','Dumbbell Row',/(dumbbell|db|one.?arm|single.?arm) ?row/i,'lats, mid back','Hand and knee on a bench, back flat. Pull the dumbbell toward your hip, not your armpit.','kg',['seated-row','low-row']],
+ ['seated-row','Seated Row',/seated ?(cable )?row|row ?machine|cable ?row|\brows?\b/i,'mid back, lats, rear delts','Chest tall against the pad, pull your elbows back past your body and squeeze the shoulder blades. No lower back swing.','kg',['low-row','db-row','lat-pulldown']],
+ ['shoulder-press','Shoulder Press',/shoulder ?press|overhead ?press|military ?press|\bohp\b/i,'front and side delts, triceps','Back flat on the pad, handles at chin height, press straight up and stop just short of locking out.','kg',['lateral-raise','incline-press']],
+ ['lateral-raise','Lateral Raise',/lat(eral)? ?raise|side ?raise/i,'side delts','Lead with the elbows out to the side up to shoulder height. Slow on the way down, no shrugging.','kg',['shoulder-press','rear-delt']],
+ ['rear-delt','Rear Delt Fly',/rear ?delt|reverse ?(fly|pec)|face ?pull/i,'rear delts, upper back','Arms slightly bent, sweep them back and out, squeezing behind the shoulders. Light weight, strict form.','kg',['seated-row','lateral-raise']],
+ ['incline-press','Incline Press',/incline ?(chest |bench |dumbbell |db |smith )?press|incline ?bench/i,'upper chest, front delts, triceps','Bench at about 30 degrees, shoulder blades pinched, lower to the upper chest and press up and slightly back.','kg',['chest-press','bench','pushup']],
+ ['chest-press','Chest Press Machine',/chest ?press/i,'chest, front delts, triceps','Handles at mid-chest, shoulder blades back. Press out without locking, two-second return.','kg',['bench','incline-press','pushup']],
+ ['bench','Bench Press',/bench ?press|\bbench\b/i,'chest, front delts, triceps','Feet planted, shoulder blades pinched, lower the bar to the lower chest and press up.','kg',['chest-press','incline-press','pushup']],
+ ['cable-fly','Cable Fly',/cable ?(fly|flye|crossover)|crossover/i,'chest','Slight bend in the elbows, hug the handles together in front of you and squeeze.','kg',['pec-deck','chest-press']],
+ ['pec-deck','Pec Deck',/pec ?deck|chest ?fly|machine ?fly|(dumbbell |db )?fl(y|ies|yes)\b/i,'chest','Soft elbows, bring the handles together in front of your chest, squeeze, and let them open slowly for the stretch.','kg',['cable-fly','chest-press']],
+ ['pushup','Push-up',/push.?ups?/i,'chest, triceps, front delts','Hands under the shoulders, body straight, chest to just above the floor, push away.','bw',['chest-press','bench','dip']],
+ ['tricep-press','Tricep Press Machine',/tricep?s? ?(press|dip|extension) ?machine|tricep?s? ?press|seated ?dip/i,'triceps','Elbows pinned to your sides, push down to full lockout, slow on the way up.','kg',['pushdown','dip']],
+ ['pushdown','Tricep Pushdown',/push.?down|rope ?extension|tricep?s? ?extension/i,'triceps','Elbows glued to your sides at a cable, push down until the arms are straight, control it back up.','kg',['tricep-press','dip']],
+ ['dip','Dips',/\bdips?\b/i,'triceps, chest','Lean slightly forward, lower until the upper arms are level, press back up.','bw',['tricep-press','pushup']],
+ ['leg-curl','Leg Curl',/leg ?curl|hamstring ?curl|(lying|seated) ?(leg )?curl/i,'hamstrings','Pad just above the heels. Curl all the way, squeeze, and take two seconds back.','kg',['rdl','hip-thrust']],
+ ['bicep-machine','Bicep Curl Machine',/(bicep?s?|preacher|arm) ?curl ?machine|preacher/i,'biceps','Upper arms flat on the pad, curl to the top and squeeze, lower slowly to almost straight.','kg',['db-curl','hammer-curl']],
+ ['hammer-curl','Hammer Curl',/hammer ?curl/i,'biceps, forearms','Palms facing each other, elbows still, curl up and lower slowly.','kg',['db-curl','bicep-machine']],
+ ['lp-calf','Leg Press Calf Raise',/leg ?press ?calf|calf ?press/i,'calves','Balls of the feet on the bottom edge of the leg press, legs straight but not locked. Deep stretch, then push up hard and hold.','kg',['calf-raise']],
+ ['calf-raise','Calf Raise',/calf|calves/i,'calves','Balls of the feet on the edge, lower for a deep stretch, rise as high as you can and pause.','kg',['lp-calf']],
+ ['leg-press','Leg Press',/leg ?press/i,'quads, glutes','Feet shoulder width mid-platform, lower until the knees are about 90 degrees without the lower back lifting, drive through the heels.','kg',['hack-squat','squat','leg-ext']],
+ ['hack-squat','Hack Squat',/hack ?squat/i,'quads, glutes','Back flat on the pad, feet mid-platform, sink deep and drive up through the whole foot.','kg',['leg-press','squat']],
+ ['leg-ext','Leg Extension',/leg ?extension/i,'quads','Pad on the lower shins, straighten fully and squeeze for a second, lower under control.','kg',['leg-press','hack-squat']],
+ ['lunge','Lunge',/lunge|split ?squat/i,'quads, glutes','Long step, drop the back knee toward the floor, front knee tracking over the toes, push back up.','kg',['leg-press','squat']],
+ ['squat','Squat',/squat/i,'quads, glutes, lower back','Brace, sit down between your heels until the thighs are about parallel, stand up through the whole foot.','kg',['leg-press','hack-squat']],
+ ['rdl','Romanian Deadlift',/romanian|\brdl\b|stiff.?leg/i,'hamstrings, glutes','Soft knees, push the hips back with a flat back until you feel the hamstrings stretch, then drive the hips forward.','kg',['leg-curl','hip-thrust']],
+ ['deadlift','Deadlift',/deadlift/i,'whole back chain','Bar over mid-foot, flat back, push the floor away and stand tall. Lower with the same flat back.','kg',['rdl','leg-press']],
+ ['hip-thrust','Hip Thrust',/hip ?thrust|glute ?bridge/i,'glutes','Upper back on a bench, drive the hips up until the body is flat, squeeze the glutes hard at the top.','kg',['rdl','leg-curl']],
+ ['abductor','Hip Abductor',/abduct/i,'outer glutes','Push the pads outward and pause, return slowly.','kg',['hip-thrust']],
+ ['adductor','Hip Adductor',/adduct/i,'inner thighs','Squeeze the pads together and pause, open slowly.','kg',['leg-press']],
+ ['back-ext','Back Extension',/back ?extension|hyperextension/i,'lower back, glutes','Hinge at the hips over the pad and rise until your body is straight, not past it.','bw',['rdl','plank']],
+ ['shrug','Shrug',/shrug/i,'traps','Lift your shoulders straight up toward your ears, hold, lower slowly. No rolling.','kg',['seated-row']],
+ ['db-curl','Bicep Curl',/\bcurls?\b/i,'biceps','Elbows still at your sides, curl up, squeeze, lower slowly to straight.','kg',['bicep-machine','hammer-curl']],
+ ['treadmill','Incline Treadmill',/treadmill|incline ?walk/i,'conditioning','Set the incline, walk without holding the rails.','cardio',['bike']],
+ ['bike','Exercise Bike',/\bbike\b|cycling|spin/i,'conditioning','Seat at hip height, steady cadence.','cardio',['treadmill']]
+];
+var EXBYID={}; EXLIB.forEach(function(x){ EXBYID[x[0]]={id:x[0],name:x[1],re:x[2],muscles:x[3],how:x[4],load:x[5],alt:x[6]}; });
+function exLib(name){
+  var n=String(name||'');
+  if(!n.trim()) return null;
+  for(var i=0;i<EXLIB.length;i++) if(EXLIB[i][2].test(n)) return EXBYID[EXLIB[i][0]];
+  return null;
+}
+/* one key per exercise, so "Abdominal Machine" and "Abdominal Crunches" share history and weights */
+var EXKEYC={};
+function exKey(name){
+  var n=String(name||'').trim().toLowerCase();
+  if(n in EXKEYC) return EXKEYC[n];
+  var l=exLib(n);
+  return (EXKEYC[n]=l?'#'+l.id:n.replace(/\s+/g,' '));
+}
+function titleCase(s){ return String(s||'').trim().replace(/\s+/g,' ').replace(/(^|[\s\/(-])([a-z])/g,function(m,a,b){ return a+b.toUpperCase(); }); }
+function exInfo(l){
+  return '**'+l.name+'** works the '+l.muscles+'. '+l.how
+    + (l.alt&&l.alt.length?'\n\nSwaps if it is taken: '+l.alt.map(function(a){ return EXBYID[a]?EXBYID[a].name:a; }).join(', ')+'.':'');
+}
+function exGlossary(){
+  return EXLIB.filter(function(x){ return x[5]!=='cardio'; }).map(function(x){
+    return '  '+x[1]+' ('+x[3]+')'+(x[0]==='ab-machine'?' — "abdominal crunches", "ab machine" and "Abdominal Machine" all mean this seated crunch machine':'');
+  }).join('\n');
+}
+
+/* ---- finding an exercise in the plan from loose wording ---- */
+var EXSTOP={the:1,my:1,a:1,an:1,machine:1,exercise:1,exercises:1,one:1,thing:1,'the machine':1};
+function exWords(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').split(' ').filter(function(w){ return w&&!EXSTOP[w]; })
+  .map(function(w){ return w.replace(/(es|s)$/,''); }); }
+function exScore(query,name){
+  if(!query||!name) return 0;
+  var lq=exLib(query), ln=exLib(name);
+  if(lq&&ln&&lq.id===ln.id) return 1;
+  var a=exWords(query), b=exWords(name); if(!a.length||!b.length) return 0;
+  var hit=a.filter(function(w){ return b.indexOf(w)>=0; }).length;
+  var s=hit/a.length;
+  if(lq&&ln&&lq.id!==ln.id) s*=0.5;              /* both known, but different exercises */
+  return s;
+}
+function upcomingDocs(scope,date){
+  var today=ymd(), out=[];
+  if(scope==='date'){
+    var p=plannedFor(date);
+    if(p) out.push(p._virtual?{coll:'days',virtual:p,doc:null}:{coll:'days',doc:p});
+    return out;
+  }
+  S.routines.forEach(function(r){
+    var w=r.weekday|0, inForce=routineFor(w,today)===r, later=String(r.effectiveFrom||'')>today;
+    if(inForce||later) out.push({coll:'routines',doc:r});
+  });
+  S.days.forEach(function(d){ if(d.date&&d.date>=today) out.push({coll:'days',doc:d}); });
+  return out;
+}
+function findExercise(query,scope,date){
+  var best=0, bestKey='';
+  var look=function(list){ (list||[]).forEach(function(e){
+    var sc=exScore(query,e.name); if(sc>best){ best=sc; bestKey=exKey(e.name); } }); };
+  upcomingDocs(scope,date).forEach(function(t){ look((t.doc||t.virtual).exercises); });
+  var s=active(); if(s) look(s.ex);
+  return best>=0.5?bestKey:'';
+}
+function lastKg(name){
+  var h=historyFor(name); if(!h.length) return '';
+  var m=0; h[0].sets.forEach(function(x){ if(x.kg>m) m=x.kg; }); return m?fmt(m):'';
+}
+
+/* ---- the change itself, with undo ---- */
+var UNDO=null;
+function changeExercise(o){
+  o=o||{};
+  var action=String(o.action||'replace').toLowerCase(), scope=o.when==='date'?'date':'all';
+  var date=String(o.date||ymd()), today=ymd();
+  if(scope==='date'&&(!/^\d{4}-\d{2}-\d{2}$/.test(date))) throw new Error('Unreadable date: '+date);
+  var newName=o.new_exercise?titleCase(o.new_exercise):'', lib=newName?exLib(newName):null;
+  if(lib&&/^(crunch(es)?|ab ?machine|abs?)$/i.test(String(o.new_exercise).trim())) newName=lib.name;
+  if((action==='replace'||action==='add')&&!newName) throw new Error('Which exercise should go in?');
+  var key='';
+  if(action!=='add'){
+    key=findExercise(o.exercise,scope,date);
+    if(!key) throw new Error('No "'+o.exercise+'" in '+(scope==='date'?'the plan for '+date:'your upcoming plan')+'.');
+  }
+  var undo=[], places=[], oldName='', template=null, sesNote='';
+  var fresh=function(e){
+    var same=e&&exKey(e.name)===exKey(newName);
+    var kg=o.kg!=null&&o.kg!==''?fmt(num(o.kg)):same?(e.kg||''):lastKg(newName);
+    return {id:(e&&e.id)||uid(),kind:'strength',name:newName,
+      sets:String(o.sets||(e&&e.kind!=='protocol'&&e.sets)||'3'),
+      reps:String(o.reps||(e&&e.kind!=='protocol'&&e.reps)||'8-12'),
+      kg:lib&&lib.load==='bw'&&!o.kg&&!kg?'':kg,
+      note:String(o.cue||(same&&e.note)||(lib?lib.how.split('. ').slice(0,2).join('. ').replace(/\.?$/,'.'):'')),
+      step:same&&e.step?e.step:undefined};
+  };
+  var label=function(t,doc){
+    return t.coll==='routines'?(DOW[doc.weekday|0]+'s'+(doc.effectiveFrom&&doc.effectiveFrom>today?' from '+doc.effectiveFrom.slice(5):''))
+      :fromYmd(doc.date).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+  };
+  var targets=upcomingDocs(scope,date);
+  if(action==='add'){
+    var wd=o.weekday!=null&&o.weekday!==''?dowFromName(o.weekday):-1;
+    if(scope==='all'&&wd<0) throw new Error('Say which day to add it to.');
+    targets=targets.filter(function(t){ var d=t.doc||t.virtual;
+      return scope==='date'||(t.coll==='routines'?(d.weekday|0)===wd:fromYmd(d.date).getDay()===wd&&(d.exercises||[]).length); });
+    if(!targets.length) throw new Error(scope==='date'?'Nothing is planned on '+date+' to add it to.':'No '+DOWFULL[wd]+' workout to add it to.');
+  }
+  targets.forEach(function(t){
+    var src=t.doc||t.virtual, list=JSON.parse(JSON.stringify(src.exercises||[])), hit=false;
+    if(action==='add'){
+      var at=list.length; for(var i=list.length-1;i>=0;i--){ if(list[i].kind==='protocol') at=i; else break; }   /* before the finisher */
+      list.splice(at,0,fresh(null)); hit=true;
+    } else {
+      list=list.reduce(function(acc,e){
+        if(exKey(e.name)!==key){ acc.push(e); return acc; }
+        hit=true; oldName=oldName||e.name; template=template||e;
+        if(action==='replace') acc.push(fresh(e));
+        return acc;
+      },[]);
+    }
+    if(!hit) return;
+    var doc;
+    if(t.virtual){ doc={id:uid(),name:src.name,date:src.date,note:src.note||'',exercises:list,source:'coach'};
+      undo.push({coll:t.coll,id:doc.id,before:null}); }
+    else { undo.push({coll:t.coll,id:t.doc.id,before:JSON.parse(JSON.stringify(t.doc))});
+      doc=JSON.parse(JSON.stringify(t.doc)); doc.exercises=list; }
+    put(t.coll,doc,true); places.push(label(t,doc));
+  });
+  /* a workout in progress today follows along, as long as that exercise has not been started */
+  var s=active();
+  if(s&&(scope==='all'||date===today)){
+    var sc=JSON.parse(JSON.stringify(s)), touched=false;
+    if(action==='add'){
+      if(scope==='date'||dowFromName(o.weekday)===new Date().getDay()){
+        var nx=fresh(null), sg=suggest(nx.name,nx.kg,nx.reps,nx.sets,stepFor(nx)), n=Math.max(1,Math.min(15,Math.round(num(nx.sets))||1)), st=[];
+        for(var k=0;k<n;k++) st.push({kg:fmt(sg.kg),reps:String(num(nx.reps)||''),rir:'',done:false});
+        sc.ex.push({id:uid(),kind:'strength',name:nx.name,note:nx.note,hint:sg.why,base:0,perSide:false,target:{sets:n,reps:nx.reps,kg:num(nx.kg)},sets:st,comment:''});
+        touched=true;
+      }
+    } else {
+      sc.ex=sc.ex.reduce(function(acc,e){
+        if(exKey(e.name)!==key){ acc.push(e); return acc; }
+        if((e.sets||[]).some(function(x){ return x.done; })){ acc.push(e); sesNote=' Your workout in progress already has sets done on it, so I left that one alone.'; return acc; }
+        touched=true; oldName=oldName||e.name;
+        if(action==='remove') return acc;
+        var nx=fresh(e.kind==='protocol'?null:{id:e.id,name:e.name,sets:String(e.sets.length),reps:(e.target&&e.target.reps)||'',kg:(e.target&&e.target.kg)||'',kind:'strength'});
+        var sg=suggest(nx.name,nx.kg,nx.reps,nx.sets,stepFor(nx)), n=Math.max(1,Math.min(15,Math.round(num(nx.sets))||1)), st=[];
+        for(var k=0;k<n;k++) st.push({kg:fmt(sg.kg),reps:String(num(nx.reps)||''),rir:'',done:false});
+        acc.push({id:e.id,kind:'strength',name:nx.name,note:nx.note,hint:sg.why,base:0,perSide:false,
+          target:{sets:n,reps:nx.reps,kg:num(nx.kg)},sets:st,comment:e.comment||'',t0:e.t0,t1:e.t1});
+        return acc;
+      },[]);
+    }
+    if(touched){ undo.push({coll:'sessions',id:s.id,before:JSON.parse(JSON.stringify(s))}); put('sessions',sc,true); places.unshift('your workout in progress'); }
+  }
+  if(!places.length) throw new Error('Nothing changed.');
+  UNDO={label:action,items:undo};
+  var what=action==='replace'?oldName+' → '+newName:action==='remove'?'Removed '+oldName:'Added '+newName;
+  sysMsg(what+' ('+places.length+' place'+(places.length===1?'':'s')+')');
+  return {ok:true,action:action,from:oldName||null,to:newName||null,places:places,note:sesNote,
+    kg:action==='remove'?null:(fresh(template).kg||''),lib:lib};
+}
+function undoChange(){
+  if(!UNDO) throw new Error('There is nothing to undo.');
+  UNDO.items.slice().reverse().forEach(function(u){
+    if(u.before) put(u.coll,u.before,true); else drop(u.coll,u.id);
+  });
+  UNDO=null; sysMsg('Undid the last exercise change');
+  return {ok:true};
+}
+
+/* ---- plain-language parsing for the built-in coach ---- */
+var DAYWORD=/\b(?:on |for |this |next |just |only )*(today|tonight|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/;
+var SCOPEALL=/\b(everywhere|from now on|for good|permanently|always|every ?week|in (all|every) (my )?(workouts?|days?)|in my (plan|routine))\b/g;
+var SCOPEONE=/\b(just|only)? ?(this time|today|tonight|for now)\b/;
+function dayToDate(w){
+  var today=ymd(); w=String(w||'');
+  if(w==='today'||w==='tonight') return today;
+  if(w==='tomorrow') return shiftYmd(today,1);
+  var idx=['sun','mon','tue','wed','thu','fri','sat'].indexOf(w.slice(0,3));
+  for(var i=0;i<7;i++){ var ds=shiftYmd(today,i); if(fromYmd(ds).getDay()===idx) return ds; }
+  return today;
+}
+function cleanEx(s){
+  return String(s||'').replace(SCOPEALL,' ').replace(DAYWORD,' ').replace(/\b(please|pls|instead|then|for me|in my workout|in the plan|workout|session)\b/g,' ')
+    .replace(/\b(\d+) ?(x|sets? of) ?(\d+(?:-\d+)?)( reps)?\b/,' ').replace(/\b(at|@) ?\d+(\.\d+)? ?kg\b/,' ')
+    .replace(/^\s*(the|my|a|an|some)\s+/,'').replace(/[.!?,]+$/,'').replace(/\s+/g,' ').trim();
+}
+function exerciseCommand(raw){
+  var q=String(raw||'').trim(), l=q.toLowerCase().replace(/[’']/g,"'");
+  if(/^(undo|revert|take that back|put it back|undo that)\b/.test(l)){
+    if(!UNDO) return null;
+    undoChange(); return 'Done, the last exercise change is undone.';
+  }
+  var sx=l.match(/\b(\d+) ?(?:x|sets? of) ?(\d+(?:-\d+)?)\b/), kgm=l.match(/\b(?:at|@) ?(\d+(?:\.\d+)?) ?kg\b/);
+  var dm=l.match(DAYWORD), one=SCOPEONE.test(l)||!!dm;
+  var scope=one?'date':'all', date=dm?dayToDate(dm[1]):ymd();
+  var extra={sets:sx?sx[1]:'',reps:sx?sx[2]:'',kg:kgm?kgm[1]:null};
+  var reply=function(r,verb){
+    var where=r.places.join(', ');
+    var t=verb+' in '+where+'.';
+    if(r.action!=='remove'){
+      t+=r.kg?' Starting weight '+r.kg+' kg, from what you logged.':(r.lib&&r.lib.load==='bw'?' It is bodyweight, so leave the weight empty or add a plate.':' No weight logged for it yet, so pick a start weight on the first set.');
+    }
+    if(r.note) t+=r.note;
+    if(r.lib&&r.action!=='remove') t+='\n\n'+exInfo(r.lib);
+    return t+'\n\nSay "undo" to put it back.';
+  };
+  var m;
+  /* what is X / how do I do X */
+  if((m=l.match(/^(?:what(?:'s| is| are)|how (?:do i|to|should i) (?:do|use|perform)|explain|tell me about)\s+(?:an? |the )?(.+?)\??$/))){
+    var li=exLib(m[1]); if(li&&!/\b(session|workout|week|plan|progress)\b/.test(m[1])) return exInfo(li);
+  }
+  /* what can I do instead of X */
+  if((m=l.match(/(?:instead of|alternative(?:s)? (?:to|for)|replacement for|swap for)\s+(?:the |my )?(.+?)\??$/))&&/^(what|which|any|give|got|is there)/.test(l)){
+    var la=exLib(cleanEx(m[1])); if(la) return exInfo(la);
+  }
+  var from='', to='', action='';
+  if((m=l.match(/^(?:can you |could you |please |pls )?(?:swap|replace|change|switch|substitute|sub)\s+(?:out\s+)?(.+?)\s+(?:for|with|to|into|by)\s+(.+)$/))){ action='replace'; from=m[1]; to=m[2]; }
+  else if((m=l.match(/^(?:can you |could you |please |pls |let me |i (?:want|wanna) (?:to )?|i'll )?(?:do|use|put|have|go with)\s+(.+?)\s+instead of\s+(.+)$/))){ action='replace'; to=m[1]; from=m[2]; }
+  else if((m=l.match(/^instead of\s+(.+?),?\s+(?:do|use|put|have|go with|i(?:'ll| will) do)\s+(.+)$/))){ action='replace'; from=m[1]; to=m[2]; }
+  else if((m=l.match(/^(?:can you |could you |please |pls )?(?:remove|drop|delete|take out|get rid of|cut|skip)\s+(.+?)(?:\s+(?:from|out of)\s+.*)?$/))){ action='remove'; from=m[1]; }
+  else if((m=l.match(/^(?:can you |could you |please |pls )?add\s+(.+?)(?:\s+(?:to|on|into|for)\s+(.+))?$/))){ action='add'; to=m[1]; from=m[2]||''; }
+  if(!action) return null;
+  from=cleanEx(from); var toClean=cleanEx(to);
+  if(action==='add'){
+    if(/\b(session|workout|day|rest)\b/.test(to)||!toClean) return null;
+    var wd=dm?dm[1]:'';
+    if(!wd) return 'Which day should **'+titleCase(toClean)+'** go on? Say for example "add '+toClean+' to Thursday".';
+    var isDate=/today|tonight|tomorrow/.test(wd)||SCOPEONE.test(l)||/\bthis\b/.test(l);
+    var r=changeExercise({action:'add',new_exercise:toClean,when:isDate?'date':'all',date:dayToDate(wd),weekday:wd,
+      sets:extra.sets,reps:extra.reps,kg:extra.kg});
+    return reply(r,'Added **'+r.to+'** ('+(extra.sets||'3')+' × '+(extra.reps||'8-12')+')');
+  }
+  if(!from||!findExercise(from,scope,date)) return null;          /* not an exercise: let the other commands try */
+  if(action==='replace'&&!toClean) return null;
+  var r2=changeExercise({action:action,exercise:from,new_exercise:toClean,when:scope,date:date,sets:extra.sets,reps:extra.reps,kg:extra.kg});
+  return reply(r2,action==='remove'?'Removed **'+r2.from+'**':'Swapped **'+r2.from+'** for **'+r2.to+'**'+(extra.sets?' ('+extra.sets+' × '+extra.reps+')':', same sets and reps'));
+}
+
 function ruleCoach(text){
+  var exr=exerciseCommand(text); if(exr) return exr;
   var q=' '+String(text||'').toLowerCase()+' ', today=ymd();
   var has=function(){ for(var i=0;i<arguments.length;i++) if(q.indexOf(arguments[i])>=0) return true; return false; };
   var days=[]; q.replace(/\b(today|tomorrow|mon|tue|wed|thu|fri|sat|sun)[a-z]*/g,function(m,k){ days.push(k); return m; });
@@ -2555,6 +2870,8 @@ function ruleCoach(text){
   }
 
   return 'I am the built-in coach, so I understand a fixed set of requests:\n\n'
+    + '- "swap leg press for hack squat" (add "today" for just today)\n- "do abdominal crunches instead of torso rotation"\n'
+    + '- "add plank 3x60 to Thursday", "remove lateral raise", "undo"\n- "what is the abdominal machine"\n'
     + '- "add an extra session this week"\n- "move Thursday to Friday"\n- "bump my weights"\n'
     + '- "what should I train on Sunday"\n- "how is my progress"\n- "what is on this week"\n- "when does the gym close"\n\n'
     + 'For free-form questions, add a free Gemini key in You, Settings and I can answer anything about your training.';
@@ -2575,6 +2892,8 @@ var ACTION_PROTOCOL=[
  '- remove_workout {date:"YYYY-MM-DD"}',
  '- set_routine {weekday:"tuesday", name, effective_from?, note?, plan}',
  '- log_workout {date:"YYYY-MM-DD", name, minutes?, notes?, results}',
+ '- change_exercise {action:"replace"|"remove"|"add", exercise?, new_exercise?, when:"all"|"date", date?, weekday?, sets?, reps?, kg?, cue?}',
+ '- undo_last_change {}',
  'Inside plan and results, separate lines with \\n.',
  'plan format: '+PLAN_FORMAT,
  'results format: '+RESULT_FORMAT,
