@@ -1316,8 +1316,24 @@ function coachTools(){
     },required:['action']},
     execute:function(a){ var r=changeExercise(a); delete r.lib; return r; }},
 
+  { name:'log_sets',
+    description:'Write sets they just did TODAY into today\'s workout (the one in progress, or the one finished today, or it opens today\'s). Use when they send weights and reps for today, e.g. "abdominal crunches 25x12 25x10". Each pair is kg x reps. For past dates use log_workout instead.',
+    inputSchema:{type:'object',properties:{
+      exercise:{type:'string',description:'Exercise name in their words, typos are fine'},
+      sets:{type:'string',description:'The sets as kg x reps, comma separated, e.g. "25x12, 25x10, 25x8"'}
+    },required:['exercise','sets']},
+    execute:function(a){
+      var p=parseSetMessage(String(a.exercise||'')+'\n'+String(a.sets||''));
+      if(!p) throw new Error('No sets could be read. Use kg x reps, e.g. "25x12, 25x10".');
+      var snap=active()||finished().filter(function(x){ return ymd(new Date(x.finishedAt))===ymd(); })[0];
+      var before=snap?JSON.parse(JSON.stringify(snap)):null, r=logSetsToday(p);
+      var cur=active()||finished().filter(function(x){ return ymd(new Date(x.finishedAt))===ymd(); })[0];
+      UNDO={label:'log',items:[before?{coll:'sessions',id:before.id,before:before}:{coll:'sessions',id:cur.id,before:null}]};
+      return {ok:true,where:r.how,logged:r.items.map(function(d){ return {exercise:d.name,sets:d.sets.length}; })};
+    }},
+
   { name:'undo_last_change',
-    description:'Undo the last change_exercise.',
+    description:'Undo the last change_exercise or log_sets.',
     inputSchema:{type:'object',properties:{}},
     execute:function(){ return undoChange(); }},
 
@@ -1385,6 +1401,7 @@ function coachPreamble(){
   '- Respect their main training days (Tuesday, Thursday, Sunday) unless they say otherwise. Leave at least one rest day between hard sessions for the same muscles where you can.',
   '- Pick weights from what they have ACTUALLY LOGGED, never from the old targets. If every rep was hit at the top of the range, add about '+STEP+'kg. If they fell short, keep the weight and tell them to beat the reps. Call get_exercise_history when you need the detail.',
   '- Keep their coaching cues when you reuse an exercise, and write a short cue for anything new.',
+  '- When they send sets they did today (e.g. "abdominal crunches 25x12 25x10"), call log_sets. Read each pair as kg x reps, fix obvious typos in the name, and confirm what was logged in one line.',
   '- To swap, drop or add a single exercise, call change_exercise instead of rewriting whole days. Use when:"all" unless they name a day or say just today or this time. After it, say what changed and that they can say "undo".',
   '- Names below refer to the same thing; never treat them as unknown. If they ask what an exercise is or how to do it, explain it in two or three plain sentences.',
   '- If a standing day is empty, build it from the equipment and lifts that already appear in their plan and history. Do not invent machines they have never used.',
@@ -2739,7 +2756,8 @@ function exerciseCommand(raw){
   else if((m=l.match(/^(?:can you |could you |please |pls )?(?:remove|drop|delete|take out|get rid of|cut|skip)\s+(.+?)(?:\s+(?:from|out of)\s+.*)?$/))){ action='remove'; from=m[1]; }
   else if((m=l.match(/^(?:can you |could you |please |pls )?add\s+(.+?)(?:\s+(?:to|on|into|for)\s+(.+))?$/))){ action='add'; to=m[1]; from=m[2]||''; }
   if(!action) return null;
-  from=cleanEx(from); var toClean=cleanEx(to);
+  from=fixTypos(cleanEx(from)); var toClean=cleanEx(to);
+  if(toClean&&!exLib(toClean)&&exLib(fixTypos(toClean))) toClean=fixTypos(toClean);
   if(action==='add'){
     if(/\b(session|workout|day|rest)\b/.test(to)||!toClean) return null;
     var wd=dm?dm[1]:'';
@@ -2755,7 +2773,125 @@ function exerciseCommand(raw){
   return reply(r2,action==='remove'?'Removed **'+r2.from+'**':'Swapped **'+r2.from+'** for **'+r2.to+'**'+(extra.sets?' ('+extra.sets+' × '+extra.reps+')':', same sets and reps'));
 }
 
+/* ================= LOGGING SETS BY MESSAGE: "abdominal crunches 25x12 25x10 ..." ================= */
+var EXVOCAB=null;
+function exVocab(){
+  if(EXVOCAB) return EXVOCAB;
+  var v={};
+  ('abdominal abdominals crunch crunches lateral raise raises pulldown rotation torso tricep triceps bicep biceps extension '
+   +'press machine squat hack calf calves deadlift romanian shoulder chest incline decline dumbbell barbell cable pushdown '
+   +'plank lunge lunges hammer preacher abductor adductor hyperextension shrug shrugs treadmill deck fly flyes row rows seated lying '
+   +'curl curls leg legs pull push dips situps overhead military rear delt delts reverse kneeling hanging thrust glute bridge '
+   +'extensions pullups pushups chin assisted bench flat single arm standing low high').split(' ').forEach(function(w){ v[w]=1; });
+  EXLIB.forEach(function(x){ String(x[1]).toLowerCase().split(/[^a-z]+/).forEach(function(w){ if(w.length>2) v[w]=1; }); });
+  return (EXVOCAB=Object.keys(v));
+}
+function editDist(a,b){
+  if(Math.abs(a.length-b.length)>2) return 9;
+  var d=[],i,j; for(i=0;i<=a.length;i++){ d[i]=[i]; } for(j=0;j<=b.length;j++) d[0][j]=j;
+  for(i=1;i<=a.length;i++) for(j=1;j<=b.length;j++){
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1]) d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);   /* swapped letters */
+  }
+  return d[a.length][b.length];
+}
+/* fixes typos word by word against gym vocabulary: "abomdinal" -> "abdominal" */
+function fixTypos(s){
+  var voc=exVocab();
+  return String(s||'').toLowerCase().replace(/[a-z]+/g,function(w){
+    if(w.length<4||voc.indexOf(w)>=0) return w;
+    var best='',bd=9; voc.forEach(function(c){ var d=editDist(w,c); if(d<bd){ bd=d; best=c; } });
+    return bd<=(w.length<=5?1:2)?best:w;
+  });
+}
+var SETTOK=/(\d+(?:[.,]\d+)?)\s*(?:kg)?\s*[x×*]\s*(\d+)\b(?!\s*(?:sets?|x))/gi;
+var BLOCKTOK=/(\d+)\s*(?:sets?\s*(?:of)?|x)\s*(\d+)\s*(?:reps?)?\s*(?:@|at|with|met)\s*(\d+(?:[.,]\d+)?)\s*(?:kg)?/gi;
+/* returns [{name, sets:[{kg,reps}]}] or null when the message holds no sets */
+function parseSetMessage(text){
+  var out=[], cur=null, any=false;
+  String(text||'').split(/\n|;/).forEach(function(line){
+    var l=line.trim(); if(!l) return;
+    var sets=[], rest=l;
+    rest=rest.replace(BLOCKTOK,function(m,n,r,kg){ for(var i=0;i<Math.min(15,+n);i++) sets.push({kg:num(String(kg).replace(',','.')),reps:+r}); return ' '; });
+    rest=rest.replace(SETTOK,function(m,kg,r){ sets.push({kg:num(String(kg).replace(',','.')),reps:+r}); return ' '; });
+    rest=rest.replace(/\b(log|logged|i did|did|done|add|added|put in|for|today|todays|today's|workout|sets?|reps?|kg|please|pls|and|in|my|of|the|to)\b/gi,' ')
+             .replace(/[,:.\-–—()]+/g,' ').replace(/\s+/g,' ').trim();
+    if(/[a-z]{3}/i.test(rest)){ cur={name:rest,sets:[]}; out.push(cur); }
+    if(sets.length){ any=true; if(!cur){ cur={name:'',sets:[]}; out.push(cur); } cur.sets=cur.sets.concat(sets); }
+  });
+  out=out.filter(function(e){ return e.sets.length; });
+  return any&&out.length?out:null;
+}
+function nameForToday(raw,lists){
+  var fixed=fixTypos(raw), best='', bs=0;
+  lists.forEach(function(list){ (list||[]).forEach(function(e){
+    if(e.kind==='protocol') return;
+    var sc=Math.max(exScore(fixed,e.name),exScore(raw,e.name)); if(sc>bs){ bs=sc; best=e.name; } }); });
+  if(bs>=0.5) return best;
+  var l=exLib(fixed);
+  if(l&&/^(crunch(es)?|ab ?machine|abs?)$/i.test(fixed.trim())) return l.name;
+  return titleCase(fixed);
+}
+function logSetsToday(entries){
+  var today=ymd(), s=active(), how='';
+  if(!s){
+    var fin=finished().filter(function(x){ return ymd(new Date(x.finishedAt))===today; })[0];
+    if(fin){ s=fin; how='finished'; }
+    else {
+      var p=plannedFor(today);
+      s=p&&(p.exercises||[]).length?buildSession(p):{id:uid(),dayId:'',dayName:'Workout',startedAt:Date.now(),finishedAt:null,dayNote:'',notes:'',review:null,ex:[]};
+      how='started';
+    }
+  } else how='live';
+  var ses=JSON.parse(JSON.stringify(s)), plan=plannedFor(today), done=[];
+  entries.forEach(function(en){
+    var name=nameForToday(en.name||'',[ses.ex,plan&&plan.exercises]);
+    var key=exKey(name), e=ses.ex.filter(function(x){ return x.kind!=='protocol'&&exKey(x.name)===key; })[0];
+    var sets=en.sets.map(function(x){ return {kg:fmt(x.kg),reps:String(x.reps),rir:'',done:true}; });
+    var planned=e?(e.target&&e.target.sets)||e.sets.length:0;
+    if(e){ e.sets=sets; }
+    else {
+      var l=exLib(name);
+      e={id:uid(),kind:'strength',name:name,note:l?l.how.split('. ')[0]+'.':'',hint:'',base:0,perSide:false,
+         target:{sets:sets.length,reps:'',kg:sets[0]?num(sets[0].kg):0},sets:sets,comment:''};
+      ses.ex.push(e);
+    }
+    done.push({name:e.name,sets:en.sets,planned:planned,targetKg:e.target&&num(e.target.kg),added:!planned});
+  });
+  put('sessions',ses,true);
+  sysMsg('Logged '+done.map(function(d){ return d.name+' ('+d.sets.length+' sets)'; }).join(', '));
+  return {how:how,items:done,dayName:ses.dayName};
+}
+function setsLine(sets){
+  var out=[],i=0;
+  while(i<sets.length){ var j=i; while(j+1<sets.length&&sets[j+1].kg===sets[i].kg&&sets[j+1].reps===sets[i].reps) j++;
+    out.push(fmt(sets[i].kg)+' kg × '+sets[i].reps+(j>i?' ('+(j-i+1)+' sets)':'')); i=j+1; }
+  return out.join(', ');
+}
+function setLogReply(r){
+  var L=[];
+  r.items.forEach(function(d){
+    var t='**'+d.name+'**: '+d.sets.length+' set'+(d.sets.length===1?'':'s')+', '+setsLine(d.sets)+'.';
+    if(d.added) t+=' It was not in today\'s plan, so I added it.';
+    else if(d.planned&&d.sets.length!==d.planned) t+=' The plan had '+d.planned+' sets.';
+    if(d.targetKg&&d.sets[0]&&Math.abs(d.sets[0].kg-d.targetKg)>=d.targetKg*0.25) t+=' The plan said '+fmt(d.targetKg)+' kg, so check the weight is right.';
+    L.push(t);
+  });
+  var where=r.how==='live'?'Saved into your workout in progress.'
+    :r.how==='finished'?'Added to the workout you already finished today.'
+    :'I opened today\'s workout ('+r.dayName+') with this filled in. Log the rest as you go, then finish it as usual.';
+  return L.join('\n')+'\n\n'+where+' I read each pair as kg × reps. Say "undo" if that was wrong.';
+}
+
 function ruleCoach(text){
+  var lt=String(text||'').toLowerCase();
+  var isCmd=/\b(swap|replace|switch|instead of|remove|drop|move|reschedule)\b|\badd\b.*\b(to|on)\s+(today|tomorrow|mon|tue|wed|thu|fri|sat|sun)/.test(lt);
+  var setMsg=isCmd?null:parseSetMessage(text);
+  if(setMsg){ var snap=active()||finished().filter(function(x){ return ymd(new Date(x.finishedAt))===ymd(); })[0];
+    var before=snap?JSON.parse(JSON.stringify(snap)):null, r0=logSetsToday(setMsg);
+    var cur=active()||finished().filter(function(x){ return ymd(new Date(x.finishedAt))===ymd(); })[0];
+    UNDO={label:'log',items:[before?{coll:'sessions',id:before.id,before:before}:{coll:'sessions',id:cur.id,before:null}]};
+    return setLogReply(r0); }
   var exr=exerciseCommand(text); if(exr) return exr;
   var q=' '+String(text||'').toLowerCase()+' ', today=ymd();
   var has=function(){ for(var i=0;i<arguments.length;i++) if(q.indexOf(arguments[i])>=0) return true; return false; };
@@ -2872,6 +3008,7 @@ function ruleCoach(text){
   return 'I am the built-in coach, so I understand a fixed set of requests:\n\n'
     + '- "swap leg press for hack squat" (add "today" for just today)\n- "do abdominal crunches instead of torso rotation"\n'
     + '- "add plank 3x60 to Thursday", "remove lateral raise", "undo"\n- "what is the abdominal machine"\n'
+    + '- log today\'s sets: "abdominal crunches 25x12 25x10 25x8" (kg × reps, one per line is fine)\n'
     + '- "add an extra session this week"\n- "move Thursday to Friday"\n- "bump my weights"\n'
     + '- "what should I train on Sunday"\n- "how is my progress"\n- "what is on this week"\n- "when does the gym close"\n\n'
     + 'For free-form questions, add a free Gemini key in You, Settings and I can answer anything about your training.';
@@ -2893,6 +3030,7 @@ var ACTION_PROTOCOL=[
  '- set_routine {weekday:"tuesday", name, effective_from?, note?, plan}',
  '- log_workout {date:"YYYY-MM-DD", name, minutes?, notes?, results}',
  '- change_exercise {action:"replace"|"remove"|"add", exercise?, new_exercise?, when:"all"|"date", date?, weekday?, sets?, reps?, kg?, cue?}',
+ '- log_sets {exercise, sets:"25x12, 25x10"}  (today only; pairs are kg x reps)',
  '- undo_last_change {}',
  'Inside plan and results, separate lines with \\n.',
  'plan format: '+PLAN_FORMAT,
