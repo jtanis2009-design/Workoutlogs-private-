@@ -1052,12 +1052,17 @@ function buildPrompt(ses){
   (ses.ex||[]).forEach(function(e,i){
     L.push((i+1)+'. '+(e.name||'Exercise')+' — planned: '+target(e));
     if(e.note) L.push('   cue given: '+e.note);
-    if(e.kind==='protocol') (e.segs||[]).forEach(function(s){ L.push('   block '+(s.label||'?')+': '+(s.detail||'?')+' — '+(s.done?'done':'NOT DONE')); });
+    if(e.kind==='protocol') (e.segs||[]).forEach(function(s){ var n=segNums(e,s);
+      L.push('   block '+(s.label||'?')+': '+(s.detail||'?')+' — '+(s.done?'done':'NOT DONE')
+        +(s.act&&(s.act.kmh||s.act.min)?' (actually: '+(n.kmh?fmt(n.kmh)+' km/h':'')+(n.min?' for '+fmt(n.min)+' min':'')+(n.incl?' at '+fmt(n.incl)+' deg':'')+')':'')); });
     else (e.sets||[]).forEach(function(s,j){ L.push('   set '+(j+1)+': '+(num(s.kg)||0)+'kg × '+(num(s.reps)||0)+' reps — '+(s.done?'completed':'NOT COMPLETED')); });
     if(e.comment) L.push('   lifter note: '+e.comment);
     var tm=exMins(e);
     if(tm!=null) L.push('   time on this exercise: '+tm+' min ('+e.t0+' to '+e.t1+')');
   });
+  var rprs=sessionPRs(ses), rk=Object.keys(rprs);
+  if(rk.length){ L.push(''); L.push('PERSONAL RECORDS THIS SESSION (call these out):');
+    (ses.ex||[]).forEach(function(e){ if(rprs[e.id]) L.push('- '+e.name+': '+rprs[e.id].text+' ('+rprs[e.id].was+')'); }); }
   var gaps=[];
   (ses.ex||[]).forEach(function(e,i){
     var nx=(ses.ex||[])[i+1];
@@ -2123,27 +2128,121 @@ function musclesFor(name){
   return null;
 }
 /* score = sets completed, doubled when every set reached the top of its rep range */
+/* ================= PRs ================= */
+function priorSessions(ses){
+  var cut=ses.finishedAt||Infinity;
+  return finished().filter(function(s){ return s.id!==ses.id&&(s.finishedAt||0)<cut; });
+}
+/* cardio blocks: what was actually done, falling back to what the block said */
+function segNums(e,s){
+  var a=s.act||{}, txt=(s.label||'')+' '+(s.detail||'');
+  var kmh=num(a.kmh)||num(String((String(s.detail||'').match(/(\d+(?:[.,]\d+)?)\s*km/i)||[])[1]||'').replace(',','.'));
+  var min=num(a.min);
+  if(!min){
+    var t=String(s.label||'').match(/(\d+):(\d{2})\s*[–—-]+\s*(\d+):(\d{2})/);
+    if(t) min=((+t[3])*60+(+t[4])-((+t[1])*60+(+t[2])))/60;
+    else { var mm=txt.match(/(\d+(?:[.,]\d+)?)\s*min/i); if(mm) min=num(mm[1].replace(',','.')); }
+  }
+  var incl=num(a.incl);
+  if(!incl){ var im=(txt+' '+(e.spec||'')).match(/(\d+(?:[.,]\d+)?)\s*(?:°|deg|degree|%)/i); if(im) incl=num(im[1].replace(',','.')); }
+  return {kmh:kmh,min:Math.round(min*10)/10,incl:incl};
+}
+function bestStrength(e){
+  var kg=0, e1=0, bestSet=null;
+  (e.sets||[]).forEach(function(x){ if(!x.done) return;
+    var k=num(x.kg)+exBase(e); if(k>kg) kg=k;
+    var v=e1rm(e,x); if(v>e1){ e1=v; bestSet=x; } });
+  return {kg:kg,e1:e1,set:bestSet};
+}
+/* one PR note per exercise, or nothing. First time doing an exercise is not a PR: there is nothing to beat */
+function sessionPRs(ses){
+  var out={}, prior=priorSessions(ses);
+  (ses.ex||[]).forEach(function(e){
+    var key=exKey(e.name);
+    if(e.kind==='protocol'){
+      var past=[];
+      prior.forEach(function(p){ (p.ex||[]).forEach(function(pe){
+        if(pe.kind!=='protocol'||exKey(pe.name)!==key) return;
+        (pe.segs||[]).forEach(function(s){ if(s.done){ var n=segNums(pe,s); if(n.kmh&&n.min) past.push(n); } }); }); });
+      if(!past.length) return;
+      var best=null;
+      (e.segs||[]).forEach(function(s){
+        if(!s.done) return; var n=segNums(e,s); if(!n.kmh||!n.min) return;
+        var beaten=past.some(function(p){ return p.incl>=n.incl&&p.kmh>=n.kmh&&p.min>=n.min; });
+        if(!beaten&&(!best||n.kmh*n.min>best.kmh*best.min)) best=n;
+      });
+      if(best){
+        var same=past.filter(function(p){ return p.incl>=best.incl&&p.kmh>=best.kmh; }).sort(function(a,b){ return b.min-a.min; })[0];
+        out[e.id]={text:fmt(best.kmh)+' km/h for '+fmt(best.min)+' min'+(best.incl?' at '+fmt(best.incl)+'°':''),
+          was:same?'longest at that pace before: '+fmt(same.min)+' min':'fastest ever at that incline'};
+      }
+      return;
+    }
+    var cur=bestStrength(e); if(!cur.kg) return;
+    var pk=0, pe1=0, any=false;
+    prior.forEach(function(p){ (p.ex||[]).forEach(function(pe){
+      if(pe.kind==='protocol'||exKey(pe.name)!==key) return;
+      var b=bestStrength(pe); if(b.kg){ any=true; if(b.kg>pk) pk=b.kg; if(b.e1>pe1) pe1=b.e1; } }); });
+    if(!any) return;
+    if(cur.kg>pk+0.001){
+      var top=0; (e.sets||[]).forEach(function(x){ if(x.done&&num(x.kg)+exBase(e)===cur.kg&&num(x.reps)>top) top=num(x.reps); });
+      out[e.id]={text:'heaviest ever: '+fmt(cur.kg)+' kg × '+top,was:'was '+fmt(pk)+' kg'};
+    } else if(cur.e1>pe1*1.005&&cur.set){
+      out[e.id]={text:'best set ever: '+fmt(num(cur.set.kg))+' kg × '+fmt(num(cur.set.reps)),
+        was:'estimated max '+fmt(Math.round(cur.e1*10)/10)+' kg, was '+fmt(Math.round(pe1*10)/10)};
+    }
+  });
+  return out;
+}
+function prChip(){ return ' <span class="chip a" style="font-size:10px;padding:2px 7px;vertical-align:2px">PR</span>'; }
+
+/* ================= EFFORT: how hard each muscle worked ================= */
+/* Per set, 0–4. Reps-in-reserve beats everything. Without it, read the evidence:
+   falling below the rep range, reps dropping at the same weight, cutting the weight, or a PR. */
+function exEffort(e,pr){
+  var done=(e.sets||[]).filter(function(x){ return x.done; });
+  if(!done.length) return null;
+  var rng=String((e.target&&e.target.reps)||'').match(/\d+/g)||[], bot=rng.length?+rng[0]:0, top=rng.length?+rng[rng.length-1]:0;
+  var best={v:0,why:'',rir:false};
+  var bump=function(v,why,rir){ if(v>best.v||(v===best.v&&rir&&!best.rir)) best={v:v,why:why,rir:!!rir}; };
+  done.forEach(function(x,i){
+    var kg=num(x.kg), r=num(x.reps), rir=String(x.rir==null?'':x.rir).trim();
+    if(rir!==''){ var q=num(rir);
+      bump(q<=0?4:q<=1?3.5:q<=2?3:q<=4?2:1,'you logged '+fmt(q)+' rep'+(q===1?'':'s')+' left',true); return; }
+    var v=2, why='reps held steady, so probably a few left in the tank';
+    if(top&&r>=top+3){ v=1.5; why='well above the '+bot+'-'+top+' range, so the weight was light'; }
+    var firstSame=0; for(var j=0;j<i;j++){ if(done[j].done&&num(done[j].kg)===kg&&num(done[j].reps)>firstSame) firstSame=num(done[j].reps); }
+    if(firstSame&&firstSame-r>=3){ v=3.5; why='reps fell '+fmt(firstSame)+' → '+fmt(r)+' at '+fmt(kg)+' kg'; }
+    else if(firstSame&&firstSame-r>=1){ v=3; why='reps fell '+fmt(firstSame)+' → '+fmt(r)+' at '+fmt(kg)+' kg'; }
+    var nx=done[i+1];
+    if(nx&&num(nx.kg)<kg&&(!top||r<=top)&&v<3.5){ v=3.5; why='you cut the weight after '+fmt(kg)+' × '+fmt(r); }
+    if(bot&&r<bot){ v=4; why=fmt(kg)+' × '+fmt(r)+' fell short of the '+bot+'-'+top+' range'; }
+    bump(v,why,false);
+  });
+  if(pr&&best.v<3&&!best.rir) best={v:3,why:'a new PR ('+pr.text.replace(/^[a-z ]+: /,'')+')',rir:false};
+  return best;
+}
 function muscleScores(ses){
-  var out={};
+  var out={}, prs=sessionPRs(ses);
   (ses.ex||[]).forEach(function(e){
     if(e.kind==='protocol') return;
     var w=musclesFor(e.name); if(!w) return;
-    var done=(e.sets||[]).filter(function(x){ return x.done; });
-    if(!done.length) return;
-    var top=topRep((e.target&&e.target.reps)||'');
-    var hit=done.filter(function(x){
-      var r=String(x.rir==null?'':x.rir).trim();
-      if(r!=='') return num(x.rir)<=1;            /* a reported RIR beats guessing from reps */
-      return top>0&&num(x.reps)>=top;
-    }).length;
-    var pts=done.length*(1+(done.length?hit/done.length:0));
-    Object.keys(w).forEach(function(m){ out[m]=(out[m]||0)+pts*w[m]; });
+    var ef=exEffort(e,prs[e.id]); if(!ef) return;
+    var n=(e.sets||[]).filter(function(x){ return x.done; }).length;
+    Object.keys(w).forEach(function(m){
+      if(w[m]<0.5) return;                                   /* a light assist is not training that muscle */
+      var direct=w[m]>=0.85, v=direct?ef.v:Math.max(1,ef.v-1);
+      var o=out[m]||(out[m]={v:0,why:'',from:'',sets:0,helper:0,rir:false});
+      if(direct) o.sets+=n; else o.helper+=n;
+      if(v>o.v){ o.v=v; o.why=ef.why; o.from=e.name+(direct?'':' (helping)'); o.rir=ef.rir; }
+    });
   });
   return out;
 }
 var MRAMP=['#343a47','#199e70','#e0b200','#e86a1e','#8c1d1d'];
 var MLABEL=['not hit','easy','medium','hard','to failure'];
-function mLevel(v){ v=v||0; return v<=0?0:v<2.5?1:v<5?2:v<8?3:4; }
+function mLevel(o){ var v=o&&typeof o==='object'?o.v:(o||0); return v<=0?0:v>=3.75?4:v>=2.75?3:v>=1.75?2:1; }
+
 
 // Anatomical front/back figure. Left half is authored, right half mirrored, so it is always symmetric.
 function figure(cx, side, col, SK, LN){
@@ -2299,11 +2398,12 @@ function viewWeekly(){
 function muscleCard(ses){
   var sc=muscleScores(ses);
   var hit=Object.keys(sc).filter(function(m){ return mLevel(sc[m])>0; })
-    .sort(function(a,b){ return sc[b]-sc[a]; });
+    .sort(function(a,b){ return sc[b].v-sc[a].v||sc[b].sets-sc[a].sets; });
+  var anyRir=hit.some(function(m){ return sc[m].rir; });
   var h='<div class="card"><div class="card-b" style="padding-top:16px">'
     + '<div style="font-size:14.5px;font-weight:700">Muscles worked</div>'
     + '<div style="font-size:12px;color:var(--mut2);margin-bottom:10px">'
-    + 'from sets completed and how close you got to the top of each rep range</div>'
+    + 'colour is how hard the hardest set was for that muscle; sets are counted separately</div>'
     + bodySVG(function(m){ return MRAMP[mLevel(sc[m])]; });
   h+='<div class="mleg">';
   MLABEL.forEach(function(l,i){ h+='<span><i style="background:'+MRAMP[i]+'"></i>'+l+'</span>'; });
@@ -2311,12 +2411,17 @@ function muscleCard(ses){
   if(hit.length){
     h+='<div style="margin-top:8px">';
     hit.forEach(function(m){
-      var lv=mLevel(sc[m]);
-      h+='<div class="hline"><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;'
-        + 'background:'+MRAMP[lv]+';margin-right:8px"></i>'+esc(MNAME[m]||m)+'</span>'
-        + '<span style="color:'+MRAMP[lv]+';font-weight:700">'+MLABEL[lv]+'</span></div>';
+      var o=sc[m], lv=mLevel(o);
+      h+='<div class="hline" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px">'
+        + '<span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+MRAMP[lv]+';margin-right:8px"></i>'
+        + esc(MNAME[m]||m)+' <span style="color:var(--mut2);font-size:11.5px">'
+        + (o.sets?o.sets+' set'+(o.sets===1?'':'s'):'only as a helper')+'</span></span>'
+        + '<span style="color:'+(lv===4?'#e05555':MRAMP[lv])+';font-weight:700">'+MLABEL[lv]+'</span></div>'
+        + '<div style="font-size:11.5px;color:var(--mut2);margin:2px 0 0 16px">'+esc(o.from)+': '+esc(o.why)+'</div></div>';
     });
     h+='</div>';
+    h+='<div class="hint">'+(anyRir?'Where you filled in RIR, that decides it. ':'')
+      + 'Without RIR this is an estimate from rep drop-offs, weight cuts and PRs. Fill in RIR (reps you had left) on your last set and it is exact.</div>';
   } else {
     h+='<div class="hint">No lifts matched a muscle group. Rename an exercise to something standard and it will map.</div>';
   }
@@ -2516,7 +2621,7 @@ var EXLIB=[
  ['pushdown','Tricep Pushdown',/push.?down|rope ?extension|tricep?s? ?extension/i,'triceps','Elbows glued to your sides at a cable, push down until the arms are straight, control it back up.','kg',['tricep-press','dip']],
  ['dip','Dips',/\bdips?\b/i,'triceps, chest','Lean slightly forward, lower until the upper arms are level, press back up.','bw',['tricep-press','pushup']],
  ['leg-curl','Leg Curl',/leg ?curl|hamstring ?curl|(lying|seated) ?(leg )?curl/i,'hamstrings','Pad just above the heels. Curl all the way, squeeze, and take two seconds back.','kg',['rdl','hip-thrust']],
- ['bicep-machine','Bicep Curl Machine',/(bicep?s?|preacher|arm) ?curl ?machine|preacher/i,'biceps','Upper arms flat on the pad, curl to the top and squeeze, lower slowly to almost straight.','kg',['db-curl','hammer-curl']],
+ ['bicep-machine','Bicep Curl Machine',/(bicep?s?|preacher|arm) ?curl ?machine|preacher|machine ?(bicep?s?|arm) ?curl/i,'biceps','Upper arms flat on the pad, curl to the top and squeeze, lower slowly to almost straight.','kg',['db-curl','hammer-curl']],
  ['hammer-curl','Hammer Curl',/hammer ?curl/i,'biceps, forearms','Palms facing each other, elbows still, curl up and lower slowly.','kg',['db-curl','bicep-machine']],
  ['lp-calf','Leg Press Calf Raise',/leg ?press ?calf|calf ?press/i,'calves','Balls of the feet on the bottom edge of the leg press, legs straight but not locked. Deep stretch, then push up hard and hold.','kg',['calf-raise']],
  ['calf-raise','Calf Raise',/calf|calves/i,'calves','Balls of the feet on the edge, lower for a deep stretch, rise as high as you can and pause.','kg',['lp-calf']],
@@ -2532,7 +2637,8 @@ var EXLIB=[
  ['adductor','Hip Adductor',/adduct/i,'inner thighs','Squeeze the pads together and pause, open slowly.','kg',['leg-press']],
  ['back-ext','Back Extension',/back ?extension|hyperextension/i,'lower back, glutes','Hinge at the hips over the pad and rise until your body is straight, not past it.','bw',['rdl','plank']],
  ['shrug','Shrug',/shrug/i,'traps','Lift your shoulders straight up toward your ears, hold, lower slowly. No rolling.','kg',['seated-row']],
- ['db-curl','Bicep Curl',/\bcurls?\b/i,'biceps','Elbows still at your sides, curl up, squeeze, lower slowly to straight.','kg',['bicep-machine','hammer-curl']],
+ ['db-curl','Dumbbell Curl',/(dumbbell|db|barbell|ez|cable|standing|incline|free ?weight) ?(bicep?s? )?curls?/i,'biceps','Elbows still at your sides, curl up, squeeze, lower slowly to straight.','kg',['bicep-machine','hammer-curl']],
+ ['bicep-machine','Bicep Curl Machine',/\bcurls?\b/i,'biceps','Upper arms flat on the pad, curl to the top and squeeze, lower slowly to almost straight.','kg',['db-curl','hammer-curl']],
  ['treadmill','Incline Treadmill',/treadmill|incline ?walk/i,'conditioning','Set the incline, walk without holding the rails.','cardio',['bike']],
  ['bike','Exercise Bike',/\bbike\b|cycling|spin/i,'conditioning','Seat at hip height, steady cadence.','cardio',['treadmill']]
 ];
@@ -2557,7 +2663,8 @@ function exInfo(l){
     + (l.alt&&l.alt.length?'\n\nSwaps if it is taken: '+l.alt.map(function(a){ return EXBYID[a]?EXBYID[a].name:a; }).join(', ')+'.':'');
 }
 function exGlossary(){
-  return EXLIB.filter(function(x){ return x[5]!=='cardio'; }).map(function(x){
+  var seenG={};
+  return EXLIB.filter(function(x){ if(seenG[x[0]]) return false; seenG[x[0]]=1; return x[5]!=='cardio'; }).map(function(x){
     return '  '+x[1]+' ('+x[3]+')'+(x[0]==='ab-machine'?' — "abdominal crunches", "ab machine" and "Abdominal Machine" all mean this seated crunch machine':'');
   }).join('\n');
 }
@@ -4154,8 +4261,9 @@ function liveView(ses){
   if(ses.dayNote) h+='<div class="fo-box" style="margin:8px 0 2px">'+esc(ses.dayNote)+'</div>';
   if(!(ses.ex||[]).length) h+='<div class="empty"><p>This workout has no exercises yet.</p></div>';
 
+  var lprs=sessionPRs(ses);
   (ses.ex||[]).forEach(function(e,ei){
-    h+='<div class="ses-ex"><div class="ses-ex-h"><span class="nm">'+(ei+1)+'. '+esc(e.name||'Exercise')+'</span>'
+    h+='<div class="ses-ex"><div class="ses-ex-h"><span class="nm">'+(ei+1)+'. '+esc(e.name||'Exercise')+(lprs[e.id]?prChip():'')+'</span>'
       + '<span class="tg">'+esc(target(e))+'</span></div>';
     if(e.note) h+='<div class="fo-box">'+esc(e.note)+'</div>';
     if(e.hint) h+='<div class="prog">'+esc(e.hint)+'</div>';
@@ -4174,7 +4282,13 @@ function liveView(ses){
           + '<input data-fkey="gl'+ei+'_'+si+'" data-in="seg-label" data-ei="'+ei+'" data-si="'+si+'" value="'+esc(s.label)+'" placeholder="block">'
           + '<input data-fkey="gd'+ei+'_'+si+'" data-in="seg-detail" data-ei="'+ei+'" data-si="'+si+'" value="'+esc(s.detail)+'" placeholder="what to do">'
           + '<button class="chk'+(s.done?' on':'')+'" data-act="tick-seg" data-ei="'+ei+'" data-si="'+si+'">'+(s.done?'✓':'')+'</button></div>';
+        var pn=segNums(e,{label:s.label,detail:s.detail}), act=s.act||{};
+        h+='<div class="srow" style="grid-template-columns:22px 1fr 1fr 1fr;margin-top:-4px"><div></div>'
+          + '<div class="unit"><input data-fkey="ak'+ei+'_'+si+'" data-in="seg-kmh" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="decimal" value="'+esc(act.kmh||'')+'" placeholder="'+(pn.kmh?fmt(pn.kmh):'–')+'"><span>km/h</span></div>'
+          + '<div class="unit"><input data-fkey="am'+ei+'_'+si+'" data-in="seg-min" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="decimal" value="'+esc(act.min||'')+'" placeholder="'+(pn.min?fmt(pn.min):'–')+'"><span>min</span></div>'
+          + '<div class="unit"><input data-fkey="ai'+ei+'_'+si+'" data-in="seg-incl" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="decimal" value="'+esc(act.incl||'')+'" placeholder="'+(pn.incl?fmt(pn.incl):'–')+'"><span>°</span></div></div>';
       });
+      if(!ei||!(ses.ex[ei-1]&&ses.ex[ei-1].kind==='protocol')) h+='<div class="hint" style="margin:0 0 6px">Type what you actually did if it differs from the plan. Blank means as planned. Speed and time count for PRs.</div>';
       h+='<div class="mini"><button data-act="add-seg" data-ei="'+ei+'">add block</button>'
         + ((e.segs||[]).length>1?'<button data-act="del-seg" data-ei="'+ei+'">remove block</button>':'')+'</div>';
     } else {
@@ -4427,21 +4541,25 @@ function viewHistory(){
     + '<p>Finished workouts land here with every set you hit, your notes and the review.</p></div></div>';
   var h=seg;
   fin.forEach(function(s){
-    var open=!!S.openSes[s.id],c=counts(s);
+    var open=!!S.openSes[s.id],c=counts(s),prs=sessionPRs(s),npr=Object.keys(prs).length;
     h+='<div class="card"><div class="hrow" data-act="toggle-ses" data-id="'+s.id+'">'
       + '<div class="t"><b>'+esc(s.dayName||'Workout')+'</b><small>'+esc(stampLabel(s.finishedAt))+' · '
-      + c.done+'/'+c.total+' · '+fmt(volume(s))+' kg · '+clock((s.finishedAt||0)-(s.startedAt||0))+'</small></div>'
+      + c.done+'/'+c.total+' · '+fmt(volume(s))+' kg · '+clock((s.finishedAt||0)-(s.startedAt||0))
+      + (npr?' · <b style="color:var(--acc)">'+npr+' PR'+(npr===1?'':'s')+'</b>':'')+'</small></div>'
       + (s.review?'<span class="chip b">REVIEW</span>':'')+'<span class="icn">'+(open?'⌃':'⌄')+'</span></div>';
     if(open){
       h+='<div class="card-b">';
       (s.ex||[]).forEach(function(e){
         if(e.kind==='protocol'){
           var sd=(e.segs||[]).filter(function(x){return x.done;});
-          h+='<div class="hline"><span>'+esc(e.name)+'</span><span>'+(sd.length?sd.length+'/'+(e.segs||[]).length+' blocks':'—')+'</span></div>';
+          var segTxt=sd.map(function(x){ var n=segNums(e,x); return n.kmh&&n.min?fmt(n.kmh)+' km/h × '+fmt(n.min)+' min'+(n.incl?' @'+fmt(n.incl)+'°':''):''; }).filter(Boolean);
+          h+='<div class="hline"><span>'+esc(e.name)+(prs[e.id]?prChip():'')+'</span><span>'+(segTxt.length?segTxt.join(' · '):sd.length?sd.length+'/'+(e.segs||[]).length+' blocks':'—')+'</span></div>';
+          if(prs[e.id]) h+='<div style="font-size:11.5px;color:var(--acc);margin:-4px 0 6px">'+esc(prs[e.id].text)+' · '+esc(prs[e.id].was)+'</div>';
         } else {
           var d=(e.sets||[]).filter(function(x){return x.done;});
           var hm2=exMins(e);
-          h+='<div class="hline"><span>'+esc(e.name)+(hm2!=null?' <span style="color:var(--mut2);font-size:11.5px">'+hm2+' min</span>':'')+'</span><span>'+(d.length?d.map(function(x){return fmt(num(x.kg))+'×'+fmt(num(x.reps));}).join('  ·  '):'—')+'</span></div>';
+          h+='<div class="hline"><span>'+esc(e.name)+(prs[e.id]?prChip():'')+(hm2!=null?' <span style="color:var(--mut2);font-size:11.5px">'+hm2+' min</span>':'')+'</span><span>'+(d.length?d.map(function(x){return fmt(num(x.kg))+'×'+fmt(num(x.reps));}).join('  ·  '):'—')+'</span></div>';
+          if(prs[e.id]) h+='<div style="font-size:11.5px;color:var(--acc);margin:-4px 0 6px">'+esc(prs[e.id].text)+' · '+esc(prs[e.id].was)+'</div>';
         }
       });
       if(s.notes) h+='<p class="quote" style="margin-top:12px">“'+esc(s.notes)+'”</p>';
@@ -4854,7 +4972,7 @@ function inputMain(ev){
     return;
   }
 
-  if(kind==='notes'||kind==='ex-comment'||kind==='ex-t0'||kind==='ex-t1'||kind.indexOf('set-')===0||kind==='seg-label'||kind==='seg-detail'){
+  if(kind==='notes'||kind==='ex-comment'||kind==='ex-t0'||kind==='ex-t1'||kind.indexOf('set-')===0||kind==='seg-label'||kind==='seg-detail'||kind==='seg-kmh'||kind==='seg-min'||kind==='seg-incl'){
     var ses=active(); if(!ses) return;
     var c=JSON.parse(JSON.stringify(ses));
     if(kind==='notes'){ c.notes=v; put('sessions',c); return; }
@@ -4868,6 +4986,10 @@ function inputMain(ev){
     else if(kind==='ex-t1') c.ex[ei].t1=v;
     else if(kind==='seg-label') c.ex[ei].segs[si].label=v;
     else if(kind==='seg-detail') c.ex[ei].segs[si].detail=v;
+    else if(kind==='seg-kmh'||kind==='seg-min'||kind==='seg-incl'){
+      var sg=c.ex[ei].segs[si]; sg.act=sg.act||{};
+      sg.act[kind==='seg-kmh'?'kmh':kind==='seg-min'?'min':'incl']=String(v).replace(',','.').replace(/[^0-9.]/g,'');
+    }
     put('sessions',c); return;
   }
 
