@@ -1311,6 +1311,8 @@ function coachTools(){
       when:{type:'string',description:'"all" (default, from now on) or "date" (one day only)'},
       date:{type:'string',description:'YYYY-MM-DD, needed when when is "date"'},
       weekday:{type:'string',description:'For add with when "all": which weekday, e.g. "thursday"'},
+      after:{type:'string',description:'For add: put it right after this exercise'},
+      before:{type:'string',description:'For add: put it right before this exercise'},
       sets:{type:'string'},reps:{type:'string'},kg:{type:'string',description:'Optional starting weight'},
       cue:{type:'string',description:'Optional short coaching cue'}
     },required:['action']},
@@ -2596,6 +2598,33 @@ function findExercise(query,scope,date){
   var s=active(); if(s) look(s.ex);
   return best>=0.5?bestKey:'';
 }
+/* where an exercise sits in a list, from loose and misspelled wording */
+function anchorIdx(list,q){
+  if(!q) return -1;
+  var f=fixTypos(q), qa=exWords(f), lq=exLib(f), best=-1, bs=0;
+  (list||[]).forEach(function(e,i){
+    var b=exWords(e.name), ov=qa.length?qa.filter(function(w){ return b.indexOf(w)>=0; }).length/qa.length:0, ln=exLib(e.name);
+    if(lq&&ln&&lq.id!==ln.id) ov*=0.5;           /* "bench press" is not "leg press" */
+    var sc=Math.max(exScore(f,e.name),ov);
+    if(sc>bs){ bs=sc; best=i; }
+  });
+  return bs>=0.5?best:-1;
+}
+function insertAt(list,o){
+  var a=o.after?anchorIdx(list,o.after):-1, b=o.before?anchorIdx(list,o.before):-1;
+  if(a>=0) return a+1;
+  if(b>=0) return b;
+  var at=list.length; for(var i=list.length-1;i>=0;i--){ if(list[i].kind==='protocol') at=i; else break; }   /* before the finisher */
+  return at;
+}
+/* which day an "add X after Y" with no day named is about: today if Y is there, else the next day that has Y */
+function dayWithAnchor(o){
+  var today=ymd(), s=active(), q=o.after||o.before;
+  if(s&&anchorIdx(s.ex,q)>=0) return today;
+  for(var i=0;i<14;i++){ var ds=shiftYmd(today,i), p=plannedFor(ds);
+    if(p&&anchorIdx(p.exercises,q)>=0&&!(i>0&&false)) return ds; }
+  return '';
+}
 function lastKg(name){
   var h=historyFor(name); if(!h.length) return '';
   var m=0; h[0].sets.forEach(function(x){ if(x.kg>m) m=x.kg; }); return m?fmt(m):'';
@@ -2633,17 +2662,20 @@ function changeExercise(o){
   };
   var targets=upcomingDocs(scope,date);
   if(action==='add'){
-    var wd=o.weekday!=null&&o.weekday!==''?dowFromName(o.weekday):-1;
-    if(scope==='all'&&wd<0) throw new Error('Say which day to add it to.');
+    var wd=o.weekday!=null&&o.weekday!==''?dowFromName(o.weekday):-1, anc=o.after||o.before;
+    if(scope==='all'&&wd<0&&!anc) throw new Error('Say which day to add it to.');
     targets=targets.filter(function(t){ var d=t.doc||t.virtual;
-      return scope==='date'||(t.coll==='routines'?(d.weekday|0)===wd:fromYmd(d.date).getDay()===wd&&(d.exercises||[]).length); });
+      if(anc&&anchorIdx(d.exercises,anc)<0) return false;
+      return scope==='date'||wd<0||(t.coll==='routines'?(d.weekday|0)===wd:fromYmd(d.date).getDay()===wd&&(d.exercises||[]).length); });
+    if(!targets.length&&anc) throw new Error('Could not find "'+anc+'" in '+(scope==='date'?'the plan for '+date:'your upcoming plan')+'.');
     if(!targets.length) throw new Error(scope==='date'?'Nothing is planned on '+date+' to add it to.':'No '+DOWFULL[wd]+' workout to add it to.');
   }
   targets.forEach(function(t){
     var src=t.doc||t.virtual, list=JSON.parse(JSON.stringify(src.exercises||[])), hit=false;
     if(action==='add'){
-      var at=list.length; for(var i=list.length-1;i>=0;i--){ if(list[i].kind==='protocol') at=i; else break; }   /* before the finisher */
-      list.splice(at,0,fresh(null)); hit=true;
+      var at=insertAt(list,o), nb=list[at-1]&&list[at-1].kind!=='protocol'?list[at-1]:(list[at]&&list[at].kind!=='protocol'?list[at]:null);
+      var ne=fresh(nb?{name:'',sets:nb.sets,reps:nb.reps,kind:'strength'}:null); ne.id=uid();
+      list.splice(at,0,ne); hit=true;
     } else {
       list=list.reduce(function(acc,e){
         if(exKey(e.name)!==key){ acc.push(e); return acc; }
@@ -2666,9 +2698,10 @@ function changeExercise(o){
     var sc=JSON.parse(JSON.stringify(s)), touched=false;
     if(action==='add'){
       if(scope==='date'||dowFromName(o.weekday)===new Date().getDay()){
-        var nx=fresh(null), sg=suggest(nx.name,nx.kg,nx.reps,nx.sets,stepFor(nx)), n=Math.max(1,Math.min(15,Math.round(num(nx.sets))||1)), st=[];
+        var at2=insertAt(sc.ex,o), nb2=sc.ex[at2-1]&&sc.ex[at2-1].kind!=='protocol'?sc.ex[at2-1]:null;
+        var nx=fresh(nb2?{name:'',sets:String(nb2.sets.length),reps:(nb2.target&&nb2.target.reps)||'',kind:'strength'}:null), sg=suggest(nx.name,nx.kg,nx.reps,nx.sets,stepFor(nx)), n=Math.max(1,Math.min(15,Math.round(num(nx.sets))||1)), st=[];
         for(var k=0;k<n;k++) st.push({kg:fmt(sg.kg),reps:String(num(nx.reps)||''),rir:'',done:false});
-        sc.ex.push({id:uid(),kind:'strength',name:nx.name,note:nx.note,hint:sg.why,base:0,perSide:false,target:{sets:n,reps:nx.reps,kg:num(nx.kg)},sets:st,comment:''});
+        sc.ex.splice(at2,0,{id:uid(),kind:'strength',name:nx.name,note:nx.note,hint:sg.why,base:0,perSide:false,target:{sets:n,reps:nx.reps,kg:num(nx.kg)},sets:st,comment:''});
         touched=true;
       }
     } else {
@@ -2748,6 +2781,27 @@ function exerciseCommand(raw){
   /* what can I do instead of X */
   if((m=l.match(/(?:instead of|alternative(?:s)? (?:to|for)|replacement for|swap for)\s+(?:the |my )?(.+?)\??$/))&&/^(what|which|any|give|got|is there)/.test(l)){
     var la=exLib(cleanEx(m[1])); if(la) return exInfo(la);
+  }
+  /* positioned adds: "between A and B add C", "add C after A", "before B put C" */
+  var pos=null, P='(?:can you |could you |please |pls )?';
+  if((m=l.match(new RegExp('^'+P+'(?:in )?between (?:the |my )?(.+?) and (?:the |my )?(.+?),? (?:add|put|insert|do|i want|i wanna do) (.+)$'))))
+    pos={add:m[3],after:m[1],before:m[2]};
+  else if((m=l.match(new RegExp('^'+P+'(?:add|put|insert|do) (.+?) (?:in )?between (?:the |my )?(.+?) and (?:the |my )?(.+)$'))))
+    pos={add:m[1],after:m[2],before:m[3]};
+  else if((m=l.match(new RegExp('^'+P+'(?:add|put|insert|do) (.+?) (after|before) (?:the |my )?(.+)$'))))
+    pos=m[2]==='after'?{add:m[1],after:m[3]}:{add:m[1],before:m[3]};
+  else if((m=l.match(new RegExp('^'+P+'(after|before) (?:the |my )?(.+?),? (?:add|put|insert|do) (.+)$'))))
+    pos=m[1]==='after'?{add:m[3],after:m[2]}:{add:m[3],before:m[2]};
+  if(pos){
+    var addName=cleanEx(pos.add); if(addName&&!exLib(addName)&&exLib(fixTypos(addName))) addName=fixTypos(addName);
+    var af=pos.after?cleanEx(pos.after):'', bf=pos.before?cleanEx(pos.before):'';
+    var forAll=/\b(every ?week|everywhere|from now on|for good|permanently|always|in my (plan|routine))\b/.test(l);
+    var pdate=dm?dayToDate(dm[1]):'', o2={action:'add',new_exercise:addName,after:af,before:bf,sets:extra.sets,reps:extra.reps,kg:extra.kg};
+    if(forAll) o2.when='all';
+    else { if(!pdate) pdate=dayWithAnchor(o2); if(!pdate) return 'I could not find **'+titleCase(af||bf)+'** in today\'s workout or the next two weeks.';
+      o2.when='date'; o2.date=pdate; }
+    var r3=changeExercise(o2), spot=af&&bf?'between '+titleCase(fixTypos(af))+' and '+titleCase(fixTypos(bf)):af?'after '+titleCase(fixTypos(af)):'before '+titleCase(fixTypos(bf));
+    return reply(r3,'Added **'+r3.to+'** '+spot)+(forAll?'':'\n\nThat is for this one day. Add "every week" to the message to put it in your routine too.');
   }
   var from='', to='', action='';
   if((m=l.match(/^(?:can you |could you |please |pls )?(?:swap|replace|change|switch|substitute|sub)\s+(?:out\s+)?(.+?)\s+(?:for|with|to|into|by)\s+(.+)$/))){ action='replace'; from=m[1]; to=m[2]; }
@@ -2885,7 +2939,7 @@ function setLogReply(r){
 
 function ruleCoach(text){
   var lt=String(text||'').toLowerCase();
-  var isCmd=/\b(swap|replace|switch|instead of|remove|drop|move|reschedule)\b|\badd\b.*\b(to|on)\s+(today|tomorrow|mon|tue|wed|thu|fri|sat|sun)/.test(lt);
+  var isCmd=/\b(swap|replace|switch|instead of|remove|drop|move|reschedule|between)\b|\badd\b.*\b(to|on)\s+(today|tomorrow|mon|tue|wed|thu|fri|sat|sun)|\b(add|put|insert)\b.*\b(after|before)\b|^\s*(after|before)\b/.test(lt);
   var setMsg=isCmd?null:parseSetMessage(text);
   if(setMsg){ var snap=active()||finished().filter(function(x){ return ymd(new Date(x.finishedAt))===ymd(); })[0];
     var before=snap?JSON.parse(JSON.stringify(snap)):null, r0=logSetsToday(setMsg);
@@ -3007,7 +3061,7 @@ function ruleCoach(text){
 
   return 'I am the built-in coach, so I understand a fixed set of requests:\n\n'
     + '- "swap leg press for hack squat" (add "today" for just today)\n- "do abdominal crunches instead of torso rotation"\n'
-    + '- "add plank 3x60 to Thursday", "remove lateral raise", "undo"\n- "what is the abdominal machine"\n'
+    + '- "add plank 3x60 to Thursday", "between calf raises and treadmill add shoulder press", "remove lateral raise", "undo"\n- "what is the abdominal machine"\n'
     + '- log today\'s sets: "abdominal crunches 25x12 25x10 25x8" (kg × reps, one per line is fine)\n'
     + '- "add an extra session this week"\n- "move Thursday to Friday"\n- "bump my weights"\n'
     + '- "what should I train on Sunday"\n- "how is my progress"\n- "what is on this week"\n- "when does the gym close"\n\n'
@@ -3029,7 +3083,7 @@ var ACTION_PROTOCOL=[
  '- remove_workout {date:"YYYY-MM-DD"}',
  '- set_routine {weekday:"tuesday", name, effective_from?, note?, plan}',
  '- log_workout {date:"YYYY-MM-DD", name, minutes?, notes?, results}',
- '- change_exercise {action:"replace"|"remove"|"add", exercise?, new_exercise?, when:"all"|"date", date?, weekday?, sets?, reps?, kg?, cue?}',
+ '- change_exercise {action:"replace"|"remove"|"add", exercise?, new_exercise?, when:"all"|"date", date?, weekday?, after?, before?, sets?, reps?, kg?, cue?}  (for "between A and B add C" use after:A)',
  '- log_sets {exercise, sets:"25x12, 25x10"}  (today only; pairs are kg x reps)',
  '- undo_last_change {}',
  'Inside plan and results, separate lines with \\n.',
