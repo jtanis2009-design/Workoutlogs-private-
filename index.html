@@ -49,6 +49,20 @@
     font-weight:600;font-size:14px;background:var(--card2);color:var(--txt);border:1px solid var(--line);width:100%}
   .btn:active{transform:scale(.985)}
   label.btn{cursor:pointer;box-sizing:border-box}
+  .ses-ex-h{align-items:center}
+  .lchg{margin-left:8px;flex:none;background:var(--card2,#1b1f27);border:1px solid var(--line,#2a2f3a);color:var(--mut);border-radius:9px;padding:6px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+  .lchg.on{color:var(--acc);border-color:var(--acc)}
+  .lmenu{background:var(--card2,#151821);border:1px solid var(--line,#262b36);border-radius:12px;padding:10px;margin:2px 0 10px}
+  .lm-t{font-size:11.5px;color:var(--mut2);font-weight:700;margin-bottom:6px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .qchip{background:transparent;border:1px solid var(--line,#2f3542);color:inherit;border-radius:999px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer}
+  .qchip:active{border-color:var(--acc);color:var(--acc)}
+  .lm-row{display:flex;gap:6px;align-items:center;margin-top:4px}
+  .lm-row input{flex:1;min-width:0}
+  .lm-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .lm-btns .btn{padding:9px 6px;font-size:13px}
+  .lbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card2,#151821);border:1px solid var(--acc);border-radius:11px;padding:8px 12px;margin:8px 0;font-size:13px}
+  .lbar button{background:none;border:0;color:var(--acc);font:inherit;font-weight:800;cursor:pointer}
   body.gated nav{display:none}
   .tri3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .tri3 .btn{padding-left:6px;padding-right:6px;font-size:13.5px;text-align:center}
@@ -443,13 +457,14 @@ function setLoad(e,s){ return (num(s.kg)+exBase(e))*(perSide(e)?2:1); }
 function effReps(s){ return num(s.reps)+(String(s.rir||'').trim()===''?0:num(s.rir)); }
 /* Epley, on the per-implement load. Unreliable past ~12 reps, so refuse rather than mislead. */
 function e1rm(e,s){
+  if(isTimed(e)) return 0;
   var w=num(s.kg)+exBase(e); if(!w) return 0;
   var r=effReps(s); if(r<1||r>12) return 0;
   return w*(1+r/30);
 }
 function volume(ses){
   var v=0;
-  (ses.ex||[]).forEach(function(e){ (e.sets||[]).forEach(function(s){ if(s.done) v+=setLoad(e,s)*num(s.reps); }); });
+  (ses.ex||[]).forEach(function(e){ if(isTimed(e)) return; (e.sets||[]).forEach(function(s){ if(s.done) v+=setLoad(e,s)*num(s.reps); }); });
   return v;
 }
 function counts(ses){ var d=0,t=0;(ses.ex||[]).forEach(function(e){
@@ -457,7 +472,8 @@ function counts(ses){ var d=0,t=0;(ses.ex||[]).forEach(function(e){
 function target(e){
   if(e.kind==='protocol') return e.spec||'';
   var t=e.target||e;
-  return (t.sets||'?')+' × '+(t.reps||'?')+'  ·  '+(num(t.kg)?fmt(num(t.kg))+' kg':'bodyweight');
+  var lb=exLib(e.name);
+  return (t.sets||'?')+' × '+(t.reps||'?')+'  ·  '+(num(t.kg)?fmt(num(t.kg))+' kg':lb&&lb.load==='kg'?'pick a weight':'bodyweight');
 }
 
 /* ---------------- storage ---------------- */
@@ -2103,6 +2119,7 @@ var MNAME={chest:'Lower chest',chestup:'Upper chest',abs:'Core',delts:'Front del
   glutes:'Glutes',hams:'Hamstrings',quads:'Quads',calves:'Calves'};
 /* order matters: "leg curl" and "calf" must be matched before the generic rules */
 var EXMAP=[
+ [/dead ?hang|bar ?hang|(passive|active) ?hang|farmer/i,{forearms:1,lats:.5,traps:.5}],
  [/leg ?curl|hamstring/i,{hams:1,calves:.3}],
  [/calf|calves/i,{calves:1}],
  [/leg ?press|squat|hack|lunge|leg ?extension/i,{quads:1,glutes:.8,hams:.4,calves:.3}],
@@ -2177,6 +2194,15 @@ function sessionPRs(ses){
         out[e.id]={text:fmt(best.kmh)+' km/h for '+fmt(best.min)+' min'+(best.incl?' at '+fmt(best.incl)+'°':''),
           was:same?'longest at that pace before: '+fmt(same.min)+' min':'fastest ever at that incline'};
       }
+      return;
+    }
+    if(isTimed(e)){
+      var bestT=0,bestKg=0; (e.sets||[]).forEach(function(x){ if(x.done&&num(x.reps)>bestT){ bestT=num(x.reps); bestKg=num(x.kg); } });
+      if(!bestT) return;
+      var pT=0, anyT=false;
+      prior.forEach(function(p){ (p.ex||[]).forEach(function(pe){ if(exKey(pe.name)!==key) return;
+        (pe.sets||[]).forEach(function(x){ if(x.done&&num(x.kg)>=bestKg){ anyT=true; if(num(x.reps)>pT) pT=num(x.reps); } }); }); });
+      if(anyT&&bestT>pT) out[e.id]={text:'longest ever: '+fmt(bestT)+' s'+(bestKg?' with '+fmt(bestKg)+' kg':''),was:'was '+fmt(pT)+' s'};
       return;
     }
     var cur=bestStrength(e); if(!cur.kg) return;
@@ -2599,7 +2625,9 @@ var EXLIB=[
  ['reverse-crunch','Reverse Crunch',/reverse ?crunch/i,'lower abs','Lie on your back, knees bent. Roll your hips off the floor toward your chest using the abs, not a leg swing, then lower slowly.','bw',['leg-raise','floor-crunch','plank']],
  ['ab-machine','Abdominal Crunch Machine',/\babdominals?\b|\bab ?(crunch )?machine|crunch ?machine|ab ?crunch(es)?\b/i,'abs (rectus abdominis)','The seated crunch machine, also called abdominal crunches or the ab machine. Pads on your chest or shoulders, feet hooked. Curl your ribs down toward your hips by rounding the upper back, breathe out at the bottom, pause, come back slowly. Do not pull with the arms or just bend at the hips.','kg',['cable-crunch','decline-crunch','floor-crunch']],
  ['floor-crunch','Crunches (floor)',/\bcrunch(es)?\b|sit.?ups?/i,'abs','On your back, knees bent, hands by your temples. Lift your shoulder blades by curling the ribs toward the hips, breathe out at the top, lower slowly. Do not yank your neck.','bw',['ab-machine','reverse-crunch','plank']],
- ['plank','Plank',/plank/i,'abs and deep core','Forearms under the shoulders, body in one straight line. Squeeze your glutes and brace like someone is about to poke your stomach. Stop when the hips start to sag.','bw',['ab-machine','floor-crunch','leg-raise']],
+ ['dead-hang','Dead Hang',/dead ?hangs?|bar ?hangs?|(passive|active) ?hangs?|\bhangs?\b(?! ?(clean|snatch|power))(?!ing)/i,'grip and forearms, with a stretch for the lats and shoulders','Hang from a pull-up bar with straight arms and a full grip, shoulders relaxed (passive) or pulled slightly down (active). Hold for time; the reps box is seconds. Stop when your grip starts to open. Add a belt with weight once 60 seconds is easy.','time',['pullup','farmer-carry','shrug']],
+ ['farmer-carry','Farmer Carry',/farmer'?s? ?(carry|walk)/i,'grip, traps and core','Heavy dumbbells at your sides, stand tall and walk with short steps. The reps box is seconds.','time',['dead-hang','shrug']],
+ ['plank','Plank',/plank/i,'abs and deep core','Forearms under the shoulders, body in one straight line. Squeeze your glutes and brace like someone is about to poke your stomach. Stop when the hips start to sag. The reps box is seconds.','time',['ab-machine','floor-crunch','leg-raise']],
  ['leg-raise','Leg Raise',/\b(hanging |lying |captain'?s? chair )?(leg|knee) ?raises?\b/i,'lower abs and hip flexors','Hang or lie flat, then lift your legs by tilting the pelvis up, not by swinging. Lower slowly without arching your back.','bw',['reverse-crunch','cable-crunch','ab-machine']],
  ['torso-rotation','Torso Rotation Machine',/torso ?rotation|rotary ?torso|oblique ?machine/i,'obliques','Sit tall with the pad against you and turn from the ribs, not the arms. Slow both ways, no bouncing at the end. Do both sides.','kg',['russian-twist','cable-crunch','plank']],
  ['russian-twist','Russian Twist',/russian ?twist/i,'obliques','Sit leaning back with feet up or anchored and rotate your shoulders side to side. Hold a plate to make it harder.','bw',['torso-rotation','plank']],
@@ -2845,7 +2873,18 @@ function changeExercise(o){
     } else {
       sc.ex=sc.ex.reduce(function(acc,e){
         if(exKey(e.name)!==key){ acc.push(e); return acc; }
-        if((e.sets||[]).some(function(x){ return x.done; })){ acc.push(e); sesNote=' Your workout in progress already has sets done on it, so I left that one alone.'; return acc; }
+        var dn=(e.sets||[]).filter(function(x){ return x.done; }), left=(e.sets||[]).length-dn.length;
+        if(dn.length){                                   /* started: keep what was done, the rest moves to the new exercise */
+          var kept=JSON.parse(JSON.stringify(e)); kept.sets=dn; acc.push(kept); touched=true; oldName=oldName||e.name;
+          if(action==='remove'||!left){ sesNote=action==='remove'?' The sets you already ticked on it are kept.':''; return acc; }
+          var nx0=fresh({id:uid(),name:e.name,sets:String(left),reps:(e.target&&e.target.reps)||'',kg:'',kind:'strength'}); nx0.id=uid();
+          var sg0=suggest(nx0.name,nx0.kg,nx0.reps,nx0.sets,stepFor(nx0)), st0=[];
+          for(var k0=0;k0<left;k0++) st0.push({kg:fmt(sg0.kg),reps:String(topRep(nx0.reps)||''),rir:'',done:false});
+          acc.push({id:nx0.id,kind:'strength',name:nx0.name,note:nx0.note,hint:sg0.why,base:0,perSide:false,
+            target:{sets:left,reps:nx0.reps,kg:num(nx0.kg)},sets:st0,comment:''});
+          sesNote=' The '+(dn.length===1?'set you already did stays':dn.length+' sets you already did stay')+' on '+e.name+'; the other '+left+' moved to '+nx0.name+'.';
+          return acc;
+        }
         touched=true; oldName=oldName||e.name;
         if(action==='remove') return acc;
         var nx=fresh(e.kind==='protocol'?null:{id:e.id,name:e.name,sets:String(e.sets.length),reps:(e.target&&e.target.reps)||'',kg:(e.target&&e.target.kg)||'',kind:'strength'});
@@ -2970,7 +3009,7 @@ var EXVOCAB=null;
 function exVocab(){
   if(EXVOCAB) return EXVOCAB;
   var v={};
-  ('abdominal abdominals crunch crunches lateral raise raises pulldown rotation torso tricep triceps bicep biceps extension '
+  ('dead hang hangs deadhang deadhangs farmer carry abdominal abdominals crunch crunches lateral raise raises pulldown rotation torso tricep triceps bicep biceps extension '
    +'press machine squat hack calf calves deadlift romanian shoulder chest incline decline dumbbell barbell cable pushdown '
    +'plank lunge lunges hammer preacher abductor adductor hyperextension shrug shrugs treadmill deck fly flyes row rows seated lying '
    +'curl curls leg legs pull push dips situps overhead military rear delt delts reverse kneeling hanging thrust glute bridge '
@@ -3006,6 +3045,8 @@ function parseSetMessage(text){
     var sets=[], rest=l;
     rest=rest.replace(BLOCKTOK,function(m,n,r,kg){ for(var i=0;i<Math.min(15,+n);i++) sets.push({kg:num(String(kg).replace(',','.')),reps:+r}); return ' '; });
     rest=rest.replace(SETTOK,function(m,kg,r){ sets.push({kg:num(String(kg).replace(',','.')),reps:+r}); return ' '; });
+    rest=rest.replace(/\b(\d+):([0-5]\d)\b|\b(\d+)\s*(?:s|sec|secs|seconds)\b/gi,function(m,mi,se,sec){
+      sets.push({kg:0,reps:sec?+sec:(+mi)*60+(+se)}); return ' '; });
     rest=rest.replace(/\b(log|logged|i did|did|done|add|added|put in|for|today|todays|today's|workout|sets?|reps?|kg|please|pls|and|in|my|of|the|to)\b/gi,' ')
              .replace(/[,:.\-–—()]+/g,' ').replace(/\s+/g,' ').trim();
     if(/[a-z]{3}/i.test(rest)){ cur={name:rest,sets:[]}; out.push(cur); }
@@ -4282,6 +4323,109 @@ function viewToday(){
   return h;
 }
 
+/* ================= TIMED HOLDS (dead hang, plank): the reps box holds seconds ================= */
+function isTimed(e){ var l=exLib(e&&e.name); return !!(l&&l.load==='time'); }
+
+/* ================= QUICK CHANGES DURING A WORKOUT ================= */
+function liveSuggest(ses,ei){
+  var cur=ses.ex[ei], inSes={}, out=[], seen={};
+  (ses.ex||[]).forEach(function(e){ inSes[exKey(e.name)]=1; });
+  var addN=function(n){ var k=exKey(n); if(!n||inSes[k]||seen[k]) return; seen[k]=1; out.push(n); };
+  var mine=[];                                               /* your own exercises first, newest first */
+  finished().forEach(function(s){ (s.ex||[]).forEach(function(e){ if(e.kind!=='protocol') mine.push(e.name); }); });
+  S.routines.forEach(function(r){ (r.exercises||[]).forEach(function(e){ if(e.kind!=='protocol') mine.push(e.name); }); });
+  if(cur&&cur.kind!=='protocol'){
+    var lib=exLib(cur.name), w=musclesFor(cur.name)||{}, prim=Object.keys(w).filter(function(m){ return w[m]>=0.85; });
+    mine.forEach(function(n){ var w2=musclesFor(n)||{}; if(prim.some(function(m){ return w2[m]>=0.85; })) addN(n); });
+    if(lib) lib.alt.forEach(function(a){ if(EXBYID[a]) addN(EXBYID[a].name); });
+    Object.keys(EXBYID).forEach(function(id){ var w3=musclesFor(EXBYID[id].name)||{};          /* then anything else for the same muscle */
+      if(prim.some(function(m){ return w3[m]>=0.85; })) addN(EXBYID[id].name); });
+  } else mine.forEach(addN);
+  return out.slice(0,7);
+}
+/* a typed name: your own name for that exercise if you have one, else the library name, else as typed */
+function typedExName(raw){
+  raw=String(raw||'').trim(); if(!raw) return '';
+  var fixed=fixTypos(raw), l=exLib(fixed)||exLib(raw);
+  if(!l) return canonExName(titleCase(raw));
+  var key='#'+l.id, own='';
+  finished().concat(S.routines.map(function(r){ return {ex:r.exercises}; })).forEach(function(s){
+    (s.ex||[]).forEach(function(e){ if(!own&&e.kind!=='protocol'&&exKey(e.name)===key) own=e.name; }); });
+  return canonExName(own||l.name);
+}
+/* weight from your plan when there is no logged history yet */
+function planKg(name){
+  var key=exKey(name), kg='';
+  S.routines.concat(S.days).forEach(function(d){ (d.exercises||[]).forEach(function(e){
+    if(!kg&&e.kind!=='protocol'&&exKey(e.name)===key&&num(e.kg)) kg=fmt(num(e.kg)); }); });
+  return kg;
+}
+function liveNewEx(name,like){
+  var nm=name, lib=exLib(nm), timed=lib&&lib.load==='time';
+  var n=Math.max(1,Math.min(15,like?like.n:3)), reps=(like&&like.reps)||(timed?'30-60':'8-12');
+  var kg=lastKg(nm)||planKg(nm); if(!kg&&lib&&lib.load!=='kg') kg='0';
+  var sg=suggest(nm,kg,reps,String(n),stepFor({name:nm,kg:kg}));
+  var st=[]; for(var i=0;i<n;i++) st.push({kg:kg===''&&!sg.kg?'':fmt(sg.kg||num(kg)),reps:String(timed?topRep(reps):(num(reps)||topRep(reps))||''),rir:'',done:false});
+  return {id:uid(),kind:'strength',name:nm,note:lib?lib.how.split('. ')[0]+'.':'',hint:sg.why||'',base:0,perSide:false,
+    target:{sets:n,reps:reps,kg:num(kg)},sets:st,comment:''};
+}
+function liveChange(fn,msg){
+  var s=active(); if(!s) return;
+  var before=JSON.parse(JSON.stringify(s)), c=JSON.parse(JSON.stringify(s));
+  if(fn(c)===false) return;
+  UNDO={label:'live',items:[{coll:'sessions',id:s.id,before:before}]};
+  S.liveMsg=msg; S.liveMenu=null; S.liveText='';
+  put('sessions',c,true); render();
+}
+function liveSwap(ei,name,typed){
+  name=String(name||'').trim(); if(!name) return;
+  var s=active(); if(!s||!s.ex[ei]) return;
+  var old=s.ex[ei], nm=typed?typedExName(name):name;
+  liveChange(function(c){
+    var e=c.ex[ei], done=(e.sets||[]).filter(function(x){ return x.done; }).length, left=(e.sets||[]).length-done;
+    var nx=liveNewEx(nm,{n:Math.max(1,left||1),reps:e.kind==='protocol'?'':(e.target&&e.target.reps)||''});
+    nx.t0=done?'':e.t0; 
+    if(done){ e.sets=e.sets.filter(function(x){ return x.done; }); c.ex.splice(ei+1,0,nx); }   /* keep what you did, finish on the new one */
+    else c.ex.splice(ei,1,nx);
+  },(old.name+' → '+nm)+((old.sets||[]).some(function(x){ return x.done; })?' (done sets kept)':''));
+}
+function liveAdd(name,at,typed){
+  name=String(name||'').trim(); if(!name) return;
+  var nm=typed?typedExName(name):name;
+  liveChange(function(c){
+    var pos=at!=null?at:c.ex.length;
+    if(at==null){ for(var i=c.ex.length-1;i>=0;i--){ if(c.ex[i].kind==='protocol') pos=i; else break; } }   /* before the finisher */
+    var prev=c.ex[pos-1]&&c.ex[pos-1].kind!=='protocol'?c.ex[pos-1]:null;
+    c.ex.splice(pos,0,liveNewEx(nm,prev&&!isTimed({name:nm})&&!isTimed(prev)?{n:prev.sets.length,reps:(prev.target&&prev.target.reps)||''}:null));
+  },'Added '+nm);
+}
+function liveMenuHTML(ses,ei){
+  var e=ses.ex[ei], pro=e.kind==='protocol', sug=liveSuggest(ses,ei);
+  var h='<div class="lmenu">';
+  if(!pro){
+    h+='<div class="lm-t">Swap for</div><div class="chips">';
+    sug.forEach(function(n){ h+='<button class="qchip" data-act="lv-swap" data-ei="'+ei+'" data-n="'+esc(n)+'">'+esc(n)+'</button>'; });
+    h+='</div><div class="lm-row"><input data-fkey="lvt'+ei+'" data-in="live-text" placeholder="or type any exercise" autocapitalize="words" value="'+esc(S.liveText||'')+'">'
+      + '<button class="btn p" style="width:auto" data-act="lv-swap-typed" data-ei="'+ei+'">Swap</button></div>';
+    if((e.sets||[]).some(function(x){ return x.done; })) h+='<div class="hint" style="margin-top:2px">Sets you already ticked stay on '+esc(e.name)+'; the rest move to the new exercise.</div>';
+  }
+  h+='<div class="lm-row lm-btns">'
+    + '<button class="btn" data-act="lv-move" data-ei="'+ei+'" data-d="-1"'+(ei===0?' disabled':'')+'>↑ Earlier</button>'
+    + '<button class="btn" data-act="lv-move" data-ei="'+ei+'" data-d="1"'+(ei===ses.ex.length-1?' disabled':'')+'>↓ Later</button>'
+    + '<button class="btn" data-act="lv-after" data-ei="'+ei+'">+ After this</button>'
+    + '<button class="btn d" data-act="arm" data-key="lvrm'+ei+'">'+(S.confirm==='lvrm'+ei?'Tap again':'Remove')+'</button></div>';
+  return h+'</div>';
+}
+function liveAddHTML(ses,at){
+  var sug=liveSuggest(ses,-1);
+  var h='<div class="lmenu" style="margin-top:6px"><div class="lm-t">'+(at!=null?'Add after '+esc(ses.ex[at-1].name):'Add an exercise')+'</div><div class="chips">';
+  sug.forEach(function(n){ h+='<button class="qchip" data-act="lv-add" data-n="'+esc(n)+'"'+(at!=null?' data-at="'+at+'"':'')+'>'+esc(n)+'</button>'; });
+  h+='</div><div class="lm-row"><input data-fkey="lva" data-in="live-text" placeholder="type any exercise, e.g. dead hang" autocapitalize="words" value="'+esc(S.liveText||'')+'">'
+    + '<button class="btn p" style="width:auto" data-act="lv-add-typed"'+(at!=null?' data-at="'+at+'"':'')+'>Add</button>'
+    + '<button class="btn" style="width:auto" data-act="lv-close">Cancel</button></div></div>';
+  return h;
+}
+
 function liveView(ses){
   var c=counts(ses);
   var h='<button class="back" data-act="park"><span>‹</span> Back</button>'
@@ -4292,11 +4436,16 @@ function liveView(ses){
     + '<span class="chip a">live</span></div><div class="card-b">';
   if(ses.dayNote) h+='<div class="fo-box" style="margin:8px 0 2px">'+esc(ses.dayNote)+'</div>';
   if(!(ses.ex||[]).length) h+='<div class="empty"><p>This workout has no exercises yet.</p></div>';
+  if(S.liveMsg) h+='<div class="lbar"><span>'+esc(S.liveMsg)+'</span><button data-act="lv-undo">Undo</button></div>';
 
   var lprs=sessionPRs(ses);
   (ses.ex||[]).forEach(function(e,ei){
+    var mOpen=S.liveMenu===ei;
     h+='<div class="ses-ex"><div class="ses-ex-h"><span class="nm">'+(ei+1)+'. '+esc(e.name||'Exercise')+(lprs[e.id]?prChip():'')+'</span>'
-      + '<span class="tg">'+esc(target(e))+'</span></div>';
+      + '<span class="tg">'+esc(isTimed(e)&&e.kind!=='protocol'?(e.target&&e.target.sets||'?')+' × '+((e.target&&e.target.reps)||'?')+' s':target(e))+'</span>'
+      + '<button class="lchg'+(mOpen?' on':'')+'" data-act="lv-menu" data-ei="'+ei+'">'+(mOpen?'Close':'Change')+'</button></div>';
+    if(mOpen) h+=liveMenuHTML(ses,ei);
+    if(S.liveMenu==='add'+(ei+1)) h+=liveAddHTML(ses,ei+1);
     if(e.note) h+='<div class="fo-box">'+esc(e.note)+'</div>';
     if(e.hint) h+='<div class="prog">'+esc(e.hint)+'</div>';
     var em=exMins(e);
@@ -4327,7 +4476,7 @@ function liveView(ses){
       (e.sets||[]).forEach(function(st,si){
         h+='<div class="srow'+(st.done?' done':'')+'"><div class="snum">'+(si+1)+'</div>'
           + '<div class="unit"><input data-fkey="sk'+ei+'_'+si+'" data-in="set-kg" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="decimal" value="'+esc(st.kg)+'"><span>kg</span></div>'
-          + '<div class="unit"><input data-fkey="sr'+ei+'_'+si+'" data-in="set-reps" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="numeric" value="'+esc(st.reps)+'"><span>reps</span></div>'
+          + '<div class="unit"><input data-fkey="sr'+ei+'_'+si+'" data-in="set-reps" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="numeric" value="'+esc(st.reps)+'"><span>'+(isTimed(e)?'sec':'reps')+'</span></div>'
           + '<div class="unit"><input data-fkey="si'+ei+'_'+si+'" data-in="set-rir" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="numeric" value="'+esc(st.rir==null?'':st.rir)+'" placeholder="–"><span>rir</span></div>'
           + '<button class="chk'+(st.done?' on':'')+'" data-act="tick" data-ei="'+ei+'" data-si="'+si+'">'+(st.done?'✓':'')+'</button></div>';
       });
@@ -4336,6 +4485,7 @@ function liveView(ses){
     }
     h+='<input data-fkey="ec'+ei+'" data-in="ex-comment" data-ei="'+ei+'" value="'+esc(e.comment||'')+'" placeholder="note on this exercise (optional)" style="font-size:13px;margin:2px 0 4px"></div>';
   });
+  h+=(S.liveMenu==='add'?liveAddHTML(ses,null):'<button class="btn" style="margin-top:6px" data-act="lv-add-open">+ Add exercise</button>');
   h+='</div></div>';
   h+='<div class="card"><div class="card-b" style="padding-top:15px"><div class="fld"><label>How did it go?</label>'
     + '<textarea data-fkey="notes" data-in="notes" placeholder="Energy, form, niggles, PRs, what felt heavy">'+esc(ses.notes||'')+'</textarea></div></div></div>';
@@ -4590,7 +4740,8 @@ function viewHistory(){
         } else {
           var d=(e.sets||[]).filter(function(x){return x.done;});
           var hm2=exMins(e);
-          h+='<div class="hline"><span>'+esc(e.name)+(prs[e.id]?prChip():'')+(hm2!=null?' <span style="color:var(--mut2);font-size:11.5px">'+hm2+' min</span>':'')+'</span><span>'+(d.length?d.map(function(x){return fmt(num(x.kg))+'×'+fmt(num(x.reps));}).join('  ·  '):'—')+'</span></div>';
+          var tmd=isTimed(e);
+          h+='<div class="hline"><span>'+esc(e.name)+(prs[e.id]?prChip():'')+(hm2!=null?' <span style="color:var(--mut2);font-size:11.5px">'+hm2+' min</span>':'')+'</span><span>'+(d.length?d.map(function(x){return tmd?(num(x.kg)?'+'+fmt(num(x.kg))+'kg ':'')+fmt(num(x.reps))+'s':fmt(num(x.kg))+'×'+fmt(num(x.reps));}).join('  ·  '):'—')+'</span></div>';
           if(prs[e.id]) h+='<div style="font-size:11.5px;color:var(--acc);margin:-4px 0 6px">'+esc(prs[e.id].text)+' · '+esc(prs[e.id].was)+'</div>';
         }
       });
@@ -4657,6 +4808,8 @@ document.addEventListener('click',function(ev){
     if(S.confirm!==key){ S.confirm=key; render(); return; }
     S.confirm=null;
     if(key==='logout'){ logout(); return; }
+    if(key.indexOf('lvrm')===0){ var ri=parseInt(key.slice(4),10), rn=(active().ex[ri]||{}).name;
+      liveChange(function(c){ c.ex.splice(ri,1); },'Removed '+rn); return; }
     if(key==='discard'){ var s=active(); S.parked=false; if(s) drop('sessions',s.id); return; }
     if(key==='clearchat'){ S.chat.slice().forEach(function(m){ drop('chat',m.id); }); return; }
     var p=key.split(':');
@@ -4880,10 +5033,24 @@ document.addEventListener('click',function(ev){
     put('days',dd2); return;
   }
 
+  if(act==='lv-menu'){ var mi=parseInt(t.dataset.ei,10); S.liveMenu=S.liveMenu===mi?null:mi; S.liveText=''; S.confirm=null; render(); return; }
+  if(act==='lv-add-open'){ S.liveMenu='add'; S.liveText=''; render(); return; }
+  if(act==='lv-after'){ S.liveMenu='add'+(parseInt(t.dataset.ei,10)+1); S.liveText=''; render(); return; }
+  if(act==='lv-close'){ S.liveMenu=null; S.liveText=''; render(); return; }
+  if(act==='lv-swap'){ liveSwap(parseInt(t.dataset.ei,10),t.dataset.n); return; }
+  if(act==='lv-swap-typed'){ liveSwap(parseInt(t.dataset.ei,10),S.liveText,true); return; }
+  if(act==='lv-add'){ liveAdd(t.dataset.n,t.dataset.at!=null?parseInt(t.dataset.at,10):null); return; }
+  if(act==='lv-add-typed'){ liveAdd(S.liveText,t.dataset.at!=null?parseInt(t.dataset.at,10):null,true); return; }
+  if(act==='lv-move'){ var mi2=parseInt(t.dataset.ei,10), dd=parseInt(t.dataset.d,10);
+    liveChange(function(c){ var j=mi2+dd; if(j<0||j>=c.ex.length) return false; var tmp=c.ex[mi2]; c.ex[mi2]=c.ex[j]; c.ex[j]=tmp; },'Moved '+(active().ex[mi2]||{}).name);
+    S.liveMenu=mi2+dd; render(); return; }
+  if(act==='lv-undo'){ try{ undoChange(); }catch(e){} S.liveMsg=''; render(); return; }
+
   var ses=active(); if(!ses){ render(); return; }
   var c2=JSON.parse(JSON.stringify(ses));
   var ei=parseInt(t.dataset.ei,10), si=parseInt(t.dataset.si,10);
   if(act==='tick'){
+    S.liveMsg='';
     var nowDone=!c2.ex[ei].sets[si].done;
     c2.ex[ei].sets[si].done=nowDone;
     if(nowDone){
@@ -4924,6 +5091,10 @@ document.addEventListener('keydown',function(ev){
     if(el&&el.dataset&&el.dataset['in']==='draft'){ ev.preventDefault(); coachSend(S.draft); }
     if(el&&(el.id==='au-pw'||el.id==='au-email')){ ev.preventDefault(); authSubmit(S.auth&&S.auth.mode==='signup'?'signup':'login'); }
     if(el&&el.id==='au-newpw'){ ev.preventDefault(); changePassword(); }
+    if(el&&el.dataset&&el.dataset['in']==='live-text'){ ev.preventDefault();
+      if(typeof S.liveMenu==='number') liveSwap(S.liveMenu,S.liveText,true);
+      else if(S.liveMenu==='add') liveAdd(S.liveText,null,true);
+      else if(String(S.liveMenu||'').indexOf('add')===0) liveAdd(S.liveText,parseInt(String(S.liveMenu).slice(3),10),true); }
   }
 });
 
@@ -5007,6 +5178,7 @@ function inputMain(ev){
     return;
   }
 
+  if(kind==='live-text'){ S.liveText=v; return; }
   if(kind==='notes'||kind==='ex-comment'||kind==='ex-t0'||kind==='ex-t1'||kind.indexOf('set-')===0||kind==='seg-label'||kind==='seg-detail'||kind==='seg-kmh'||kind==='seg-min'||kind==='seg-incl'){
     var ses=active(); if(!ses) return;
     var c=JSON.parse(JSON.stringify(ses));
