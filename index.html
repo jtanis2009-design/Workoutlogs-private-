@@ -49,6 +49,18 @@
     font-weight:600;font-size:14px;background:var(--card2);color:var(--txt);border:1px solid var(--line);width:100%}
   .btn:active{transform:scale(.985)}
   label.btn{cursor:pointer;box-sizing:border-box}
+  .gapopt{display:flex;width:100%;align-items:center;gap:10px;text-align:left;background:transparent;border:0;border-top:1px solid var(--line);color:inherit;padding:10px 2px;font:inherit;cursor:pointer}
+  .gapopt span{flex:1;min-width:0}.gapopt b{display:block;font-size:13.5px}.gapopt small{display:block;font-size:11.5px;color:var(--mut2);margin-top:2px}
+  .gapopt i{font-style:normal;font-weight:800;color:var(--acc);font-size:13px}
+  .ssbar{font-size:11.5px;font-weight:800;color:var(--acc);margin:10px 0 -4px}
+  .ses-ex.ss{border-left:3px solid var(--acc);padding-left:10px}
+  .sstag{font-style:normal;background:var(--acc);color:#111;border-radius:6px;padding:1px 6px;font-size:12px;margin-right:6px}
+  .phcmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .phgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .phcmp figure,.phgrid figure{margin:0}
+  .phcmp img,.phgrid img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;display:block;background:var(--card2)}
+  .phcmp figcaption,.phgrid figcaption{font-size:11px;color:var(--mut2);margin-top:3px;display:flex;justify-content:space-between;align-items:center}
+  .phgrid figcaption button{background:none;border:0;color:var(--mut2);font:inherit;cursor:pointer}
   .cups{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
   .cups i{width:16px;height:20px;border:2px solid #3987e5;border-top-width:1px;border-radius:2px 2px 5px 5px;opacity:.35}
   .cups i.on{background:#3987e5;opacity:1}
@@ -400,6 +412,7 @@
 <body>
 <div id="app"></div>
 <div id="restbar"></div>
+<input type="file" id="phin" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <input type="file" id="photoin" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <input type="file" id="avatarin" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <input type="file" id="charin" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
@@ -1535,6 +1548,7 @@ function coachPreamble(){
   '',
   bodyBrief(),
   measBrief(),
+  (function(){ var pgp=proteinGap(ymd()); return pgp&&!pgp.done?'PROTEIN TO GO TODAY: '+pgp.gap+' g'+(pgp.opts&&pgp.opts[0]?' (their own foods that would close it: '+pgp.opts.map(function(o){ return o.label+' '+o.protein+' g'; }).join('; ')+')':'')+'.':''; })(),
   'WATER TODAY: '+fmt(((waterOn(ymd())||{}).ml||0)/1000)+' of '+fmt(waterGoal(ymd()).ml/1000)+' L.',
   coachWeekBrief(),
   '',
@@ -2117,6 +2131,7 @@ function viewFood(){
     + '</div></div></div>';
 
   h+=waterCard(d);
+  h+=gapCard(d);
   var wToday=S.weights.filter(function(w){ return w.date===d; })[0];
   if(wToday&&!S.food.wEdit) h+='<div class="hint" style="margin:-4px 2px 12px">Weighed in at <b>'+fmt(num(wToday.kg))+' kg</b>'
     + (d===ymd()?' today':' on this day')+'. <button class="lnk" data-act="w-edit">Change</button></div>';
@@ -3362,6 +3377,12 @@ function ruleCoach(text){
     return ds0.due?'Yes, it is time: '+ds0.lifts.map(function(l){ return l.name+' ('+l.why+')'; }).join(', ')+'. Say "deload next week" and I will halve the sets.'
       :'Not yet. Your lifts are still moving'+(ds0.checked?' ('+ds0.lifts.length+' of '+ds0.checked+' flat or down)':'')+'. I will flag it when several stall at once.';
   }
+  if(/\bprotein\b/.test(lt)&&/\b(left|to go|need|short|gap|how much|hit)\b/.test(lt)){
+    var pg2=proteinGap(ymd());
+    if(!pg2) return 'Set a protein goal in You, Goals and body, and I will track the gap.';
+    if(pg2.done) return 'You have hit your protein for today.';
+    return '**'+pg2.gap+' g** protein to go today.'+(pg2.opts.length?'\n\nFrom what you usually eat:\n'+pg2.opts.map(function(o){ return '- '+o.label+': '+o.protein+' g, '+o.kcal+' kcal'; }).join('\n')+'\n\nThe Food tab has these as one-tap adds.':'');
+  }
   if(/\b(weekly report|week in review|how was my week|report for (this|last) week)\b/.test(lt)){
     var off0=/last week/.test(lt)||new Date().getDay()===1?-1:0;
     return reportText(weekReport(off0)).split('\n').map(function(x,i){ return i?'- '+x:'**'+x+'**'; }).join('\n');
@@ -4055,6 +4076,7 @@ function viewYou(){
 
   var mt=measTrend('waist');
   h+=panel('meas','Body measurements',mt?'waist '+fmt(mt.now)+' cm'+(mt.n>1?' ('+(mt.change>0?'+':'')+fmt(mt.change)+')':''):'not measured yet',measBody);
+  h+=panel('photos','Progress photos',(S.photos?S.photos.length+' on this phone':'on this phone only'),photosBody);
   h+=panel('body','Goals and body',
     (num(S.profile.calGoal)?num(S.profile.calGoal)+' kcal a day':'no calorie goal yet'),profileBody);
 
@@ -4814,6 +4836,7 @@ function applyMode(ses,mid){
       cut.push(e); return false;
     });
     ses.cut=(ses.cut||[]).concat(cut);
+    pairSupersets(ses);
   }
   ses.ex=ses.ex.map(function(e){
     if((e.sets||[]).some(function(s){ return s.done; })||(e.segs||[]).some(function(s){ return s.done; })) return e;
@@ -4826,6 +4849,7 @@ function applyMode(ses,mid){
 function switchLiveMode(mid){
   var s=active(); if(!s) return;
   var c=JSON.parse(JSON.stringify(s));
+  if(mid!=='quick') c.ex.forEach(function(e){ if(!(e.sets||[]).some(function(x){ return x.done; })) delete e.ss; });
   if(c.cut&&c.cut.length&&mid!=='quick'){ c.ex=c.ex.concat(c.cut); c.cut=[]; }
   c.ex=c.ex.map(function(e){
     if(e.kind==='protocol'||(e.sets||[]).some(function(x){ return x.done; })) {
@@ -5002,6 +5026,194 @@ function measBrief(){
   var L=[]; MEAS.forEach(function(m){ var t=measTrend(m[0]); if(t) L.push(m[1]+' '+fmt(t.now)+(m[0]==='bf'?'%':' cm')+(t.n>1?' ('+(t.change>0?'+':'')+fmt(t.change)+' since '+t.firstDate+')':'')); });
   var ins=measInsight();
   return L.length?'MEASUREMENTS: '+L.join('; ')+'.'+(ins?' '+ins:''):'';
+}
+
+/* ================= PROTEIN GAP HELPER ================= */
+function foodCandidates(){
+  var g={}, cut=ymd(new Date(Date.now()-60*864e5));
+  (S.profile.favMeals||[]).concat(S.meals.filter(function(m){ return m.date>=cut; })).forEach(function(m){
+    var k=String(m.name||'').trim().toLowerCase(), p=num(m.protein), kc=num(m.kcal);
+    if(!k||p<8||kc<=0||g[k]) return;
+    g[k]=mealTemplate(m);
+  });
+  return Object.keys(g).map(function(k){ return g[k]; });
+}
+/* the smallest, leanest combination of your own foods that closes the gap */
+function proteinGap(d){
+  var pg=num(S.profile.proteinGoal); if(!pg) return null;
+  var t=dayTotals(d), gap=Math.round(pg-t.protein); if(gap<10) return {done:true,gap:gap};
+  var kcLeft=num(S.profile.calGoal)?num(S.profile.calGoal)-t.kcal:9999;
+  var c=foodCandidates(); if(!c.length) return {gap:gap,opts:[]};
+  /* lean foods first; pizza-style meals only if nothing leaner exists */
+  var lean=c.filter(function(x){ return x.protein/x.kcal>=0.06; }); if(lean.length>=2) c=lean;
+  c=c.sort(function(a,b){ return b.protein/b.kcal-a.protein/a.kcal; }).slice(0,12);
+  var combos=[];
+  c.forEach(function(a,i){ combos.push([a]);
+    c.forEach(function(b,j){ if(j<i) return; combos.push([a,b]);
+      c.forEach(function(d2,k2){ if(k2<j) return; combos.push([a,b,d2]); }); }); });
+  var scored=combos.map(function(cb){
+    var p=cb.reduce(function(s,x){ return s+x.protein; },0), k=cb.reduce(function(s,x){ return s+x.kcal; },0);
+    var short=Math.max(0,gap-p), over=Math.max(0,k-kcLeft), extra=Math.max(0,p-gap-25);
+    var distinct={}; cb.forEach(function(x){ distinct[x.name]=1; }); var reps=cb.length-Object.keys(distinct).length;
+    return {foods:cb,protein:p,kcal:k,score:short*10+over*0.6+k*0.15+extra*2+(cb.length-1)*15+reps*25};
+  }).sort(function(x,y){ return x.score-y.score; });
+  var seen={}, opts=[];
+  scored.forEach(function(o){                     /* three genuinely different ideas, not the same foods reshuffled */
+    var names={}; o.foods.forEach(function(f){ names[f.name]=1; });
+    var key=Object.keys(names).sort().join('+'); if(seen[key]||opts.length>=3) return; seen[key]=1;
+    o.label=foodsLabel(o.foods); opts.push(o); });
+  return {gap:gap,kcLeft:Math.round(kcLeft),opts:opts};
+}
+function foodsLabel(fs){
+  var n={}, order=[]; fs.forEach(function(f){ if(!n[f.name]){ n[f.name]=0; order.push(f.name); } n[f.name]++; });
+  return order.map(function(k){ return (n[k]>1?n[k]+'× ':'')+k; }).join(' + ');
+}
+function gapCard(d){
+  if(d!==ymd()) return '';
+  var pgap=proteinGap(d); if(!pgap) return '';
+  if(pgap.done) return '';
+  var hr=new Date().getHours(); if(hr<14&&!S.food.gapOpen) return '<div class="lbar" style="margin:-2px 0 12px"><span>'+pgap.gap+' g protein to go today.</span><button data-act="gap-open">Ideas</button></div>';
+  S.food.gapList=pgap.opts;
+  var h='<div class="card"><div class="card-b" style="padding-top:13px"><div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:14.5px;flex:1">Protein to go</b>'
+    + '<span style="font-weight:800;color:#3987e5">'+pgap.gap+' g</span></div>';
+  if(!pgap.opts.length) h+='<div class="hint">Log a few meals with protein and I will suggest your own foods to close the gap.</div>';
+  else {
+    h+='<div style="font-size:12px;color:var(--mut2);margin:2px 0 6px">From what you usually eat'+(num(S.profile.calGoal)?', keeping inside your '+Math.max(0,pgap.kcLeft)+' kcal left':'')+':</div>';
+    pgap.opts.forEach(function(o,i){
+      h+='<button class="gapopt" data-act="gap-add" data-i="'+i+'"><span><b>'+esc(o.label)+'</b>'
+        + '<small>'+o.protein+' g protein · '+o.kcal+' kcal'+(o.protein>=pgap.gap?'':' · '+(pgap.gap-o.protein)+' g short')+'</small></span><i>+ Add</i></button>';
+    });
+  }
+  return h+'</div></div>';
+}
+
+/* ================= SUPERSETS (Quick mode) ================= */
+function primaryOf(name){ var w=musclesFor(name)||{}, mx=0; Object.keys(w).forEach(function(m){ if(w[m]>mx) mx=w[m]; });
+  return Object.keys(w).filter(function(m){ return w[m]>=mx*0.85; }); }
+function pairSupersets(ses){
+  var lifts=ses.ex.filter(function(e){ return e.kind!=='protocol'&&!(e.sets||[]).some(function(s){ return s.done; })&&!e.ss; });
+  var used={}, letter=0;
+  lifts.forEach(function(a,i){
+    if(used[a.id]) return;
+    var pa=primaryOf(a.name);
+    for(var j=i+1;j<lifts.length;j++){
+      var b=lifts[j]; if(used[b.id]) continue;
+      var pb=primaryOf(b.name);
+      if(pa.length&&pb.length&&!pa.some(function(m){ return pb.indexOf(m)>=0; })){
+        var L='ABCD'[letter++]; used[a.id]=used[b.id]=1;
+        a.ss=L+'1'; b.ss=L+'2';
+        var ai=ses.ex.indexOf(a), bi=ses.ex.indexOf(b);
+        if(bi!==ai+1){ ses.ex.splice(bi,1); ses.ex.splice(ses.ex.indexOf(a)+1,0,b); }   /* partners sit together */
+        break;
+      }
+    }
+  });
+  return ses;
+}
+function ssPartner(ses,ei){
+  var e=ses.ex[ei]; if(!e||!e.ss) return null;
+  var want=e.ss[0]+(e.ss[1]==='1'?'2':'1');
+  for(var i=0;i<ses.ex.length;i++) if(ses.ex[i].ss===want) return i;
+  return null;
+}
+
+/* ================= CALENDAR EXPORT (.ics) ================= */
+function icsEsc(s){ return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function icsFold(line){ var out=[]; while(line.length>73){ out.push(line.slice(0,73)); line=' '+line.slice(73); } out.push(line); return out.join('\r\n'); }
+function workoutTimeFor(ds){
+  var t=String(S.profile.calTime||'18:00'), w=fromYmd(ds).getDay(), gh=gymDay(w);
+  var start=hm(t)||1080, dur=num(S.profile.calDur)||75;
+  if(gh){ var open=hm(gh[0]), close=hm(gh[1]);
+    if(start+dur>close) start=Math.max(open+15,close-dur-15);    /* weekends close early: fit the session in */
+    if(start<open) start=open+15; }
+  return {start:start,dur:dur};
+}
+function buildICS(weeks){
+  var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Workout Log//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Workouts'];
+  var stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+Z$/,'Z'), n=0, today=ymd();
+  for(var i=0;i<(weeks||4)*7;i++){
+    var ds=shiftYmd(today,i), p=plannedFor(ds);
+    if(!p||!(p.exercises||[]).length||sessionOn(ds)) continue;
+    var tm=workoutTimeFor(ds), d=fromYmd(ds);
+    var st=new Date(d.getFullYear(),d.getMonth(),d.getDate(),Math.floor(tm.start/60),tm.start%60);
+    var en=new Date(st.getTime()+tm.dur*60000);
+    var f=function(x){ return x.getFullYear()+pad(x.getMonth()+1)+pad(x.getDate())+'T'+pad(x.getHours())+pad(x.getMinutes())+'00'; };
+    var desc=(p.exercises||[]).map(function(e){ return '- '+e.name+(e.kind==='protocol'?' ('+(e.spec||'')+')':' '+(e.sets||'?')+' x '+(e.reps||'?')+(num(e.kg)?' @ '+fmt(num(e.kg))+' kg':'')); }).join('\n');
+    L.push('BEGIN:VEVENT','UID:wl-'+ds+'@workoutlog','DTSTAMP:'+stamp,'DTSTART:'+f(st),'DTEND:'+f(en),
+      icsFold('SUMMARY:'+icsEsc(p.name||'Workout')),icsFold('LOCATION:'+icsEsc(gym().name)),icsFold('DESCRIPTION:'+icsEsc(desc)),
+      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(p.name||'Workout'),'TRIGGER:-PT60M','END:VALARM','END:VEVENT');
+    n++;
+  }
+  L.push('END:VCALENDAR');
+  return {text:L.join('\r\n')+'\r\n',n:n};
+}
+function exportICS(){
+  var r=buildICS(4);
+  if(!r.n){ toast('Nothing planned in the next 4 weeks'); return; }
+  try{
+    var url=URL.createObjectURL(new Blob([r.text],{type:'text/calendar'}));
+    var a=document.createElement('a'); a.href=url; a.download='workouts-'+ymd()+'.ics';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); },4000);
+    toast(r.n+' workout'+(r.n===1?'':'s')+' saved. Open the file to add them to your calendar.');
+  }catch(e){ toast('Could not make the calendar file here'); }
+}
+function calCard(){
+  return '<div class="card"><div class="card-b" style="padding-top:14px"><b style="font-size:14.5px">Add to your phone\'s calendar</b>'
+    + '<div class="hint" style="margin:4px 0 8px">The next 4 weeks of workouts as calendar events at B-Fit, with a reminder an hour before. Weekend times move earlier to fit the shorter hours.</div>'
+    + '<div class="duo" style="margin-top:0"><div class="fld"><label>Usual start time</label><input type="time" data-fkey="ct" data-in="cal-time" value="'+esc(S.profile.calTime||'18:00')+'"></div>'
+    + '<div class="fld"><label>Length (min)</label><input data-fkey="cd" data-in="cal-dur" type="text" inputmode="numeric" value="'+esc(S.profile.calDur||75)+'"></div></div>'
+    + '<button class="btn p" style="margin-top:10px" data-act="ics">Save calendar file</button>'
+    + '<div class="hint">Open the downloaded file and your calendar app asks to add the events. If your plan changes, save it again: most calendars update the same workouts instead of doubling them.</div></div></div>';
+}
+
+/* ================= PROGRESS PHOTOS (this phone only) ================= */
+var PDB=null;
+function photoDB(){
+  if(PDB) return PDB;
+  PDB=new Promise(function(res,rej){
+    try{ var rq=indexedDB.open('wl_photos',1);
+      rq.onupgradeneeded=function(){ rq.result.createObjectStore('p',{keyPath:'id'}); };
+      rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ rej(rq.error); };
+    }catch(e){ rej(e); }
+  });
+  return PDB;
+}
+function photoTx(mode,fn){ return photoDB().then(function(db){ return new Promise(function(res,rej){
+  var tx=db.transaction('p',mode), st=tx.objectStore('p'), out=fn(st); tx.oncomplete=function(){ res(out&&out.result!==undefined?out.result:out); }; tx.onerror=function(){ rej(tx.error); }; }); }); }
+function loadPhotos(){
+  return photoTx('readonly',function(st){ return st.getAll(); }).then(function(list){
+    S.photos=(list||[]).sort(function(a,b){ return String(b.date).localeCompare(String(a.date))||b.at-a.at; }); render(); return S.photos;
+  }).catch(function(){ S.photos=[]; S.photoErr='Photos cannot be stored in this browser.'; render(); });
+}
+function savePhoto(file,pose){
+  return shrink(file,900,0.82,true).then(function(data){
+    var p={id:'ph-'+uid(),date:ymd(),pose:pose||'front',data:data,at:Date.now()};
+    return photoTx('readwrite',function(st){ st.put(p); }).then(loadPhotos);
+  });
+}
+function deletePhoto(id){ return photoTx('readwrite',function(st){ st.delete(id); }).then(loadPhotos); }
+function photosBody(){
+  if(!S.photos){ loadPhotos(); return '<div class="hint">Loading…</div>'; }
+  var pose=S.photoPose||'front', h='';
+  h+='<div class="hint" style="margin-top:0">Photos stay on this phone only. They are not synced, not in backups, and never sent anywhere. Same spot, same light, same time of day makes them comparable.</div>';
+  h+='<div class="mchips" style="margin-top:8px">'+['front','side','back'].map(function(p){ return '<button class="'+(pose===p?'on':'')+'" data-act="ph-pose" data-p="'+p+'">'+p[0].toUpperCase()+p.slice(1)+'</button>'; }).join('')+'</div>';
+  h+='<label class="btn" style="margin-top:8px" for="phin">Add a '+pose+' photo</label>';
+  if(S.photoErr) h+='<div class="banner" style="margin-top:8px">'+esc(S.photoErr)+'</div>';
+  var mine=S.photos.filter(function(p){ return p.pose===pose; });
+  if(mine.length>=2){
+    var a=mine[mine.length-1], b=mine[0];
+    h+='<div style="font-size:12.5px;font-weight:800;margin:12px 0 6px">First vs latest</div><div class="phcmp">'
+      + '<figure><img src="'+a.data+'" alt=""><figcaption>'+esc(dateLabel(a.date))+'</figcaption></figure>'
+      + '<figure><img src="'+b.data+'" alt=""><figcaption>'+esc(dateLabel(b.date))+'</figcaption></figure></div>';
+  }
+  if(mine.length){
+    h+='<div style="font-size:12.5px;font-weight:800;margin:12px 0 6px">All '+pose+' photos</div><div class="phgrid">';
+    mine.forEach(function(p){ h+='<figure><img src="'+p.data+'" alt=""><figcaption>'+esc(dateLabel(p.date))
+      + ' <button data-act="arm" data-key="ph:'+p.id+'">'+(S.confirm==='ph:'+p.id?'tap again':'✕')+'</button></figcaption></figure>'; });
+    h+='</div>';
+  }
+  return h;
 }
 
 /* ---------------- views ---------------- */
@@ -5267,8 +5479,9 @@ function liveView(ses){
 
   var lprs=sessionPRs(ses);
   (ses.ex||[]).forEach(function(e,ei){
-    var mOpen=S.liveMenu===ei;
-    h+='<div class="ses-ex"><div class="ses-ex-h"><span class="nm">'+(ei+1)+'. '+esc(e.name||'Exercise')+(lprs[e.id]?prChip():'')+'</span>'
+    var mOpen=S.liveMenu===ei, pi=ssPartner(ses,ei);
+    if(e.ss&&e.ss[1]==='1'&&pi!=null) h+='<div class="ssbar">Superset '+e.ss[0]+': alternate one set of each, rest after the second</div>';
+    h+='<div class="ses-ex'+(e.ss&&pi!=null?' ss':'')+'"><div class="ses-ex-h"><span class="nm">'+(e.ss&&pi!=null?'<em class="sstag">'+e.ss+'</em>':(ei+1)+'. ')+esc(e.name||'Exercise')+(lprs[e.id]?prChip():'')+'</span>'
       + '<span class="tg">'+esc(isTimed(e)&&e.kind!=='protocol'?(e.target&&e.target.sets||'?')+' × '+((e.target&&e.target.reps)||'?')+' s':target(e))+'</span>'
       + '<button class="lchg'+(mOpen?' on':'')+'" data-act="lv-menu" data-ei="'+ei+'">'+(mOpen?'Close':'Change')+'</button></div>';
     if(mOpen) h+=liveMenuHTML(ses,ei);
@@ -5415,6 +5628,7 @@ function viewPlan(){
       + (fu?'<br>becomes '+esc(fu.name)+' from '+esc(fromYmd(fu.effectiveFrom).toLocaleDateString(undefined,{day:'numeric',month:'short'})):'')
       + '</small></span><span class="go">›</span></button>';
   });
+  h+='<div class="sec-t">Calendar</div>'+calCard();
   return h;
 }
 
@@ -5646,6 +5860,7 @@ document.addEventListener('click',function(ev){
     var p=key.split(':');
     if(p[0]==='day'){ drop('days',p[1]); return; }
     if(p[0]==='ses'){ if(S.showReview===p[1]) S.showReview=null; drop('sessions',p[1]); return; }
+    if(p[0]==='ph'){ deletePhoto(p[1]); return; }
     if(p[0]==='meal'){ S.food.pending=null; drop('meals',p[1]); return; }
     if(p[0]==='char'){
       S.charEdit=null;
@@ -5694,6 +5909,14 @@ document.addEventListener('click',function(ev){
   if(act==='wk'){ S.weekOff=Math.min(0,(S.weekOff||0)+parseInt(t.dataset.d,10)); render(); return; }
 
   /* --- food --- */
+  if(act==='gap-open'){ S.food.gapOpen=true; render(); return; }
+  if(act==='gap-add'){
+    var go=(S.food.gapList||[])[parseInt(t.dataset.i,10)]; if(!go) return;
+    go.foods.forEach(function(f){ put('meals',Object.assign(mealTemplate(f),{id:uid(),date:ymd(),at:Date.now(),source:'repeat',note:''}),true); });
+    toast('Added '+go.label); return;
+  }
+  if(act==='ics'){ exportICS(); return; }
+  if(act==='ph-pose'){ S.photoPose=t.dataset.p; render(); return; }
   if(act==='water'){ var nm=addWater(parseInt(t.dataset.ml,10)); if(parseInt(t.dataset.ml,10)>0) toast('Water: '+fmt(nm/1000)+' L'); return; }
   if(act==='pr-more'){ S.prMore=!S.prMore; render(); return; }
   if(act==='meas-go'){ S.view='you'; S.panels.meas=true; render(); return; }
@@ -5947,7 +6170,9 @@ document.addEventListener('click',function(ev){
       if(!c2.ex[ei].t1&&c2.ex[ei].sets.every(function(x){ return x.done; })) c2.ex[ei].t1=nowHM();
     }
     put('sessions',c2);
-    if(nowDone){ primeAudio(); startRest(); }        /* a tap is our one chance to unlock audio */
+    var sp=ssPartner(c2,ei), firstOfPair=c2.ex[ei].ss&&c2.ex[ei].ss[1]==='1'&&sp!=null&&(c2.ex[sp].sets||[]).some(function(x){ return !x.done; });
+    if(nowDone&&firstOfPair){ primeAudio(); if(S.rest){ S.rest=null; paintRest(); } toast('Straight to '+c2.ex[sp].name); }
+    else if(nowDone){ primeAudio(); startRest(); }        /* a tap is our one chance to unlock audio */
     else if(S.rest){ S.rest=null; paintRest(); }
     return;
   }
@@ -6009,6 +6234,8 @@ function inputMain(ev){
   var kind=el.dataset['in'], v=el.value;
 
   if(kind==='food-w'){ S.food.wText=v; return; }
+  if(kind==='cal-time'){ saveProfile({calTime:v}); return; }
+  if(kind==='cal-dur'){ saveProfile({calDur:num(v)||75}); return; }
   if(kind==='meas'){ S.measEdit=S.measEdit||{}; S.measEdit[el.dataset.k]=v; return; }
   if(kind==='ci-note'){ S.ci=S.ci||{}; S.ci.note=v; return; }
   if(kind.indexOf('p-')===0){
@@ -6154,6 +6381,15 @@ function inputMain(ev){
   });
 })();
 
+(function(){
+  var pi=document.getElementById('phin');
+  if(pi) pi.addEventListener('change',function(){
+    var f=pi.files&&pi.files[0]; pi.value=''; if(!f) return;
+    S.photoErr=''; toast('Saving photo…');
+    savePhoto(f,S.photoPose||'front').then(function(){ toast('Photo saved on this phone'); },
+      function(){ S.photoErr='Could not save that photo. Try a JPEG or PNG.'; render(); });
+  });
+})();
 (function(){
   var fi=document.getElementById('photoin');
   if(fi) fi.addEventListener('change',function(){
