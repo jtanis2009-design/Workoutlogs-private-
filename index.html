@@ -49,6 +49,11 @@
     font-weight:600;font-size:14px;background:var(--card2);color:var(--txt);border:1px solid var(--line);width:100%}
   .btn:active{transform:scale(.985)}
   label.btn{cursor:pointer;box-sizing:border-box}
+  .mchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .mchips button{background:var(--card2,#151821);border:1px solid var(--line);color:inherit;border-radius:999px;padding:8px 13px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .mchips button.on{background:var(--acc);border-color:var(--acc);color:#111}
+  .mbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card2,#151821);border:1px solid var(--line);border-radius:11px;padding:8px 12px;margin:8px 0;font-size:13px}
+  .mbar button{background:none;border:0;color:var(--acc);font:inherit;font-weight:800;cursor:pointer}
   .lookgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .lookgrid button{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--card2,#151821);border:1px solid var(--line);border-radius:14px;padding:10px 4px;color:inherit;font:inherit;cursor:pointer;min-width:0}
   .lookgrid button.on{border-color:var(--acc)}
@@ -783,16 +788,21 @@ function buildSession(d,opts){
       for(var i=0;i<n;i++) sets.push({kg:fmt(sg.kg),reps:String(num(e.reps)||''),rir:'',done:tick});
       return {id:e.id||uid(),kind:'strength',name:e.name||'Exercise',note:e.note||'',hint:sg.why,
         base:num(e.base)||0,perSide:!!e.perSide,
-        target:{sets:n,reps:e.reps||'',kg:num(e.kg)},sets:sets,comment:''};
+        target:{sets:n,reps:e.reps||'',kg:num(e.kg),plan:{sets:e.sets,reps:e.reps||'',kg:e.kg,step:e.step}},sets:sets,comment:''};
     })
   };
+}
+function buildSessionMode(d,opts){
+  var s=buildSession(d,opts);
+  if(!(opts&&opts.done)) try{ applyMode(s,curMode().id); }catch(e){}
+  return s;
 }
 function startSession(dayId){
   var d=resolveDay(dayId); if(!d) return;
   if(active()){ S.parked=false; S.preview=null; S.view='today'; render();
     toast('You already have a workout in progress'); return; }
   S.view='today'; S.showReview=null; S.preview=null; S.parked=false;
-  put('sessions',buildSession(d),true);
+  put('sessions',buildSessionMode(d),true);
 }
 /* log a workout you already did, on its real date */
 function logPast(dayId,dstr){
@@ -829,7 +839,7 @@ function beep(){
   }catch(e){}
 }
 function startRest(){
-  var n=num(S.settings.rest)||90;
+  var n=modeRest();
   if(n<=0){ S.rest=null; paintRest(); return; }
   S.rest={until:Date.now()+n*1000,rung:false};
   paintRest();
@@ -1395,6 +1405,12 @@ function coachTools(){
       return {ok:true,where:r.how,logged:r.items.map(function(d){ return {exercise:d.name,sets:d.sets.length}; })};
     }},
 
+  { name:'set_mode',
+    description:'Switch the coach mode: normal, failure (last set to failure), recovery (lighter, fewer sets), strength (4-6 reps, heavy), pump (12-15 reps, short rest) or quick (first 4 lifts, short rest). Also updates a workout in progress.',
+    inputSchema:{type:'object',properties:{mode:{type:'string'}},required:['mode']},
+    execute:function(a){ var k=String(a.mode||'').toLowerCase(), m=MODES.filter(function(x){ return x.id===k||x.name.toLowerCase()===k; })[0];
+      if(!m) throw new Error('Unknown mode: '+a.mode); setMode(m.id,true); return {ok:true,mode:m.name}; }},
+
   { name:'make_deload',
     description:'Turn next week into a deload week: every planned workout keeps its weights but has half the sets. Use undo:true to remove it again.',
     inputSchema:{type:'object',properties:{undo:{type:'boolean'}}},
@@ -1489,6 +1505,7 @@ function coachPreamble(){
    + 'whether you point out a missed set or a stalled lift, or your honesty about what you do not know. '
    + 'If the character and the facts ever pull in different directions, the facts win.',
   '',
+  'COACH MODE: '+curMode().name+'. '+curMode().ai+' They can switch with set_mode (normal, failure, recovery, strength, pump, quick).',
   BODY_RULES,
   '- If DELOAD says lifts have stalled, suggest a deload week once. If they agree, call make_deload.',
   '',
@@ -3299,6 +3316,16 @@ function setLogReply(r){
 
 function ruleCoach(text){
   var lt=String(text||'').toLowerCase();
+  var mm=lt.match(/\b(normal|failure|recovery|strength|pump|quick|hypertrophy|heavy|light|easy)[\s-]+(mode|day|session|workout)\b/)
+       ||lt.match(/\b(?:switch|go|change|set|put me)\s+(?:back\s+)?(?:to|into|on)\s+(?:a\s+|the\s+)?(normal|failure|recovery|strength|pump|quick|hypertrophy)\b/);
+  if(mm&&!/\bwhat\b.*\b(mean|is)\b/.test(lt)){
+    var map={hypertrophy:'pump',heavy:'strength',light:'recovery',easy:'recovery'}, mid=map[mm[1]]||mm[1];
+    setMode(mid,true); var m0=modeById(mid);
+    return 'Coach mode is now **'+m0.name+'**. '+m0.desc+(active()?' Your workout in progress was updated; sets you already did stay as they are.':' It applies when you start your next workout.');
+  }
+  if(/\b(modes|coach settings|coach mode)\b/.test(lt)){
+    return 'Coach modes:\n'+MODES.map(function(m){ return '- **'+m.name+'**: '+m.short; }).join('\n')+'\n\nCurrent: **'+curMode().name+'**. Say for example "switch to recovery mode".';
+  }
   if(/\bdeload\b|lighter week/.test(lt)){
     if(/\b(undo|cancel|remove|no)\b/.test(lt)){ undoDeload(); return 'Deload removed. Next week is back to normal.'; }
     if(/\b(make|start|take|do|set|plan|yes|next week)\b/.test(lt)){ var dn2=applyDeload();
@@ -3470,6 +3497,7 @@ var ACTION_PROTOCOL=[
  '- log_sets {exercise, sets:"25x12, 25x10"}  (today only; pairs are kg x reps)',
  '- log_body_weight {kg, date?}',
  '- make_deload {undo?}',
+ '- set_mode {mode: normal|failure|recovery|strength|pump|quick}',
  '- undo_last_change {}',
  'Inside plan and results, separate lines with \\n.',
  'plan format: '+PLAN_FORMAT,
@@ -4664,6 +4692,136 @@ function mealTemplate(m){
 }
 function isFav(name){ var k=String(name||'').trim().toLowerCase(); return (S.profile.favMeals||[]).some(function(f){ return String(f.name).trim().toLowerCase()===k; }); }
 
+/* ================= COACH MODES: how today's workout is set up ================= */
+var MODES=[
+ {id:'normal',name:'Normal',short:'Your plan as written',
+  desc:'Plan sets and reps. Weight goes up once every set hits the top of the range.',
+  ai:'Follow the plan as written.'},
+ {id:'failure',name:'To failure',short:'Last set of every lift to failure',rest:120,
+  desc:'Same plan, but the last set of every exercise goes to failure: 0 reps left. Weight goes up as soon as your first set hits the top of the range. 2 minutes rest.',
+  ai:'The last set of every exercise is taken to failure (0 reps in reserve). Push progression harder, and watch recovery closely.'},
+ {id:'recovery',name:'Recovery',short:'Lighter, leave reps in the tank',rest:120,
+  desc:'One set fewer, about 80% of your usual weight, and stop every set with 3 or more reps left. No PR chasing. For bad sleep, sore days or a rough week.',
+  ai:'This is an easy recovery session: fewer sets, about 80% loads, 3+ reps in reserve. Do not push PRs or add weight; praise showing up.'},
+ {id:'strength',name:'Strength',short:'Heavier, 4 to 6 reps',rest:180,
+  desc:'Heavier weights for 4 to 6 reps, picked from your estimated max. 3 minutes rest. Best on big lifts.',
+  ai:'Strength focus: 4-6 reps with heavier loads and long rest. Judge progress by load, not reps.'},
+ {id:'pump',name:'Pump',short:'Lighter, 12 to 15 reps, short rest',rest:60,
+  desc:'Lighter weights for 12 to 15 reps, one extra set on isolation lifts, and 60 seconds rest.',
+  ai:'Pump focus: 12-15 reps, lighter loads, short rest, extra sets on isolation lifts. Judge it by reps and the burn, not load.'},
+ {id:'quick',name:'Quick',short:'In and out in about 30 minutes',rest:60,
+  desc:'Only the first 4 lifts, one set fewer each, 60 seconds rest, finisher cut to 5 minutes. For when time is short or the gym closes soon.',
+  ai:'Short on time: only the first four lifts, fewer sets, short rest. Keep advice brief.'}
+];
+var ISOLATION={'lateral-raise':1,'pec-deck':1,'cable-fly':1,'leg-ext':1,'leg-curl':1,'bicep-machine':1,'db-curl':1,'hammer-curl':1,
+  'tricep-press':1,'pushdown':1,'calf-raise':1,'lp-calf':1,'rear-delt':1,'ab-machine':1,'cable-crunch':1,'shrug':1,'abductor':1,'adductor':1};
+function modeById(id){ return MODES.filter(function(m){ return m.id===id; })[0]||MODES[0]; }
+function curMode(){ return modeById(S.profile.trainMode||'normal'); }
+function sesMode(s){ return modeById((s&&s.mode)||'normal'); }
+/* weight for a rep target from your latest estimated max, stopping rir short of failure */
+function weightFor(name,reps,rir,step){
+  var rows=progData(name), e1=0;
+  for(var i=rows.length-1;i>=0;i--){ if(rows[i].e1rm>0){ e1=rows[i].e1rm; break; } }
+  if(!e1) return 0;
+  return roundStep(e1/(1+(reps+rir)/30),step);
+}
+/* reshape one built exercise for a mode; plan = what the plan said */
+function modeEx(x,plan,m){
+  if(x.kind==='protocol'){
+    if(m.id==='quick') x.note=('Quick mode: keep it to about 5 minutes. '+(x.note||'')).trim();
+    if(m.id==='recovery') x.note=('Recovery: easy pace, you should be able to talk. '+(x.note||'')).trim();
+    return x;
+  }
+  var lib=exLib(x.name), timed=isTimed(x), st=stepFor({name:x.name,kg:plan.kg,step:plan.step})||num(S.settings.step)||STEP;
+  var n=Math.max(1,Math.round(num(plan.sets))||x.sets.length||1), reps=String(plan.reps||''), kg=num(x.sets[0]&&x.sets[0].kg), why=x.hint||'', cue='';
+  if(m.id==='failure'){
+    var h=historyFor(x.name), top=topRep(reps);
+    if(h.length&&top&&h[0].sets.length&&h[0].sets[0].reps>=top){
+      var mx=0; h[0].sets.forEach(function(s){ if(s.kg>mx) mx=s.kg; });
+      if(mx>=kg&&!timed){ kg=roundStep(mx+st,st); why='First set hit '+top+' last time, so +'+fmt(st)+' kg. Last set to failure.'; }
+    }
+    cue='Last set: to failure, 0 reps left.';
+  } else if(m.id==='recovery'){
+    n=n>=3?n-1:n; if(!timed&&kg) kg=roundStep(kg*0.8,st);
+    why='Recovery: about 80% and 3+ reps left in every set.'; cue='Easy. Stop with 3 or more reps left.';
+  } else if(m.id==='strength'&&!timed){
+    reps='4-6'; var w=weightFor(x.name,6,1,st); kg=w||(kg?roundStep(kg*1.12,st):0);
+    why=w?'From your estimated max: about '+fmt(kg)+' kg for 6 with a rep left.':'No max logged yet, so about 12% over your usual weight. Adjust after set 1.';
+    cue='Heavy and clean. Full rest between sets.';
+  } else if(m.id==='pump'&&!timed){
+    reps='12-15'; var w2=weightFor(x.name,15,1,st); kg=w2||(kg?roundStep(kg*0.75,st):0);
+    if(lib&&ISOLATION[lib.id]) n=Math.min(n+1,8);
+    why=w2?'From your estimated max: about '+fmt(kg)+' kg for 15.':'About 75% of your usual weight. Adjust after set 1.';
+    cue='Slow lowering, squeeze at the top, short rest.';
+  } else if(m.id==='quick'){
+    n=n>=3?n-1:n; cue='Quick: short rest, keep moving.';
+  }
+  var old=x.sets, out=[];
+  for(var i=0;i<n;i++) out.push({kg:timed?(old[0]?old[0].kg:'0'):fmt(kg),reps:timed?String(topRep(reps)||''):String(num(reps)||''),rir:'',done:false,fail:m.id==='failure'&&i===n-1});
+  x.sets=out; x.hint=why; x.cue=cue; x.target={sets:n,reps:reps,kg:kg,plan:x.target&&x.target.plan||{sets:plan.sets,reps:plan.reps,kg:plan.kg}};
+  return x;
+}
+function applyMode(ses,mid){
+  var m=modeById(mid); ses.mode=m.id;
+  if(m.id==='normal') return ses;
+  if(m.id==='quick'){
+    var kept=0, cut=[];
+    ses.ex=ses.ex.filter(function(e){
+      if(e.kind==='protocol') return true;
+      if((e.sets||[]).some(function(s){ return s.done; })){ kept++; return true; }
+      if(kept<4){ kept++; return true; }
+      cut.push(e); return false;
+    });
+    ses.cut=(ses.cut||[]).concat(cut);
+  }
+  ses.ex=ses.ex.map(function(e){
+    if((e.sets||[]).some(function(s){ return s.done; })||(e.segs||[]).some(function(s){ return s.done; })) return e;
+    var plan=(e.target&&e.target.plan)||{sets:e.target?e.target.sets:(e.sets||[]).length,reps:e.target?e.target.reps:'',kg:e.target?e.target.kg:0};
+    return modeEx(e,plan,m);
+  });
+  return ses;
+}
+/* switching mode mid-workout: untouched exercises are rebuilt from the plan, done sets stay */
+function switchLiveMode(mid){
+  var s=active(); if(!s) return;
+  var c=JSON.parse(JSON.stringify(s));
+  if(c.cut&&c.cut.length&&mid!=='quick'){ c.ex=c.ex.concat(c.cut); c.cut=[]; }
+  c.ex=c.ex.map(function(e){
+    if(e.kind==='protocol'||(e.sets||[]).some(function(x){ return x.done; })) {
+      if(e.kind==='protocol') e.note=String(e.note||'').replace(/^(Quick mode|Recovery): [^.]*\.\s*/,'');
+      return e; }
+    var p=(e.target&&e.target.plan)||{sets:e.target.sets,reps:e.target.reps,kg:e.target.kg};
+    var sg=suggest(e.name,p.kg,p.reps,p.sets,stepFor({name:e.name,kg:p.kg,step:p.step})), n=Math.max(1,Math.round(num(p.sets))||1), st=[];
+    for(var i=0;i<n;i++) st.push({kg:fmt(sg.kg),reps:String(num(p.reps)||''),rir:'',done:false});
+    e.sets=st; e.hint=sg.why; e.cue=''; e.target={sets:n,reps:p.reps,kg:num(p.kg),plan:p};
+    return e;
+  });
+  applyMode(c,mid);
+  put('sessions',c,true);
+}
+function modeRest(){ var s=active(), m=s?sesMode(s):curMode(); return m.rest||num(S.settings.rest)||90; }
+function setMode(mid,quiet){
+  var m=modeById(mid);
+  saveProfile({trainMode:m.id});
+  if(active()) switchLiveMode(m.id);
+  if(!quiet) toast('Coach mode: '+m.name);
+}
+function modeChips(compact){
+  var cm=active()?sesMode(active()):curMode(), h='<div class="mchips">';
+  MODES.forEach(function(m){ h+='<button class="'+(m.id===cm.id?'on':'')+'" data-act="mode-set" data-m="'+m.id+'">'+esc(m.name)+'</button>'; });
+  h+='</div>';
+  if(!compact) h+='<div class="hint" style="margin:6px 0 0">'+esc(cm.desc)+'</div>';
+  return h;
+}
+/* gentle nudges: closing soon, or a rough check-in */
+function modeNudge(){
+  var cm=curMode(), st=gymStatus();
+  if(cm.id!=='quick'&&st.open&&st.left<=50) return {id:'quick',text:'The gym closes in '+st.left+' minutes. Switch to Quick?'};
+  var c=(S.checkins||[]).slice().sort(function(a,b){ return String(b.week).localeCompare(String(a.week)); })[0];
+  if(cm.id!=='recovery'&&c&&c.week>=weekKey(-1)&&(num(c.sleep)<=2||num(c.rec)<=2)) return {id:'recovery',text:'Your last check-in said '+(num(c.sleep)<=2?'sleep':'recovery')+' was rough. Switch to Recovery today?'};
+  return null;
+}
+
 /* ---------------- views ---------------- */
 function head(){
   var t={today:'Today',plan:'Plan',food:'Food',coach:'Coach',history:'Stats',you:'You'};
@@ -4709,7 +4867,12 @@ function briefCard(d,isToday){
     if(e.note) h+='<div class="fo">'+esc(e.note)+'</div>';
     h+='</div></div>';
   });
-  h+='<button class="btn p" style="margin-top:16px" data-act="start" data-id="'+esc(d.id)+'">Start this workout</button>';
+  if(isToday){
+    var nd=modeNudge();
+    h+='<div style="margin-top:14px;font-size:12.5px;font-weight:800">Coach mode</div>'+modeChips(false);
+    if(nd) h+='<div class="lbar" style="margin-top:8px"><span>'+esc(nd.text)+'</span><button data-act="mode-set" data-m="'+nd.id+'">Switch</button></div>';
+  }
+  h+='<button class="btn p" style="margin-top:16px" data-act="start" data-id="'+esc(d.id)+'">Start this workout'+(isToday&&curMode().id!=='normal'?' · '+esc(curMode().name):'')+'</button>';
   if(S.skipFor===d.date){
     h+='<div style="margin-top:12px"><div style="font-size:13px;font-weight:700;margin-bottom:8px">Why not?</div><div class="chips">';
     REASONS.forEach(function(r){
@@ -4913,6 +5076,10 @@ function liveView(ses){
     + '<span class="chip a">live</span></div><div class="card-b">';
   if(ses.dayNote) h+='<div class="fo-box" style="margin:8px 0 2px">'+esc(ses.dayNote)+'</div>';
   if(!(ses.ex||[]).length) h+='<div class="empty"><p>This workout has no exercises yet.</p></div>';
+  var lm=sesMode(ses);
+  h+='<div class="mbar"><span><b>'+esc(lm.name)+'</b> mode'+(lm.id==='normal'?'':' · '+esc(lm.short))+'</span>'
+    + '<button data-act="mode-pick">'+(S.modePick?'Close':'Change')+'</button></div>';
+  if(S.modePick) h+=modeChips(false);
   if(S.liveMsg) h+='<div class="lbar"><span>'+esc(S.liveMsg)+'</span><button data-act="lv-undo">Undo</button></div>';
 
   var lprs=sessionPRs(ses);
@@ -4925,6 +5092,7 @@ function liveView(ses){
     if(S.liveMenu==='add'+(ei+1)) h+=liveAddHTML(ses,ei+1);
     if(e.note) h+='<div class="fo-box">'+esc(e.note)+'</div>';
     if(e.hint) h+='<div class="prog">'+esc(e.hint)+'</div>';
+    if(e.cue) h+='<div class="prog" style="color:var(--acc)">'+esc(e.cue)+'</div>';
     var em=exMins(e);
     h+='<div class="trow">'
       + '<div class="tcell"><label>Start</label><input type="time" data-fkey="t0'+ei+'" data-in="ex-t0" data-ei="'+ei+'" value="'+esc(e.t0||'')+'">'
@@ -4954,7 +5122,7 @@ function liveView(ses){
         h+='<div class="srow'+(st.done?' done':'')+'"><div class="snum">'+(si+1)+'</div>'
           + '<div class="unit"><input data-fkey="sk'+ei+'_'+si+'" data-in="set-kg" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="decimal" value="'+esc(st.kg)+'"><span>kg</span></div>'
           + '<div class="unit"><input data-fkey="sr'+ei+'_'+si+'" data-in="set-reps" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="numeric" value="'+esc(st.reps)+'"><span>'+(isTimed(e)?'sec':'reps')+'</span></div>'
-          + '<div class="unit"><input data-fkey="si'+ei+'_'+si+'" data-in="set-rir" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="numeric" value="'+esc(st.rir==null?'':st.rir)+'" placeholder="–"><span>rir</span></div>'
+          + '<div class="unit"><input data-fkey="si'+ei+'_'+si+'" data-in="set-rir" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="numeric" value="'+esc(st.rir==null?'':st.rir)+'" placeholder="'+(st.fail?'0':'–')+'"><span>'+(st.fail?'fail':'rir')+'</span></div>'
           + '<button class="chk'+(st.done?' on':'')+'" data-act="tick" data-ei="'+ei+'" data-si="'+si+'">'+(st.done?'✓':'')+'</button></div>';
       });
       h+='<div class="mini"><button data-act="add-set" data-ei="'+ei+'">add set</button>'
@@ -5139,6 +5307,7 @@ function viewCoach(){
     + '<div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:800">'+esc(coachName())+'</div>'
     + '<div style="font-size:12px;color:var(--mut2)">'+esc(ac.tag)+'</div></div>'
     + '<button class="icn" data-act="cstrip">'+(S.coachPick?'⌃':'⌄')+'</button></div>';
+  h+='<div style="font-size:13px;font-weight:700;color:var(--mut);margin:2px 0 7px">Coach mode</div>'+modeChips(false)+'<div style="height:10px"></div>';
   if(S.coachPick){
     h+='<div style="font-size:13px;font-weight:700;color:var(--mut);margin-bottom:7px">Select your coach</div><div class="cstrip">';
     allChars().forEach(function(c){
@@ -5340,6 +5509,8 @@ document.addEventListener('click',function(ev){
   if(act==='wk'){ S.weekOff=Math.min(0,(S.weekOff||0)+parseInt(t.dataset.d,10)); render(); return; }
 
   /* --- food --- */
+  if(act==='mode-set'){ setMode(t.dataset.m); S.modePick=false; return; }
+  if(act==='mode-pick'){ S.modePick=!S.modePick; render(); return; }
   if(act==='qa-meal'){
     var qmm=(S.food.qlist||[])[parseInt(t.dataset.i,10)]; if(!qmm) return;
     var tpl=mealTemplate(qmm), nid=uid();
