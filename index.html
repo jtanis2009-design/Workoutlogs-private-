@@ -49,6 +49,14 @@
     font-weight:600;font-size:14px;background:var(--card2);color:var(--txt);border:1px solid var(--line);width:100%}
   .btn:active{transform:scale(.985)}
   label.btn{cursor:pointer;box-sizing:border-box}
+  .cups{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+  .cups i{width:16px;height:20px;border:2px solid #3987e5;border-top-width:1px;border-radius:2px 2px 5px 5px;opacity:.35}
+  .cups i.on{background:#3987e5;opacity:1}
+  .wbtns{display:grid;grid-template-columns:1fr 1fr 1fr .8fr;gap:6px}
+  .wbtns .btn{padding:8px 4px;font-size:13px;line-height:1.2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  .wbtns small{display:block;font-size:10.5px;color:var(--mut2);font-weight:600}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+  .mgrid small{display:block;font-size:11px;margin-top:3px}
   .mchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
   .mchips button{background:var(--card2,#151821);border:1px solid var(--line);color:inherit;border-radius:999px;padding:8px 13px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
   .mchips button.on{background:var(--acc);border-color:var(--acc);color:#111}
@@ -432,7 +440,7 @@ var S={
   preview:null, parked:false, avatarPick:false, skipFor:'', coachPick:false, charEdit:null,
   weekOff:0, importing:null,
   panels:{},
-  meals:[], weights:[], profile:{}, skips:[], chars:[], checkins:[],
+  meals:[], weights:[], profile:{}, skips:[], chars:[], checkins:[], water:[], measures:[],
   notif:'', lastNudge:0,
   food:{date:'',pending:null,analyzing:false,openProfile:false},
   draft:'', busy:false, stream:''
@@ -531,6 +539,8 @@ function loadLocal(){
     S.skips=JSON.parse(ls.getItem('wl_skips')||'[]')||[];
     S.chars=JSON.parse(ls.getItem('wl_chars')||'[]')||[];
     S.checkins=JSON.parse(ls.getItem('wl_chk')||'[]')||[];
+    S.water=JSON.parse(ls.getItem('wl_water')||'[]')||[];
+    S.measures=JSON.parse(ls.getItem('wl_meas')||'[]')||[];
     S.weights=JSON.parse(ls.getItem('wl_wt')||'[]')||[];
     S.profile=JSON.parse(ls.getItem('wl_prof')||'{}')||{};
     var st=JSON.parse(ls.getItem('wl_set')||'null'); if(st) S.settings=st;
@@ -541,7 +551,7 @@ function saveLocal(){
   var ls=LS(); if(!ls) return;
   var bad=[];
   [['wl_prof',S.profile],['wl_days',S.days],['wl_rt',S.routines],['wl_ses',S.sessions],['wl_set',S.settings],
-   ['wl_wt',S.weights],['wl_skips',S.skips],['wl_meals',S.meals],['wl_chars',S.chars],['wl_chk',S.checkins],['wl_chat',S.chat.slice(-60)]]
+   ['wl_wt',S.weights],['wl_skips',S.skips],['wl_meals',S.meals],['wl_chars',S.chars],['wl_chk',S.checkins],['wl_water',S.water],['wl_meas',S.measures],['wl_chat',S.chat.slice(-60)]]
   .forEach(function(kv){ try{ ls.setItem(kv[0],JSON.stringify(kv[1])); }catch(e){ bad.push(kv[0]); } });
   if(bad.indexOf('wl_meals')>=0){                      /* storage full: photo thumbnails are the big part, drop the oldest */
     var withPic=S.meals.filter(function(m){ return m.thumb; }).sort(function(a,b){ return (a.at||0)-(b.at||0); });
@@ -558,7 +568,7 @@ var writeQ={};
 function store(coll){
   return coll==='days'?S.days : coll==='routines'?S.routines : coll==='chat'?S.chat
        : coll==='meals'?S.meals : coll==='weights'?S.weights
-       : coll==='skips'?S.skips : coll==='chars'?S.chars : coll==='checkins'?S.checkins : S.sessions;
+       : coll==='skips'?S.skips : coll==='chars'?S.chars : coll==='checkins'?S.checkins : coll==='water'?S.water : coll==='measures'?S.measures : S.sessions;
 }
 function put(coll,obj,instant){
   try{ MSC.t=0; }catch(e){}
@@ -585,7 +595,7 @@ function drop(coll,id){
   if(coll==='days') S.days=out; else if(coll==='routines') S.routines=out;
   else if(coll==='chat') S.chat=out; else if(coll==='meals') S.meals=out;
   else if(coll==='weights') S.weights=out; else if(coll==='skips') S.skips=out;
-  else if(coll==='chars') S.chars=out; else if(coll==='checkins') S.checkins=out; else S.sessions=out;
+  else if(coll==='chars') S.chars=out; else if(coll==='checkins') S.checkins=out; else if(coll==='water') S.water=out; else if(coll==='measures') S.measures=out; else S.sessions=out;
   render();
   if(S.local){ saveLocal(); return; }
   try{ Promise.resolve(docRef(coll+'/'+id).delete()).catch(function(){}); }catch(e){}
@@ -638,6 +648,8 @@ function initDb(){
     sub('skips','sk',function(v){ S.skips=v; });
     sub('chars','ch',function(v){ S.chars=v; });
     sub('checkins','ck',function(v){ S.checkins=v; });
+    sub('water','wa',function(v){ S.water=v; });
+    sub('measures','ms',function(v){ S.measures=v; });
     sub('weights','w',function(v){ S.weights=v.sort(function(a,b){ return String(a.date)<String(b.date)?-1:1; }); });
     sub('profile','pf',function(v){ var a=v.filter(function(x){ return x.id==='me'; })[0]; if(a){ S.profile=a; applyTheme(); } });
   }).catch(function(){ clearTimeout(guard); goLocal(); });
@@ -1411,6 +1423,18 @@ function coachTools(){
     execute:function(a){ var k=String(a.mode||'').toLowerCase(), m=MODES.filter(function(x){ return x.id===k||x.name.toLowerCase()===k; })[0];
       if(!m) throw new Error('Unknown mode: '+a.mode); setMode(m.id,true); return {ok:true,mode:m.name}; }},
 
+  { name:'log_water',
+    description:'Add water they drank today, in ml.',
+    inputSchema:{type:'object',properties:{ml:{type:'string'}},required:['ml']},
+    execute:function(a){ var m=num(a.ml); if(!(m>0&&m<=5000)) throw new Error('Give ml between 1 and 5000'); var t2=addWater(Math.round(m),ymd()); return {ok:true,today_ml:t2,goal_ml:waterGoal(ymd()).ml}; }},
+
+  { name:'log_measurements',
+    description:'Save body measurements for today in cm (waist, chest, arm, thigh, hips, neck) and body fat % (bf). Only include what they gave.',
+    inputSchema:{type:'object',properties:{waist:{type:'string'},chest:{type:'string'},arm:{type:'string'},thigh:{type:'string'},hips:{type:'string'},neck:{type:'string'},bf:{type:'string'}}},
+    execute:function(a){ var d1=ymd(), c1=(S.measures||[]).filter(function(m){ return m.date===d1; })[0], r1=c1?JSON.parse(JSON.stringify(c1)):{id:'ms-'+d1,date:d1}, n1=0;
+      MEAS.forEach(function(m){ if(a[m[0]]!=null&&num(a[m[0]])>0){ r1[m[0]]=num(a[m[0]]); n1++; } });
+      if(!n1) throw new Error('No measurements given'); r1.at=Date.now(); put('measures',r1,true); return {ok:true,saved:n1}; }},
+
   { name:'make_deload',
     description:'Turn next week into a deload week: every planned workout keeps its weights but has half the sets. Use undo:true to remove it again.',
     inputSchema:{type:'object',properties:{undo:{type:'boolean'}}},
@@ -1510,6 +1534,8 @@ function coachPreamble(){
   '- If DELOAD says lifts have stalled, suggest a deload week once. If they agree, call make_deload.',
   '',
   bodyBrief(),
+  measBrief(),
+  'WATER TODAY: '+fmt(((waterOn(ymd())||{}).ml||0)/1000)+' of '+fmt(waterGoal(ymd()).ml/1000)+' L.',
   coachWeekBrief(),
   '',
   'EXERCISE GLOSSARY:',
@@ -2090,6 +2116,7 @@ function viewFood(){
     + macroCell('Fat',t.fat,0,'#9085e9')
     + '</div></div></div>';
 
+  h+=waterCard(d);
   var wToday=S.weights.filter(function(w){ return w.date===d; })[0];
   if(wToday&&!S.food.wEdit) h+='<div class="hint" style="margin:-4px 2px 12px">Weighed in at <b>'+fmt(num(wToday.kg))+' kg</b>'
     + (d===ymd()?' today':' on this day')+'. <button class="lnk" data-act="w-edit">Change</button></div>';
@@ -2260,6 +2287,7 @@ function profileBody(){
     + '<div class="fld"><label>Calorie goal</label><input data-fkey="prc" data-in="pr-cal" type="text" inputmode="numeric" value="'+esc(p.calGoal||'')+'"></div>'
     + '<div class="fld"><label>Protein goal (g)</label><input data-fkey="prp" data-in="pr-prot" type="text" inputmode="numeric" value="'+esc(p.proteinGoal||'')+'"></div>'
     + '</div>';
+  h+='<div class="fld" style="margin-top:12px"><label>Water goal (ml a day)</label><input data-fkey="prwg" data-in="pr-water" type="text" inputmode="numeric" value="'+esc(p.waterGoal||'')+'" placeholder="'+waterGoal('x').base+' (from your weight)"></div>';
   h+='<button class="btn" style="margin-top:12px" data-act="log-weight">Log '+esc(fmt(num(p.weightKg)||0))+' kg for '+esc(dateLabel(foodDate()))+'</button>';
   return h;
 }
@@ -3338,6 +3366,12 @@ function ruleCoach(text){
     var off0=/last week/.test(lt)||new Date().getDay()===1?-1:0;
     return reportText(weekReport(off0)).split('\n').map(function(x,i){ return i?'- '+x:'**'+x+'**'; }).join('\n');
   }
+  var wa=lt.match(/\b(?:drank|had|drink|water|log)\b[^0-9]*(\d+(?:[.,]\d+)?)\s*(ml|l|liters?|litres?|glass(?:es)?|bottles?)\b/)||lt.match(/\b(\d+(?:[.,]\d+)?)\s*(ml|l|liters?|litres?|glass(?:es)?|bottles?)\s+(?:of\s+)?water\b/);
+  if(wa&&/water|drank|drink/.test(lt)){
+    var q=num(wa[1].replace(',','.')), u=wa[2], ml=/^ml/.test(u)?q:/^l/.test(u)?q*1000:/^glass/.test(u)?q*250:q*500;
+    if(ml>0&&ml<=5000){ var tot=addWater(Math.round(ml),ymd()), wg=waterGoal(ymd());
+      return 'Logged **'+fmt(ml)+' ml**. Today: **'+fmt(tot/1000)+' of '+fmt(wg.ml/1000)+' L**'+(tot>=wg.ml?' — goal reached.':', '+fmt((wg.ml-tot)/1000)+' L to go.'); }
+  }
   var wm=lt.match(/^\s*(?:i\s*(?:weigh(?:ed)?|am|'m)|my (?:body ?)?weight(?: is| was)?|(?:body ?)?weight|weighed in(?: at)?|bw|scale(?: says| said)?)\s*:?\s*(?:at\s*)?(\d{2,3}(?:[.,]\d{1,2})?)\s*(?:kg|kilo)?s?\b/);
   if(wm){ var wv=num(wm[1].replace(',','.'));
     if(wv>=25&&wv<=350){ var wd=ymd(); put('weights',{id:'w-'+wd,date:wd,kg:wv},true); saveProfile({weightKg:wv});
@@ -3497,6 +3531,8 @@ var ACTION_PROTOCOL=[
  '- log_sets {exercise, sets:"25x12, 25x10"}  (today only; pairs are kg x reps)',
  '- log_body_weight {kg, date?}',
  '- make_deload {undo?}',
+ '- log_water {ml}',
+ '- log_measurements {waist?, chest?, arm?, thigh?, hips?, neck?, bf?}  (cm, bf in %)',
  '- set_mode {mode: normal|failure|recovery|strength|pump|quick}',
  '- undo_last_change {}',
  'Inside plan and results, separate lines with \\n.',
@@ -3572,7 +3608,7 @@ function exMins(e){
 }
 
 /* ================= BACKUP ================= */
-var BACKUP_SETS=['days','routines','sessions','meals','weights','skips','chars','checkins'];
+var BACKUP_SETS=['days','routines','sessions','meals','weights','skips','chars','checkins','water','measures'];
 function buildBackup(){
   var out={app:'Workout Log',format:1,exported:new Date().toISOString(),
     settings:S.settings,profile:S.profile};
@@ -4017,6 +4053,8 @@ function viewYou(){
     return b+'</div>';
   });
 
+  var mt=measTrend('waist');
+  h+=panel('meas','Body measurements',mt?'waist '+fmt(mt.now)+' cm'+(mt.n>1?' ('+(mt.change>0?'+':'')+fmt(mt.change)+')':''):'not measured yet',measBody);
   h+=panel('body','Goals and body',
     (num(S.profile.calGoal)?num(S.profile.calGoal)+' kcal a day':'no calorie goal yet'),profileBody);
 
@@ -4075,8 +4113,8 @@ function viewYou(){
         + '<div class="fld"><label>Gemini API key</label>'
         + '<input data-fkey="aik" data-in="ai-key" type="password" autocomplete="off" value="'+esc(aiKey())+'" placeholder="paste a key from aistudio.google.com"></div>'
         + '<button class="btn" style="margin-top:9px" data-act="ai-test"'+(aiKey()&&!(S.aiTest&&S.aiTest.busy)?'':' disabled')+'>'+(S.aiTest&&S.aiTest.busy?'<span class="spin"></span>Testing…':'Test the key')+'</button>'
-        + (S.aiTest&&!S.aiTest.busy?'<div class="'+(S.aiTest.ok?'hint':'banner')+'" style="margin-top:8px'+(S.aiTest.ok?';color:var(--acc)':'')+'">'+esc(S.aiTest.msg)+'</div>':'')
-        + (aiKey()&&!/^AIza[0-9A-Za-z_\-]{30,}$/.test(aiKey())?'<div class="hint" style="color:#e8d98a">This does not look like a Gemini key. Keys from aistudio.google.com start with AIza.</div>':'')
+        + (S.aiTest&&!S.aiTest.busy?'<div class="'+(S.aiTest.ok?'hint':'banner')+'" style="margin-top:8px'+(S.aiTest.ok?';color:#2fbf71;font-weight:700':'')+'">'+(S.aiTest.ok?'✓ ':'')+esc(S.aiTest.msg)+'</div>':'')
+        + (aiKey()&&aiKey().length<20&&!(S.aiTest&&S.aiTest.ok)?'<div class="hint" style="color:#e8d98a">That looks too short for a Gemini key. Copy the whole key from aistudio.google.com.</div>':'')
         + '<div class="hint">Optional. Without a key the coach and reviews run on built-in rules. With one you get '
         + 'open-ended coaching, written reviews and photo calorie estimates. The key stays in this browser, '
         + 'is never included in backups, and requests go straight from your phone to Google.</div>')
@@ -4115,8 +4153,8 @@ function viewYou(){
 /* ================= ACCOUNT + SYNC (Firebase through plain web requests, no SDK) ================= */
 /* This config only says which project to talk to. Access is decided by the Firestore rules. */
 var FB={apiKey:'AIzaSyDYVE8Uk3s277R3fYXH3adm6w_HMnS3EPE',projectId:'workout-log-jasontanis'};
-var SYNC_COLLS=['days','routines','sessions','chat','meals','weights','skips','chars','checkins'];
-var DATA_KEYS=['wl_chk','wl_days','wl_rt','wl_ses','wl_chat','wl_set','wl_meals','wl_wt','wl_prof','wl_skips','wl_chars',
+var SYNC_COLLS=['days','routines','sessions','chat','meals','weights','skips','chars','checkins','water','measures'];
+var DATA_KEYS=['wl_water','wl_meas','wl_chk','wl_days','wl_rt','wl_ses','wl_chat','wl_set','wl_meals','wl_wt','wl_prof','wl_skips','wl_chars',
                'wl_sync_sh','wl_sync_da','wl_sync_cur','wl_auth','wl_lastbackup'];
 var AUTH=null, SY={busy:false,again:false,err:'',last:0,t:0,applying:false};
 
@@ -4579,13 +4617,14 @@ function weekReport(off){
   var fdays=0, kc=0, pr=0, protHit=0, pg=num(S.profile.proteinGoal), cg=num(S.profile.calGoal);
   dates.forEach(function(ds){ if(ds>today) return; var tt=dayTotals(ds); if(tt.kcal>0){ fdays++; kc+=tt.kcal; pr+=tt.protein; if(pg&&tt.protein>=pg*0.95) protHit++; } });
   var wins=S.weights.filter(function(w){ return w.date>=dates[0]&&w.date<=dates[6]; }).length;
+  var wml=0, wdays=0; dates.forEach(function(ds){ if(ds>today) return; var ww=waterOn(ds); if(ww&&num(ww.ml)){ wml+=num(ww.ml); wdays++; } });
   var wk=weeklySets(off), lo=num(S.profile.setsLo)||10;
   var low=trackedMuscles().filter(function(m){ return (wk.total[m]||0)<lo; })
     .sort(function(x,y){ return (wk.total[x]||0)-(wk.total[y]||0); }).slice(0,3);
   var r={off:off,start:dates[0],end:dates[6],done:ses.length,planned:planned,missed:missed,sets:t.sets,vol:Math.round(t.vol),
     prevSets:tp.sets,prevVol:Math.round(tp.vol),prs:prs,foodDays:fdays,
     avgKcal:fdays?Math.round(kc/fdays):0,avgProt:fdays?Math.round(pr/fdays):0,calGoal:cg,protGoal:pg,protHit:protHit,
-    weighIns:wins,body:bodyState(),low:low,lowSets:low.map(function(m){ return Math.round((wk.total[m]||0)*10)/10; }),
+    weighIns:wins,body:bodyState(),waterAvg:wdays?Math.round(wml/wdays):0,waterDays:wdays,low:low,lowSets:low.map(function(m){ return Math.round((wk.total[m]||0)*10)/10; }),
     checkin:checkinFor(dates[0]),deload:off===0?deloadState():null};
   r.focus=weekFocus(r);
   return r;
@@ -4608,6 +4647,7 @@ function reportText(r){
     r.sets+' sets, '+r.vol+' kg lifted'+(r.prevVol?' ('+(pctChange(r.vol,r.prevVol)>=0?'+':'')+pctChange(r.vol,r.prevVol)+'% on the week before)':'')+'.'];
   if(r.prs.length) L.push('PRs: '+r.prs.map(function(p){ return p.name+' ('+p.text+')'; }).join('; ')+'.');
   if(r.foodDays) L.push('Food logged '+r.foodDays+' days, averaging '+r.avgKcal+' kcal'+(r.calGoal?' (goal '+r.calGoal+')':'')+' and '+r.avgProt+' g protein'+(r.protGoal?' (goal '+r.protGoal+')':'')+'.');
+  if(r.waterDays) L.push('Water averaged '+fmt(r.waterAvg/1000)+' L a day on '+r.waterDays+' days.');
   if(r.body.ready) L.push('Body weight '+fmt(r.body.kg)+' kg, '+(r.body.rate>0?'+':'')+fmt(r.body.rate)+' kg a week.');
   if(r.checkin) L.push('Check-in: energy '+r.checkin.energy+'/5, sleep '+r.checkin.sleep+'/5, recovery '+r.checkin.rec+'/5'+(r.checkin.note?', note: '+r.checkin.note:'')+'.');
   if(r.low.length) L.push('Under the weekly set target: '+r.low.map(function(m,i){ return (MNAME[m]||m)+' '+r.lowSets[i]; }).join(', ')+'.');
@@ -4640,6 +4680,7 @@ function reportCard(off,compact){
     if(r.missed.length) h+='<div class="hline"><span>Missed</span><span>'+esc(r.missed.join(', '))+'</span></div>';
     r.prs.forEach(function(p){ h+='<div class="hline" style="display:block"><div>'+esc(p.name)+prChip()+'</div><div style="font-size:12px;color:var(--acc);margin-top:2px">'+esc(p.text)+'</div></div>'; });
     h+='<div class="hline"><span>Food</span><span>'+(r.foodDays?r.foodDays+' day'+(r.foodDays===1?'':'s')+' · '+r.avgKcal+' kcal'+(r.calGoal?' / '+r.calGoal:'')+' · '+r.avgProt+' g'+(r.protGoal?' / '+r.protGoal:''):'not logged')+'</span></div>';
+    if(r.waterDays) h+='<div class="hline"><span>Water</span><span>'+fmt(r.waterAvg/1000)+' L a day</span></div>';
     h+='<div class="hline"><span>Body weight</span><span>'+(r.body.ready?fmt(r.body.kg)+' kg · '+(r.body.rate>0?'+':'')+fmt(r.body.rate)+' kg/wk':r.weighIns+' weigh-ins')+'</span></div>';
     if(r.low.length) h+='<div class="hline"><span>Under set target</span><span>'+esc(r.low.map(function(m,i){ return (MNAME[m]||m)+' '+r.lowSets[i]; }).join(', '))+'</span></div>';
     if(r.checkin) h+='<div class="hline"><span>Check-in</span><span>energy '+r.checkin.energy+' · sleep '+r.checkin.sleep+' · recovery '+r.checkin.rec+'</span></div>';
@@ -4822,6 +4863,147 @@ function modeNudge(){
   return null;
 }
 
+/* ================= PR WALL ================= */
+var PRW={k:'',v:null};
+function prWall(){
+  var fin=finished(), sets=0;
+  fin.forEach(function(s){ (s.ex||[]).forEach(function(e){ (e.sets||[]).forEach(function(x){ if(x.done) sets+=num(x.kg)+num(x.reps); }); (e.segs||[]).forEach(function(x){ if(x.done) sets++; }); }); });
+  var k=fin.length+':'+(fin[0]?fin[0].finishedAt:0)+':'+sets;
+  if(PRW.k===k) return PRW.v;
+  var timeline=[], best={};
+  fin.slice().sort(function(a,b){ return a.finishedAt-b.finishedAt; }).forEach(function(s){
+    var p=sessionPRs(s);
+    (s.ex||[]).forEach(function(e){
+      if(p[e.id]) timeline.push({at:s.finishedAt,name:e.name,text:p[e.id].text,was:p[e.id].was});
+      if(e.kind==='protocol') return;
+      var key=exKey(e.name), b=best[key]||(best[key]={name:e.name,kg:0,reps:0,kgAt:0,e1:0,e1Set:null,secs:0,secsAt:0,timed:isTimed(e)});
+      b.name=e.name;
+      (e.sets||[]).forEach(function(x){
+        if(!x.done) return;
+        var kg=num(x.kg), r=num(x.reps);
+        if(b.timed){ if(r>b.secs){ b.secs=r; b.secsAt=s.finishedAt; } return; }
+        if(kg>b.kg||(kg===b.kg&&r>b.reps)){ b.kg=kg; b.reps=r; b.kgAt=s.finishedAt; }
+        var v=e1rm(e,x); if(v>b.e1){ b.e1=v; b.e1Set={kg:kg,reps:r}; }
+      });
+    });
+  });
+  var list=Object.keys(best).map(function(k2){ return best[k2]; }).filter(function(b){ return b.kg||b.secs; })
+    .sort(function(a,b){ return Math.max(b.kgAt,b.secsAt)-Math.max(a.kgAt,a.secsAt); });
+  PRW={k:k,v:{timeline:timeline.reverse(),best:list}};
+  return PRW.v;
+}
+function viewPRs(){
+  var w=prWall(), h='';
+  if(!w.best.length) return '<div class="card"><div class="empty"><div class="big">🏆</div><p>Finish a workout and your bests show up here. A PR needs something to beat, so it counts from your second time on a lift.</p></div></div>';
+  h+='<div class="stats" style="margin-bottom:12px"><div class="stat"><b>'+w.timeline.length+'</b><small>PRs set</small></div>'
+    + '<div class="stat"><b>'+w.best.length+'</b><small>lifts tracked</small></div>'
+    + '<div class="stat"><b>'+(w.timeline[0]?esc(shortDate(w.timeline[0].at)):'—')+'</b><small>latest PR</small></div></div>';
+  if(w.timeline.length){
+    h+='<div class="card"><div class="card-b" style="padding-top:14px"><div style="font-size:15px;font-weight:800;margin-bottom:4px">Recent PRs</div>';
+    w.timeline.slice(0,S.prMore?200:8).forEach(function(t){
+      h+='<div class="hline" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><span>'+esc(t.name)+prChip()+'</span>'
+        + '<span style="color:var(--mut2);font-size:12px">'+esc(shortDate(t.at))+'</span></div>'
+        + '<div style="font-size:12px;margin-top:2px"><span style="color:var(--acc)">'+esc(t.text)+'</span> <span style="color:var(--mut2)">· '+esc(t.was)+'</span></div></div>';
+    });
+    if(w.timeline.length>8) h+='<button class="btn g" style="margin-top:8px" data-act="pr-more">'+(S.prMore?'Show fewer':'Show all '+w.timeline.length)+'</button>';
+    h+='</div></div>';
+  }
+  h+='<div class="card"><div class="card-b" style="padding-top:14px"><div style="font-size:15px;font-weight:800;margin-bottom:4px">Best ever, per lift</div>';
+  w.best.forEach(function(b){
+    h+='<div class="hline" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><b style="font-weight:700">'+esc(b.name)+'</b>'
+      + '<span style="font-weight:800">'+(b.timed?fmt(b.secs)+' s':fmt(b.kg)+' kg × '+fmt(b.reps))+'</span></div>'
+      + '<div style="font-size:11.5px;color:var(--mut2);margin-top:2px">'
+      + (b.timed?'longest hold, '+esc(shortDate(b.secsAt)):'heaviest set, '+esc(shortDate(b.kgAt))
+        + (b.e1?' · estimated max '+fmt(Math.round(b.e1*2)/2)+' kg (from '+fmt(b.e1Set.kg)+' × '+fmt(b.e1Set.reps)+')':''))+'</div></div>';
+  });
+  h+='<div class="hint">Estimated max is what you could probably lift once, worked out from your best set of 12 reps or fewer.</div></div></div>';
+  return h;
+}
+function shortDate(t){ return new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
+
+/* ================= WATER ================= */
+function waterOn(d){ return (S.water||[]).filter(function(w){ return w.date===d; })[0]; }
+function waterGoal(d){
+  var g=num(S.profile.waterGoal);
+  if(!g){ var kg=bodyState().kg||num(S.profile.weightKg); g=kg?Math.round(kg*35/250)*250:2500; }
+  var pl=d===ymd()?plannedFor(d):null, train=sessionOn(d)||(d===ymd()&&(active()||(pl&&(pl.exercises||[]).length)));
+  return {ml:g+(train?500:0),base:g,train:!!train};
+}
+function addWater(ml,d){
+  d=d||foodDate(); var w=waterOn(d), cur=w?JSON.parse(JSON.stringify(w)):{id:'wa-'+d,date:d,ml:0,log:[]};
+  cur.ml=Math.max(0,num(cur.ml)+ml); cur.log=(cur.log||[]).concat([[Date.now(),ml]]).slice(-40);
+  put('water',cur,true); return cur.ml;
+}
+function waterCard(d){
+  var w=waterOn(d), ml=w?num(w.ml):0, g=waterGoal(d), pct=Math.min(100,ml/g.ml*100), cups='';
+  var n=Math.max(1,Math.round(g.ml/250));
+  for(var i=0;i<Math.min(n,16);i++) cups+='<i class="'+(ml>=(i+1)*250?'on':'')+'"></i>';
+  return '<div class="card"><div class="card-b" style="padding-top:13px">'
+    + '<div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:14.5px;flex:1">Water</b>'
+    + '<span style="font-weight:800">'+fmt(ml/1000)+'</span><span style="color:var(--mut2);font-size:12.5px">/ '+fmt(g.ml/1000)+' L</span></div>'
+    + '<div class="cups">'+cups+'</div>'
+    + '<div class="bar" style="margin:8px 0 10px"><i style="width:'+pct.toFixed(1)+'%;background:#3987e5"></i></div>'
+    + '<div class="wbtns"><button class="btn" data-act="water" data-ml="250">+ Glass<small>250 ml</small></button>'
+    + '<button class="btn" data-act="water" data-ml="500">+ Bottle<small>500 ml</small></button>'
+    + '<button class="btn" data-act="water" data-ml="750">+ Big<small>750 ml</small></button>'
+    + '<button class="btn g" data-act="water" data-ml="-250"'+(ml?'':' disabled')+'>−<small>undo glass</small></button></div>'
+    + (g.train?'<div class="hint" style="margin-top:6px">+0.5 L on training days for what you sweat out.</div>':'')
+    + '</div></div>';
+}
+
+/* ================= BODY MEASUREMENTS ================= */
+var MEAS=[['waist','Waist'],['chest','Chest'],['arm','Arm (flexed)'],['thigh','Thigh'],['hips','Hips'],['neck','Neck'],['bf','Body fat %']];
+function measSorted(){ return (S.measures||[]).slice().sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); }); }
+function measTrend(key){
+  var pts=measSorted().filter(function(m){ return num(m[key])>0; });
+  if(!pts.length) return null;
+  var last=pts[pts.length-1], first=pts[0];
+  return {now:num(last[key]),date:last.date,first:num(first[key]),firstDate:first.date,change:Math.round((num(last[key])-num(first[key]))*10)/10,n:pts.length};
+}
+function measInsight(){
+  var w=measTrend('waist'), b=bodyState();
+  if(!w||w.n<2||!b.ready) return '';
+  var days=(fromYmd(w.date)-fromYmd(w.firstDate))/864e5; if(days<10) return '';
+  if(b.phase==='cutting'&&w.change<0) return 'Weight and waist are both coming down: that is mostly fat, which is what a cut should do.';
+  if(b.phase==='cutting'&&w.change>=0) return 'Weight is dropping but your waist is not. Check protein and keep lifting heavy so the loss is fat, not muscle.';
+  if(b.phase==='gaining'&&w.change<=0.5) return 'Gaining weight with a steady waist: that is lean gain.';
+  if(b.phase==='gaining'&&w.change>1.5) return 'Your waist is growing as fast as your weight. A smaller surplus would keep it leaner.';
+  if(b.phase==='steady'&&w.change<0) return 'Same weight, smaller waist: you are swapping fat for muscle.';
+  return '';
+}
+function measBody(){
+  var d=ymd(), cur=(S.measures||[]).filter(function(m){ return m.date===d; })[0]||{}, ed=S.measEdit||(S.measEdit={});
+  var h='<div class="hint" style="margin-top:0">Measure in the morning before eating, tape level and snug, same spot each time. Every 2 weeks is enough.</div><div class="mgrid">';
+  MEAS.forEach(function(m){
+    var t=measTrend(m[0]), v=ed[m[0]]!=null?ed[m[0]]:(cur[m[0]]||'');
+    h+='<div class="fld"><label>'+m[1]+(m[0]==='bf'?'':' (cm)')+'</label>'
+      + '<input data-fkey="ms'+m[0]+'" data-in="meas" data-k="'+m[0]+'" type="text" inputmode="decimal" value="'+esc(v)+'" placeholder="'+(t?fmt(t.now):'')+'">'
+      + (t&&t.n>1?'<small style="color:'+(!t.change?'var(--mut2)':((t.change<0)===/^(waist|hips|bf|neck)$/.test(m[0])?'#199e70':'#e0b200'))+'">'+(t.change>0?'+':'')+fmt(t.change)+' since '+esc(dateLabel(t.firstDate))+'</small>'
+         :t?'<small style="color:var(--mut2)">last: '+fmt(t.now)+' ('+esc(dateLabel(t.date))+')</small>':'')
+      + '</div>';
+  });
+  h+='</div><button class="btn p" style="margin-top:10px" data-act="meas-save">Save for '+esc(dateLabel(d))+'</button>';
+  var ins=measInsight(); if(ins) h+='<div class="note" style="margin-top:12px">'+esc(ins)+'</div>';
+  var hist=measSorted().slice(-6).reverse();
+  if(hist.length){
+    h+='<div style="font-size:12.5px;font-weight:800;margin:14px 0 4px">History</div>';
+    hist.forEach(function(m){
+      h+='<div class="hline"><span>'+esc(dateLabel(m.date))+'</span><span style="font-size:12px">'
+        + MEAS.filter(function(x){ return num(m[x[0]]); }).map(function(x){ return x[1].split(' ')[0].toLowerCase()+' '+fmt(num(m[x[0]])); }).join(' · ')+'</span></div>';
+    });
+  }
+  return h;
+}
+function measDue(){
+  var s=measSorted(); if(!s.length) return false;
+  return (Date.now()-fromYmd(s[s.length-1].date).getTime())/864e5>=14;
+}
+function measBrief(){
+  var L=[]; MEAS.forEach(function(m){ var t=measTrend(m[0]); if(t) L.push(m[1]+' '+fmt(t.now)+(m[0]==='bf'?'%':' cm')+(t.n>1?' ('+(t.change>0?'+':'')+fmt(t.change)+' since '+t.firstDate+')':'')); });
+  var ins=measInsight();
+  return L.length?'MEASUREMENTS: '+L.join('; ')+'.'+(ins?' '+ins:''):'';
+}
+
 /* ---------------- views ---------------- */
 function head(){
   var t={today:'Today',plan:'Plan',food:'Food',coach:'Coach',history:'Stats',you:'You'};
@@ -4901,7 +5083,8 @@ function viewToday(){
   if(bt.ready&&bt.phase!=='steady') h+='<div class="hint" style="margin:-4px 2px 12px">Body weight '+fmt(bt.kg)+' kg, '+(bt.rate>0?'+':'')+fmt(bt.rate)+' kg a week. '
     + (bt.phase==='cutting'?'Weights are held a session longer while you lose.':'Weights go up as soon as you hit your reps.')+'</div>';
 
-  if(!a){ h+=deloadCard(); h+=weekCardToday(); }
+  if(!a){ h+=deloadCard(); h+=weekCardToday();
+    if(measDue()) h+='<div class="lbar" style="margin:0 0 12px"><span>Two weeks since your last measurements.</span><button data-act="meas-go">Measure</button></div>'; }
   if(a){
     var pc=counts(a);
     h+='<div class="card hl"><div class="card-h">'
@@ -5358,10 +5541,12 @@ function viewCoach(){
 }
 
 function viewHistory(){
-  var seg='<div class="seg2" style="grid-template-columns:repeat(3,1fr)">'
+  var seg='<div class="seg2" style="grid-template-columns:repeat(4,1fr)">'
     + '<button class="'+(S.histTab==='log'||!S.histTab?'on':'')+'" data-act="htab" data-t="log">Sessions</button>'
     + '<button class="'+(S.histTab==='week'?'on':'')+'" data-act="htab" data-t="week">Weekly</button>'
-    + '<button class="'+(S.histTab==='prog'?'on':'')+'" data-act="htab" data-t="prog">Progress</button></div>';
+    + '<button class="'+(S.histTab==='prog'?'on':'')+'" data-act="htab" data-t="prog">Progress</button>'
+    + '<button class="'+(S.histTab==='prs'?'on':'')+'" data-act="htab" data-t="prs">PRs</button></div>';
+  if(S.histTab==='prs') return seg+viewPRs();
   if(S.histTab==='week') return seg+viewWeekly();
   if(S.histTab==='prog') return seg+viewProgress();
   var fin=finished();
@@ -5509,6 +5694,16 @@ document.addEventListener('click',function(ev){
   if(act==='wk'){ S.weekOff=Math.min(0,(S.weekOff||0)+parseInt(t.dataset.d,10)); render(); return; }
 
   /* --- food --- */
+  if(act==='water'){ var nm=addWater(parseInt(t.dataset.ml,10)); if(parseInt(t.dataset.ml,10)>0) toast('Water: '+fmt(nm/1000)+' L'); return; }
+  if(act==='pr-more'){ S.prMore=!S.prMore; render(); return; }
+  if(act==='meas-go'){ S.view='you'; S.panels.meas=true; render(); return; }
+  if(act==='meas-save'){
+    var ed=S.measEdit||{}, d0=ymd(), cur0=(S.measures||[]).filter(function(m){ return m.date===d0; })[0];
+    var rec=cur0?JSON.parse(JSON.stringify(cur0)):{id:'ms-'+d0,date:d0}, any=false;
+    MEAS.forEach(function(m){ if(ed[m[0]]!=null){ var v=num(ed[m[0]]); if(v>0){ rec[m[0]]=v; any=true; } else delete rec[m[0]]; } else if(num(rec[m[0]])) any=true; });
+    if(!any){ toast('Type at least one measurement'); return; }
+    rec.at=Date.now(); put('measures',rec,true); S.measEdit={}; toast('Measurements saved'); return;
+  }
   if(act==='mode-set'){ setMode(t.dataset.m); S.modePick=false; return; }
   if(act==='mode-pick'){ S.modePick=!S.modePick; render(); return; }
   if(act==='qa-meal'){
@@ -5814,6 +6009,7 @@ function inputMain(ev){
   var kind=el.dataset['in'], v=el.value;
 
   if(kind==='food-w'){ S.food.wText=v; return; }
+  if(kind==='meas'){ S.measEdit=S.measEdit||{}; S.measEdit[el.dataset.k]=v; return; }
   if(kind==='ci-note'){ S.ci=S.ci||{}; S.ci.note=v; return; }
   if(kind.indexOf('p-')===0){
     if(!S.food.pending) return;
@@ -5845,7 +6041,7 @@ function inputMain(ev){
     var g={'pr-name':'name','pr-age':'age','pr-height':'heightCm','pr-weight':'weightKg',
            'pr-cal':'calGoal','pr-prot':'proteinGoal','pr-coachname':'coachName',
            'pr-every':'remindEvery','pr-qfrom':'quietFrom','pr-qto':'quietTo',
-           'pr-setslo':'setsLo','pr-setshi':'setsHi','pr-weektarget':'weekTarget'}[kind];
+           'pr-setslo':'setsLo','pr-setshi':'setsHi','pr-weektarget':'weekTarget','pr-water':'waterGoal'}[kind];
     if(kind==='pr-pause'){ saveProfile({pauseUntil:v}); return; }
     if(!g) return;
     var patch={}; patch[g]=(g==='name'||g==='coachName')?v:num(v);
