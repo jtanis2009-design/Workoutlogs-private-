@@ -2555,7 +2555,8 @@ function muscleCard(ses){
 /* ================= AI WITHOUT CLAUDE ================= */
 /* Three tiers: Claude when hosted there, your own Gemini key in a plain browser,
    and a built-in rule engine that needs nothing at all. */
-function aiKey(){ try{ return String(localStorage.getItem('wl_aikey')||'').trim(); }catch(e){ return ''; } }
+function cleanKey(k){ return String(k||'').replace(/^\s*(key\s*[:=]\s*)/i,'').replace(/["'`\s]/g,''); }
+function aiKey(){ try{ return cleanKey(localStorage.getItem('wl_aikey')); }catch(e){ return ''; } }
 function aiMode(){ return S.sample?'claude':(aiKey()?'gemini':'rules'); }
 var GEM='https://generativelanguage.googleapis.com/v1beta/';
 function blobB64(b){
@@ -2567,62 +2568,99 @@ function blobB64(b){
   });
 }
 /* model names change often, so ask the API what exists instead of hardcoding one */
-function geminiModel(){
-  var saved=''; try{ saved=String(localStorage.getItem('wl_aimodel')||''); }catch(e){}
-  if(saved) return Promise.resolve(saved);
+/* Free-tier friendly models, best first. Newest is not best here: new and preview models are often
+   not on the free tier and fail on every call, so pick from this list and fall back down it. */
+var GEM_PREF=['gemini-flash-latest','gemini-2.5-flash','gemini-flash-lite-latest','gemini-2.5-flash-lite','gemini-2.0-flash','gemini-2.0-flash-lite'];
+var GEM_AVOID=/embedding|image|tts|audio|live|vision|omni|computer|robotics|pro|preview|exp|thinking|aqa|learnlm|nano|veo|lyria|imagen/;
+function geminiCandidates(){
   return fetch(GEM+'models?pageSize=200',{headers:{'x-goog-api-key':aiKey()}})
-    .then(function(r){ return r.json().then(function(j){
-      if(!r.ok){ var e=new Error((j&&j.error&&j.error.message)||('HTTP '+r.status)); e.status=r.status; throw e; }
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){
+      if(!r.ok){ var e=new Error((j&&j.error&&j.error.message)||('HTTP '+r.status)); e.status=r.status; e.gstatus=j&&j.error&&j.error.status; throw e; }
       return j; }); })
     .then(function(j){
-      var all=(j.models||[]).filter(function(m){
-        var g=m.supportedGenerationMethods; return !g||g.indexOf('generateContent')>=0; })
-        .map(function(m){ return String(m.name||'').replace(/^models\//,''); })
-        .filter(function(n){ return /^gemini-/.test(n)&&!/embedding|image|tts|audio|live|vision-only/.test(n); });
+      var all=(j.models||[]).filter(function(m){ var g=m.supportedGenerationMethods; return !g||g.indexOf('generateContent')>=0; })
+        .map(function(m){ return String(m.name||'').replace(/^models\//,''); });
+      var out=GEM_PREF.filter(function(n){ return all.indexOf(n)>=0; });
       var ver=function(n){ var m=n.match(/gemini-(\d+(?:\.\d+)?)/); return m?parseFloat(m[1]):0; };
-      var rank=function(n){ return ver(n)*10+(/flash/.test(n)?3:0)-(/lite/.test(n)?2:0)-(/preview|exp/.test(n)?4:0); };
-      all.sort(function(a,b){ return rank(b)-rank(a); });
-      if(!all.length) throw new Error('No usable Gemini model on this key');
-      try{ localStorage.setItem('wl_aimodel',all[0]); }catch(e){}
-      return all[0];
+      all.filter(function(n){ return /^gemini-/.test(n)&&!GEM_AVOID.test(n)&&out.indexOf(n)<0&&/flash/.test(n); })
+        .sort(function(x,y){ return ver(x)-ver(y); })                 /* older stable flash models are the safest fallbacks */
+        .forEach(function(n){ out.push(n); });
+      if(!out.length) out=GEM_PREF.slice(0,2);                         /* list came back odd: try the usual names anyway */
+      return out;
     });
 }
-function geminiCall(msgs,opts,retried){
+function geminiModel(){
+  var saved=''; try{ saved=String(localStorage.getItem('wl_aimodel')||''); }catch(e){}
+  if(saved&&!GEM_AVOID.test(saved)) return Promise.resolve(saved);
+  try{ localStorage.removeItem('wl_aimodel'); }catch(e){}
+  return geminiCandidates().then(function(c){ return c[0]; });
+}
+function gemErrInfo(r,j){
+  var er=(j&&j.error)||{}, msg=String(er.message||('HTTP '+r.status));
+  var e=new Error(msg); e.status=r.status; e.gstatus=er.status||'';
+  e.zeroQuota=r.status===429&&/limit:\s*0\b|free_tier|free tier/i.test(msg);
+  return e;
+}
+function geminiCall(msgs,opts){
   opts=opts||{};
+  if(!aiKey()) return Promise.reject(Object.assign(new Error('No Gemini key'),{status:0,nokey:true}));
   if(typeof msgs==='string') msgs=[{role:'user',content:msgs}];
+  var tried=[];
+  var once=function(model,b64){
+    var contents=msgs.map(function(m){ return {role:m.role==='assistant'?'model':'user',parts:[{text:String(m.content)}]}; });
+    b64.forEach(function(d,i){ var ty=String(((opts.images||[])[i]||{}).type||'');
+      contents[contents.length-1].parts.push({inline_data:{mime_type:/^image\/(png|jpeg|webp|heic|heif)$/.test(ty)?ty:'image/jpeg',data:d}}); });
+    var ctl=typeof AbortController!=='undefined'?new AbortController():null, tm=setTimeout(function(){ if(ctl) ctl.abort(); },90000);
+    var body={contents:contents}; if(opts.json) body.generationConfig={responseMimeType:'application/json'};
+    return fetch(GEM+'models/'+encodeURIComponent(model)+':generateContent',{method:'POST',signal:ctl?ctl.signal:undefined,
+        headers:{'Content-Type':'application/json','x-goog-api-key':aiKey()},body:JSON.stringify(body)})
+      .then(function(r){ clearTimeout(tm); return r.json().catch(function(){ return {}; }).then(function(j){
+        if(!r.ok) throw gemErrInfo(r,j);
+        var cand=(j.candidates||[])[0]||{}, c=cand.content;
+        var t=((c&&c.parts)||[]).filter(function(p){ return !p.thought; }).map(function(p){ return p.text||''; }).join('');
+        if(!t){ var e=new Error(cand.finishReason==='SAFETY'||(j.promptFeedback&&j.promptFeedback.blockReason)?'Gemini blocked this request as unsafe':'Gemini sent back an empty reply');
+          e.status=0; e.empty=true; throw e; }
+        try{ localStorage.setItem('wl_aimodel',model); }catch(x){}
+        return {text:t,model:model};
+      }); },function(e){ clearTimeout(tm); var x=new Error(e&&e.name==='AbortError'?'Gemini took too long to answer':'Could not reach Gemini (no connection?)'); x.status=0; x.net=true; throw x; });
+  };
   return Promise.all((opts.images||[]).map(blobB64)).then(function(b64){
-    return geminiModel().then(function(model){
-      var contents=msgs.map(function(m){
-        return {role:m.role==='assistant'?'model':'user',parts:[{text:String(m.content)}]}; });
-      b64.forEach(function(d,i){ var ty=String(((opts.images||[])[i]||{}).type||'');
-        contents[contents.length-1].parts.push({inline_data:{mime_type:/^image\/(png|jpeg|webp|heic|heif)$/.test(ty)?ty:'image/jpeg',data:d}}); });
-      return fetch(GEM+'models/'+encodeURIComponent(model)+':generateContent',{method:'POST',
-        headers:{'Content-Type':'application/json','x-goog-api-key':aiKey()},
-        body:JSON.stringify(opts.json?{contents:contents,generationConfig:{responseMimeType:'application/json'}}:{contents:contents})});
-    });
-  }).then(function(r){
-    return r.json().then(function(j){
-      if(!r.ok){
-        if(r.status===404&&!retried){            /* the remembered model was retired: pick again */
-          try{ localStorage.removeItem('wl_aimodel'); }catch(e){}
-          return geminiCall(msgs,opts,true);
+    return geminiModel().then(function(first){
+      var queue=[first], loaded=false;
+      var next=function(lastErr){
+        var m=queue.shift();
+        if(!m){
+          if(!loaded){ loaded=true;
+            return geminiCandidates().then(function(c){ queue=c.filter(function(n){ return tried.indexOf(n)<0; }); return next(lastErr); },
+              function(e){ throw lastErr||e; }); }
+          throw lastErr;
         }
-        var e=new Error((j&&j.error&&j.error.message)||('HTTP '+r.status)); e.status=r.status; throw e;
-      }
-      var c=((j.candidates||[])[0]||{}).content;
-      var t=((c&&c.parts)||[]).map(function(p){ return p.text||''; }).join('');
-      if(!t) throw new Error('The model sent back an empty reply');
-      return {text:t};
+        tried.push(m);
+        return once(m,b64).catch(function(e){
+          var auth=e.status===401||e.status===403&&!/model/i.test(e.message)||(e.status===400&&/api key|API_KEY/i.test(e.message));
+          if(auth||e.net) throw e;                          /* a bad key or no signal will not get better on another model */
+          try{ if(localStorage.getItem('wl_aimodel')===m) localStorage.removeItem('wl_aimodel'); }catch(x){}
+          if(tried.length>=5) throw e;
+          return next(e);                                   /* unavailable, retired, or out of free quota: try the next model */
+        });
+      };
+      return next(null);
     });
   });
 }
 function aiErr(e){
-  var s=e&&e.status;
-  return s===400||s===401||s===403?'The AI key was rejected. Check it in You, Settings.'
-    : s===429?'The AI key has hit its rate limit. Try again in a minute.'
-    : 'Could not reach the AI'+(e&&e.message?' ('+String(e.message).slice(0,90)+')':'')+'.';
+  var s=e&&e.status, m=String((e&&e.message)||'');
+  if(e&&e.nokey) return 'No Gemini key yet. Add one in You, Settings.';
+  if(/api key not valid|API_KEY_INVALID|invalid api key/i.test(m)) return 'Google says this key is not valid. Copy it again from aistudio.google.com (Get API key) and paste it in You, Settings.';
+  if(/referer|referrer|restricted|blocked/i.test(m)&&(s===403||s===400)) return 'The key is restricted so this website may not use it. In Google AI Studio, remove the restriction or make a new key. (Google: '+m.slice(0,120)+')';
+  if(/SERVICE_DISABLED|has not been used|is disabled/i.test(m)) return 'The Gemini API is switched off for this key\'s project. Make a key in aistudio.google.com instead of Google Cloud. (Google: '+m.slice(0,120)+')';
+  if(/location is not supported|FAILED_PRECONDITION/i.test(m)) return 'Google does not offer the free Gemini API where this request comes from. (Google: '+m.slice(0,120)+')';
+  if(s===429) return e.zeroQuota?'None of the Gemini models this key can use have free quota left. Wait until tomorrow or turn on billing in AI Studio. (Google: '+m.slice(0,140)+')'
+    :'Gemini rate limit reached (free keys allow a handful of requests a minute). Wait a minute and try again.';
+  if(s===401||s===403) return 'Google refused the key ('+s+'). '+m.slice(0,140);
+  if(e&&e.net) return m+'.';
+  return 'Gemini error'+(s?' '+s:'')+': '+m.slice(0,160);
 }
-
 /* ---------- the built-in review: computed, not written ---------- */
 function localReview(ses){
   var c=counts(ses), L=[], hard=0, strength=(ses.ex||[]).filter(function(e){ return e.kind!=='protocol'; });
@@ -3407,7 +3445,10 @@ function coachGemini(text){
     var t=String(res.text||''), i=t.lastIndexOf('ACTIONS:');
     if(i>=0){ runActions(t.slice(i+8)); t=t.slice(0,i).trim(); }
     settle(t||'Done.');
-  }).catch(function(e){ settle(aiErr(e)); });
+  }).catch(function(e){
+    var fb=''; try{ fb=ruleCoach(text); }catch(x){}
+    settle((fb?fb+'\n\n':'')+'_Gemini did not answer, so this came from the built-in coach. '+aiErr(e)+'_');
+  });
 }
 
 /* ================= GYM ================= */
@@ -3919,7 +3960,9 @@ function viewYou(){
           '<div style="font-size:14px;font-weight:700;margin:18px 0 10px">AI</div>'
         + '<div class="fld"><label>Gemini API key</label>'
         + '<input data-fkey="aik" data-in="ai-key" type="password" autocomplete="off" value="'+esc(aiKey())+'" placeholder="paste a key from aistudio.google.com"></div>'
-        + '<button class="btn" style="margin-top:9px" data-act="ai-test"'+(aiKey()?'':' disabled')+'>Test the key</button>'
+        + '<button class="btn" style="margin-top:9px" data-act="ai-test"'+(aiKey()&&!(S.aiTest&&S.aiTest.busy)?'':' disabled')+'>'+(S.aiTest&&S.aiTest.busy?'<span class="spin"></span>Testing…':'Test the key')+'</button>'
+        + (S.aiTest&&!S.aiTest.busy?'<div class="'+(S.aiTest.ok?'hint':'banner')+'" style="margin-top:8px'+(S.aiTest.ok?';color:var(--acc)':'')+'">'+esc(S.aiTest.msg)+'</div>':'')
+        + (aiKey()&&!/^AIza[0-9A-Za-z_\-]{30,}$/.test(aiKey())?'<div class="hint" style="color:#e8d98a">This does not look like a Gemini key. Keys from aistudio.google.com start with AIza.</div>':'')
         + '<div class="hint">Optional. Without a key the coach and reviews run on built-in rules. With one you get '
         + 'open-ended coaching, written reviews and photo calorie estimates. The key stays in this browser, '
         + 'is never included in backups, and requests go straight from your phone to Google.</div>')
@@ -5001,11 +5044,11 @@ document.addEventListener('click',function(ev){
   }
   if(act==='ask-notify'){ askNotify(); return; }
   if(act==='ai-test'){
-    toast('Testing the key…');
-    geminiCall('Reply with the single word: ready').then(function(){
-      var mdl=''; try{ mdl=localStorage.getItem('wl_aimodel')||''; }catch(e){}
-      toast('Key works'+(mdl?' — using '+mdl:'')); render();
-    }).catch(function(e){ toast(aiErr(e)); });
+    S.aiTest={busy:true}; render();
+    try{ localStorage.removeItem('wl_aimodel'); }catch(e){}
+    geminiCall('Reply with the single word: ready').then(function(r){
+      S.aiTest={ok:true,msg:'Works. Using '+r.model+'. Coach, reviews and photo estimates will use Gemini.'}; render();
+    }).catch(function(e){ S.aiTest={ok:false,msg:aiErr(e)}; render(); });
     return;
   }
   if(act==='export'){ exportData(); return; }
@@ -5287,7 +5330,8 @@ function inputMain(ev){
     saveProfile(patch); return;
   }
   if(kind==='ai-key'){
-    try{ localStorage.setItem('wl_aikey',String(v).trim()); localStorage.removeItem('wl_aimodel'); }catch(e){}
+    try{ localStorage.setItem('wl_aikey',cleanKey(v)); localStorage.removeItem('wl_aimodel'); }catch(e){}
+    S.aiTest=null;
     var tb=document.querySelector('[data-act="ai-test"]'); if(tb) tb.disabled=!String(v).trim();
     return;
   }
