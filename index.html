@@ -703,8 +703,16 @@ function suggest(name,planKg,planReps,planSets,st){
   var enough=last.sets.length>=(num(planSets)||last.sets.length);
   var allTop=top>0&&last.sets.every(function(s){ return s.reps>=top; })&&enough;
   var hit=last.sets.map(function(s){ return fmt(s.reps); }).join(',');
+  var bs=null; try{ bs=bodyState(); }catch(e){}
+  var cut=bs&&bs.ready&&bs.phase==='cutting', fastCut=cut&&bs.pct<=-0.75;
+  if(allTop&&fastCut){
+    var prevTop=h[1]&&h[1].sets.every(function(s){ return s.reps>=top; })&&h[1].sets.some(function(s){ return s.kg>=maxKg; });
+    if(!prevTop) return {kg:maxKg,why:'Last time '+fmt(maxKg)+'kg × '+hit+' — all reps hit, but you are losing about '+fmt(Math.abs(bs.rate))+' kg a week, so own it once more before adding weight'};
+  }
   if(allTop) return {kg:roundStep(maxKg+st,st),
-    why:'Last time '+fmt(maxKg)+'kg × '+hit+' — all reps hit, so +'+fmt(st)+'kg'};
+    why:'Last time '+fmt(maxKg)+'kg × '+hit+' — all reps hit, so +'+fmt(st)+'kg'+(bs&&bs.ready&&bs.phase==='gaining'?' (you are gaining weight, a good time to push)':'')};
+  var prevMax=0; if(h[1]) h[1].sets.forEach(function(s){ if(s.kg>prevMax) prevMax=s.kg; });
+  if(cut&&prevMax&&maxKg<prevMax) return {kg:maxKg,why:'Last time '+fmt(maxKg)+'kg × '+hit+' — a dip while you are losing weight is normal; hold here and build back'};
   return {kg:maxKg,why:'Last time '+fmt(maxKg)+'kg × '+hit+' — hold the weight and beat the reps'};
 }
 
@@ -1077,6 +1085,7 @@ function buildPrompt(ses){
     var tm=exMins(e);
     if(tm!=null) L.push('   time on this exercise: '+tm+' min ('+e.t0+' to '+e.t1+')');
   });
+  try{ L.push(''); L.push(bodyBrief()); L.push('Judge the numbers in that light: a held lift during a cut is a good result.'); }catch(e){}
   var rprs=sessionPRs(ses), rk=Object.keys(rprs);
   if(rk.length){ L.push(''); L.push('PERSONAL RECORDS THIS SESSION (call these out):');
     (ses.ex||[]).forEach(function(e){ if(rprs[e.id]) L.push('- '+e.name+': '+rprs[e.id].text+' ('+rprs[e.id].was+')'); }); }
@@ -1356,6 +1365,14 @@ function coachTools(){
       return {ok:true,where:r.how,logged:r.items.map(function(d){ return {exercise:d.name,sets:d.sets.length}; })};
     }},
 
+  { name:'log_body_weight',
+    description:'Save a body weight weigh-in (kg). Use when they tell you what they weigh.',
+    inputSchema:{type:'object',properties:{kg:{type:'string'},date:{type:'string',description:'YYYY-MM-DD, default today'}},required:['kg']},
+    execute:function(a){ var v=num(String(a.kg).replace(',','.')); if(v<25||v>350) throw new Error('That does not look like a body weight in kg.');
+      var d=/^\d{4}-\d{2}-\d{2}$/.test(String(a.date||''))?a.date:ymd();
+      put('weights',{id:'w-'+d,date:d,kg:v},true); if(d>=ymd()) saveProfile({weightKg:v});
+      var b=bodyState(); return {ok:true,saved:v,trend_kg:b.kg,phase:b.phase,kg_per_week:b.rate}; }},
+
   { name:'undo_last_change',
     description:'Undo the last change_exercise or log_sets.',
     inputSchema:{type:'object',properties:{}},
@@ -1436,6 +1453,10 @@ function coachPreamble(){
   'That voice governs your wording and nothing else. It never changes the numbers you report, the tools you call, '
    + 'whether you point out a missed set or a stalled lift, or your honesty about what you do not know. '
    + 'If the character and the facts ever pull in different directions, the facts win.',
+  '',
+  BODY_RULES,
+  '',
+  bodyBrief(),
   '',
   'EXERCISE GLOSSARY:',
   exGlossary(),
@@ -1587,6 +1608,59 @@ function logWeight(kg){
   put('weights',{id:'w-'+d,date:d,kg:v},true);
   saveProfile({weightKg:v});
 }
+
+/* ================= BODY WEIGHT: what your scale trend means for training ================= */
+/* Uses the smoothed trend, not single weigh-ins. Needs about a week between first and last weigh-in. */
+function bodyState(){
+  var tr=trendWeights(), p=S.profile||{}, aim=p.aim||'keep';
+  var cur=tr.length?tr[tr.length-1].trend:num(p.weightKg);
+  var out={kg:cur?Math.round(cur*10)/10:0,aim:aim,phase:'unknown',rate:0,pct:0,days:0,fast:false,
+    lastAt:tr.length?tr[tr.length-1].at:0,n:tr.length,ready:false,note:''};
+  if(!cur) return out;
+  if(tr.length>=2){
+    var end=tr[tr.length-1], win=tr.filter(function(x){ return x.at>=end.at-28*86400000; }), first=win[0];
+    var days=(end.at-first.at)/86400000;
+    if(days>=6&&win.length>=3){
+      /* straight-line fit through the raw weigh-ins: the smoothed line lags too much to read a rate from */
+      var n=win.length, mx=0, my=0, sxy=0, sxx=0;
+      win.forEach(function(x){ mx+=(x.at-first.at)/86400000; my+=x.raw; }); mx/=n; my/=n;
+      win.forEach(function(x){ var dx=(x.at-first.at)/86400000-mx; sxy+=dx*(x.raw-my); sxx+=dx*dx; });
+      var slope=sxx?sxy/sxx:0;
+      cur=my+slope*(days-mx); out.kg=Math.round(cur*10)/10;
+      out.ready=true; out.days=Math.round(days);
+      out.rate=Math.round(slope*7*100)/100;                                   /* kg per week */
+      out.pct=Math.round(out.rate/cur*1000)/10;                              /* % of body weight per week */
+      out.phase=out.pct<=-0.25?'cutting':out.pct>=0.25?'gaining':'steady';
+      out.fast=out.pct<=-1||out.pct>=0.75;
+    }
+  }
+  var want=aim==='lose'?'cutting':aim==='gain'?'gaining':'steady';
+  if(!out.ready) out.note='Weigh in a few times over a week or more and training advice will follow your trend.';
+  else if(out.phase==='cutting'&&out.pct<=-1) out.note='Losing fast (about '+fmt(Math.abs(out.pct))+'% a week). Strength usually slips at this pace; holding your weights is a good result, and a little more food would protect them.';
+  else if(out.phase==='cutting') out.note='Losing about '+fmt(Math.abs(out.rate))+' kg a week. Expect slower strength gains; holding weights and adding reps counts as progress.';
+  else if(out.phase==='gaining'&&out.pct>=0.75) out.note='Gaining fast (about '+fmt(out.pct)+'% a week). Much of that is likely fat; a smaller surplus builds the same muscle.';
+  else if(out.phase==='gaining') out.note='Gaining about '+fmt(out.rate)+' kg a week. Good time to push weights up.';
+  else out.note='Weight is steady. Progress comes from beating reps, then adding weight.';
+  if(out.ready&&want!==out.phase&&!(want==='steady'&&!out.fast)) out.note+=' Your goal is set to '+(aim==='lose'?'lose':aim==='gain'?'gain':'maintain')+', so the trend and the goal disagree.';
+  return out;
+}
+function bodyBrief(){
+  var b=bodyState(); if(!b.kg) return 'BODY WEIGHT: not logged yet.';
+  var L=['BODY WEIGHT: '+fmt(b.kg)+' kg (smoothed trend'+(b.lastAt?', last weigh-in '+ymd(new Date(b.lastAt)):'')+'). Goal: '+({lose:'lose',keep:'maintain',gain:'gain'}[b.aim]||b.aim)+'.'];
+  if(b.ready) L.push('Trend over the last '+b.days+' days: '+(b.rate>0?'+':'')+fmt(b.rate)+' kg/week ('+(b.pct>0?'+':'')+fmt(b.pct)+'%/week), so they are '+b.phase+(b.fast?' (fast)':'')+'.');
+  L.push(b.note);
+  var rel=[];
+  exerciseNames().forEach(function(n){ var rows=progData(n); var e1=rows.length?rows[rows.length-1].e1rm:0;
+    if(e1&&rel.length<6) rel.push(n+' '+fmt(Math.round(e1/b.kg*100)/100)+'× body weight'); });
+  if(rel.length) L.push('Latest estimated 1RM relative to body weight: '+rel.join('; ')+'.');
+  return L.join('\n');
+}
+var BODY_RULES=[
+ '- Read BODY WEIGHT before choosing weights. Cutting: keep strength, hold a weight for another session before adding, do not add sets, and treat a held lift as a win. Losing more than 1%/week: say so once and suggest a bit more food, especially protein.',
+ '- Gaining: progress weights normally and you may add a set to lagging lifts. Steady: beat reps, then add weight.',
+ '- Pull-ups, dips, push-ups and dead hangs get harder when body weight goes up and easier when it goes down; mention it when it explains a change.',
+ '- If they tell you their body weight, call log_body_weight.'
+].join('\n');
 
 /* ---- photo estimate ---- */
 function shrink(file,max,q,asData){
@@ -2553,6 +2627,10 @@ function localReview(ses){
   });
   L.push('## What stood out');
   up.concat(flat,down).slice(0,6).forEach(function(x){ L.push('- '+x); });
+  var bsr=bodyState();
+  if(bsr.ready&&bsr.phase==='cutting'&&down.length) L.push('- You are losing about '+fmt(Math.abs(bsr.rate))+' kg a week, which explains some of the dips. Holding your weights during a cut is a win.');
+  else if(bsr.ready&&bsr.phase==='cutting'&&up.length) L.push('- Getting stronger while losing about '+fmt(Math.abs(bsr.rate))+' kg a week is a great sign.');
+  else if(bsr.ready&&bsr.phase==='gaining'&&flat.length&&!up.length) L.push('- You are gaining weight, so these lifts should be climbing. Push the weights next time.');
   if(skipped.length) L.push('- Not done: '+skipped.join(', '));
 
   var timed=(ses.ex||[]).map(function(e){ return {n:e.name,m:exMins(e)}; }).filter(function(x){ return x.m!=null; });
@@ -3118,6 +3196,17 @@ function setLogReply(r){
 
 function ruleCoach(text){
   var lt=String(text||'').toLowerCase();
+  var wm=lt.match(/^\s*(?:i\s*(?:weigh(?:ed)?|am|'m)|my (?:body ?)?weight(?: is| was)?|(?:body ?)?weight|weighed in(?: at)?|bw|scale(?: says| said)?)\s*:?\s*(?:at\s*)?(\d{2,3}(?:[.,]\d{1,2})?)\s*(?:kg|kilo)?s?\b/);
+  if(wm){ var wv=num(wm[1].replace(',','.'));
+    if(wv>=25&&wv<=350){ var wd=ymd(); put('weights',{id:'w-'+wd,date:wd,kg:wv},true); saveProfile({weightKg:wv});
+      var b0=bodyState();
+      return 'Saved **'+fmt(wv)+' kg** for today. Trend: **'+fmt(b0.kg)+' kg**'+(b0.ready?', '+(b0.rate>0?'+':'')+fmt(b0.rate)+' kg a week':'')+'.\n\n'+b0.note; } }
+  if(/\b(my|body) ?weight\b|weight trend|am i (losing|gaining)|cutting|bulking/.test(lt)&&/\?|how|trend|what|am i|doing/.test(lt)&&!/\b(bump|increase|lower|reduce)\b/.test(lt)){
+    var b1=bodyState();
+    if(!b1.kg) return 'No weigh-ins yet. Tell me "I weigh 72.5" or log it on the Food tab, and I will start adapting to it.';
+    return 'Your trend weight is **'+fmt(b1.kg)+' kg**'+(b1.ready?', '+(b1.rate>0?'+':'')+fmt(b1.rate)+' kg a week ('+(b1.pct>0?'+':'')+fmt(b1.pct)+'%)':'')+'.\n\n'+b1.note
+      +(b1.ready&&b1.phase==='cutting'?'\n\nWhile you lose, I hold a weight for one more session before adding to it, and I count a held lift as a win.':'');
+  }
   var isCmd=/\b(swap|replace|switch|instead of|remove|drop|move|reschedule|between)\b|\badd\b.*\b(to|on)\s+(today|tomorrow|mon|tue|wed|thu|fri|sat|sun)|\b(add|put|insert)\b.*\b(after|before)\b|^\s*(after|before)\b/.test(lt);
   var setMsg=isCmd?null:parseSetMessage(text);
   if(setMsg){ var snap=active()||finished().filter(function(x){ return ymd(new Date(x.finishedAt))===ymd(); })[0];
@@ -3264,6 +3353,7 @@ var ACTION_PROTOCOL=[
  '- log_workout {date:"YYYY-MM-DD", name, minutes?, notes?, results}',
  '- change_exercise {action:"replace"|"remove"|"add", exercise?, new_exercise?, when:"all"|"date", date?, weekday?, after?, before?, sets?, reps?, kg?, cue?}  (for "between A and B add C" use after:A)',
  '- log_sets {exercise, sets:"25x12, 25x10"}  (today only; pairs are kg x reps)',
+ '- log_body_weight {kg, date?}',
  '- undo_last_change {}',
  'Inside plan and results, separate lines with \\n.',
  'plan format: '+PLAN_FORMAT,
@@ -4261,6 +4351,9 @@ function viewToday(){
   if(a&&!S.parked) return liveView(a);
 
   var today=ymd(), p=plannedFor(today), doneToday=sessionOn(today), sk=skipOn(today), h=gymCard();
+  var bt=bodyState();
+  if(bt.ready&&bt.phase!=='steady') h+='<div class="hint" style="margin:-4px 2px 12px">Body weight '+fmt(bt.kg)+' kg, '+(bt.rate>0?'+':'')+fmt(bt.rate)+' kg a week. '
+    + (bt.phase==='cutting'?'Weights are held a session longer while you lose.':'Weights go up as soon as you hit your reps.')+'</div>';
 
   if(a){
     var pc=counts(a);
