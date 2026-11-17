@@ -49,6 +49,9 @@
     font-weight:600;font-size:14px;background:var(--card2);color:var(--txt);border:1px solid var(--line);width:100%}
   .btn:active{transform:scale(.985)}
   label.btn{cursor:pointer;box-sizing:border-box}
+  .wrow{display:flex;gap:8px;margin:-2px 0 12px}
+  .wrow input{flex:1;min-width:0}
+  .lnk{background:none;border:0;color:var(--acc);font:inherit;font-weight:700;padding:0;cursor:pointer}
   .ses-ex-h{align-items:center}
   .lchg{margin-left:8px;flex:none;background:var(--card2,#1b1f27);border:1px solid var(--line,#2a2f3a);color:var(--mut);border-radius:9px;padding:6px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
   .lchg.on{color:var(--acc);border-color:var(--acc)}
@@ -508,16 +511,20 @@ function loadLocal(){
     var st=JSON.parse(ls.getItem('wl_set')||'null'); if(st) S.settings=st;
   }catch(e){}
 }
+var SAVEWARN=0;
 function saveLocal(){
   var ls=LS(); if(!ls) return;
-  try{
-    ls.setItem('wl_days',JSON.stringify(S.days)); ls.setItem('wl_rt',JSON.stringify(S.routines));
-    ls.setItem('wl_ses',JSON.stringify(S.sessions)); ls.setItem('wl_chat',JSON.stringify(S.chat.slice(-60)));
-    ls.setItem('wl_set',JSON.stringify(S.settings));
-    ls.setItem('wl_meals',JSON.stringify(S.meals)); ls.setItem('wl_wt',JSON.stringify(S.weights));
-    ls.setItem('wl_skips',JSON.stringify(S.skips)); ls.setItem('wl_chars',JSON.stringify(S.chars));
-    ls.setItem('wl_prof',JSON.stringify(S.profile));
-  }catch(e){}
+  var bad=[];
+  [['wl_prof',S.profile],['wl_days',S.days],['wl_rt',S.routines],['wl_ses',S.sessions],['wl_set',S.settings],
+   ['wl_wt',S.weights],['wl_skips',S.skips],['wl_meals',S.meals],['wl_chars',S.chars],['wl_chat',S.chat.slice(-60)]]
+  .forEach(function(kv){ try{ ls.setItem(kv[0],JSON.stringify(kv[1])); }catch(e){ bad.push(kv[0]); } });
+  if(bad.indexOf('wl_meals')>=0){                      /* storage full: photo thumbnails are the big part, drop the oldest */
+    var withPic=S.meals.filter(function(m){ return m.thumb; }).sort(function(a,b){ return (a.at||0)-(b.at||0); });
+    withPic.slice(0,Math.ceil(withPic.length/2)).forEach(function(m){ m.thumb=''; });
+    try{ ls.setItem('wl_meals',JSON.stringify(S.meals)); bad.splice(bad.indexOf('wl_meals'),1); }catch(e){}
+  }
+  if(bad.length&&Date.now()-SAVEWARN>60000){ SAVEWARN=Date.now();
+    try{ toast('Phone storage is full, some changes may not be saved. Export a backup.'); }catch(e){} }
   try{ if(!SY.applying) syncSoon(); }catch(e){}
 }
 function sortDays(a){ return a.slice().sort(function(x,y){ return (x.date||'9999')<(y.date||'9999')?-1:1; }); }
@@ -1744,7 +1751,7 @@ function recalc(pd){
 
 /* ================= FOOD LOOKUP: name search, barcode, AI by name ================= */
 var OFF='https://world.openfoodfacts.org';
-var OFF_FIELDS='code,product_name,brands,quantity,serving_size,serving_quantity,nutriments';
+var OFF_FIELDS='code,product_name,product_name_nl,product_name_en,generic_name,generic_name_nl,brands,quantity,serving_size,serving_quantity,nutriments';
 var searchT=0, searchSeq=0;
 
 function offItem(p){
@@ -1752,7 +1759,8 @@ function offItem(p){
   var n=p.nutriments||{};
   var k=num(n['energy-kcal_100g']);
   if(!k&&num(n['energy_100g'])) k=num(n['energy_100g'])/4.184;      /* some entries only carry kJ */
-  var nm=String(p.product_name||'').trim();
+  var nm=String(p.product_name||p.product_name_nl||p.product_name_en||p.generic_name_nl||p.generic_name||'').trim();
+  if(Array.isArray(p.brands)) p.brands=p.brands.join(',');
   if(!k||!nm) return null;
   var pr=num(n.proteins_100g), c=num(n.carbohydrates_100g), f=num(n.fat_100g);
   var sq=num(p.serving_quantity), g=sq>0&&sq<1500?sq:100;
@@ -1815,13 +1823,23 @@ function foodSearchSoon(q){
   paintSearch();
   searchT=setTimeout(function(){ foodSearch(q); },850);       /* the database allows only a few searches a minute */
 }
+var SEARCHC={};
+function offSearch(q){
+  if(SEARCHC[q]) return Promise.resolve(SEARCHC[q]);
+  var main=OFF+'/cgi/search.pl?search_terms='+encodeURIComponent(q)
+    +'&search_simple=1&action=process&json=1&page_size=20&sort_by=unique_scans_n&fields='+OFF_FIELDS;
+  var backup='https://search.openfoodfacts.org/search?q='+encodeURIComponent(q)+'&page_size=20&fields='+OFF_FIELDS;
+  var take=function(d){ var list=(d&&(d.products||d.hits))||[]; if(!list.length&&!(d&&('count' in d))) throw new Error('empty'); return list; };
+  return offGet(main).then(take).catch(function(e1){
+    return offGet(backup).then(take).catch(function(){ throw e1; });        /* the main search is often busy; try the newer one */
+  }).then(function(list){ SEARCHC[q]=list; return list; });
+}
 function foodSearch(q){
   var seq=++searchSeq;
-  offGet(OFF+'/cgi/search.pl?search_terms='+encodeURIComponent(q)
-    +'&search_simple=1&action=process&json=1&page_size=20&sort_by=unique_scans_n&fields='+OFF_FIELDS)
-  .then(function(d){
+  offSearch(q)
+  .then(function(list){
     if(seq!==searchSeq) return;
-    var out=((d&&d.products)||[]).map(offItem).filter(Boolean).slice(0,8);
+    var out=list.map(offItem).filter(Boolean).slice(0,8);
     S.food.search={q:q,results:out,done:true}; paintSearch();
   })
   .catch(function(e){
@@ -1840,7 +1858,7 @@ function aiFood(){
   var s=S.food.search; if(!s||!s.q||s.ai) return;
   s.ai=true; paintSearch();
   var q=s.q;
-  (S.sample?S.sample(namePrompt(q)):geminiCall(namePrompt(q)))
+  (S.sample?S.sample(namePrompt(q)):geminiCall(namePrompt(q),{json:true}))
   .then(function(res){
     var d=looseJSON(res&&res.text); if(!d) throw new Error('unreadable');
     var items=prepItems(d.items);
@@ -1965,7 +1983,7 @@ function analyzePhoto(files,hint,keep){
 
   prep.then(function(){
     if(!blobs.length) throw new Error('no-image');
-    if(!S.sample) return geminiCall(foodPrompt(hint),{images:blobs});
+    if(!S.sample) return geminiCall(foodPrompt(hint),{images:blobs,json:true});
     return Promise.resolve(S.sample.limits?S.sample.limits():null).catch(function(){ return null; }).then(function(l){
       if(l&&!l.images){ var e=new Error('images'); e.code='images_unavailable'; throw e; }
       return S.sample(foodPrompt(hint),{images:blobs});
@@ -2025,6 +2043,11 @@ function viewFood(){
     + macroCell('Fat',t.fat,0,'#9085e9')
     + '</div></div></div>';
 
+  var wToday=S.weights.filter(function(w){ return w.date===d; })[0];
+  if(wToday&&!S.food.wEdit) h+='<div class="hint" style="margin:-4px 2px 12px">Weighed in at <b>'+fmt(num(wToday.kg))+' kg</b>'
+    + (d===ymd()?' today':' on this day')+'. <button class="lnk" data-act="w-edit">Change</button></div>';
+  else h+='<div class="wrow"><input data-fkey="fw" data-in="food-w" type="text" inputmode="decimal" placeholder="Weight '+(d===ymd()?'today':'this day')+' (kg)" value="'+esc(S.food.wText||'')+'">'
+    + '<button class="btn" style="width:auto" data-act="w-log">Log weight</button></div>';
   h+='<div class="tri3" style="margin-bottom:12px">'
     + (S.food.analyzing?'<button class="btn p" disabled><span class="spin"></span>Reading…</button>'
         :'<label class="btn p" for="photoin">Photo</label>')
@@ -2571,10 +2594,11 @@ function geminiCall(msgs,opts,retried){
     return geminiModel().then(function(model){
       var contents=msgs.map(function(m){
         return {role:m.role==='assistant'?'model':'user',parts:[{text:String(m.content)}]}; });
-      b64.forEach(function(d){ contents[contents.length-1].parts.push({inline_data:{mime_type:'image/jpeg',data:d}}); });
+      b64.forEach(function(d,i){ var ty=String(((opts.images||[])[i]||{}).type||'');
+        contents[contents.length-1].parts.push({inline_data:{mime_type:/^image\/(png|jpeg|webp|heic|heif)$/.test(ty)?ty:'image/jpeg',data:d}}); });
       return fetch(GEM+'models/'+encodeURIComponent(model)+':generateContent',{method:'POST',
         headers:{'Content-Type':'application/json','x-goog-api-key':aiKey()},
-        body:JSON.stringify({contents:contents})});
+        body:JSON.stringify(opts.json?{contents:contents,generationConfig:{responseMimeType:'application/json'}}:{contents:contents})});
     });
   }).then(function(r){
     return r.json().then(function(j){
@@ -4956,6 +4980,14 @@ document.addEventListener('click',function(ev){
   if(act==='wk'){ S.weekOff=Math.min(0,(S.weekOff||0)+parseInt(t.dataset.d,10)); render(); return; }
 
   /* --- food --- */
+  if(act==='w-edit'){ S.food.wEdit=true; render(); return; }
+  if(act==='w-log'){
+    var wv2=num(S.food.wText);
+    if(wv2<25||wv2>350){ toast('Type your weight in kg, e.g. 72.5'); return; }
+    var wd2=foodDate(); put('weights',{id:'w-'+wd2,date:wd2,kg:wv2},true);
+    if(wd2===ymd()) saveProfile({weightKg:wv2});
+    S.food.wText=''; S.food.wEdit=false; toast('Weight logged: '+fmt(wv2)+' kg'); render(); return;
+  }
   if(act==='fday'){
     var cur=fromYmd(foodDate());
     var nd=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate()+parseInt(t.dataset.d,10));
@@ -5022,7 +5054,10 @@ document.addEventListener('click',function(ev){
   }
   if(act==='edit-meal'){
     var mm=byId('meals',t.dataset.id); if(!mm) return;
-    S.food.pending=Object.assign({},mm,{editId:mm.id}); render(); return;
+    var cp=JSON.parse(JSON.stringify(mm));
+    (cp.items||[]).forEach(function(i){                 /* meals saved before rates were kept: rebuild them */
+      var g=num(i.grams); if(!i.per&&g>0) i.per={kcal:num(i.kcal)/g,protein:num(i.protein)/g,carbs:num(i.carbs)/g,fat:num(i.fat)/g}; });
+    S.food.pending=Object.assign(cp,{editId:mm.id}); S.food.search=null; render(); return;
   }
   if(act==='save-meal'){
     var pd=S.food.pending; if(!pd) return;
@@ -5035,8 +5070,10 @@ document.addEventListener('click',function(ev){
       note:String(pd.assumptions||pd.note||''), thumb:pd.thumb||(pd.thumbs&&pd.thumbs[0])||'',
       source:pd.source||'manual',
       items:(pd.items||[]).map(function(i){
-        return {name:i.name,grams:num(i.grams),kcal:num(i.kcal),
+        var o={name:i.name,grams:num(i.grams),kcal:num(i.kcal),
                 protein:num(i.protein),carbs:num(i.carbs),fat:num(i.fat)};
+        if(i.per) o.per=i.per;
+        return o;
       })
     },true);
     S.food.pending=null; render(); return;
@@ -5182,6 +5219,7 @@ document.addEventListener('keydown',function(ev){
   if(ev.key==='Enter'&&!ev.shiftKey){
     var el=ev.target;
     if(el&&el.dataset&&el.dataset['in']==='draft'){ ev.preventDefault(); coachSend(S.draft); }
+    if(el&&el.dataset&&el.dataset['in']==='food-w'){ ev.preventDefault(); var wb=document.querySelector('[data-act="w-log"]'); if(wb) wb.click(); }
     if(el&&(el.id==='au-pw'||el.id==='au-email')){ ev.preventDefault(); authSubmit(S.auth&&S.auth.mode==='signup'?'signup':'login'); }
     if(el&&el.id==='au-newpw'){ ev.preventDefault(); changePassword(); }
     if(el&&el.dataset&&el.dataset['in']==='live-text'){ ev.preventDefault();
@@ -5211,6 +5249,7 @@ function inputMain(ev){
   var el=ev.target.closest('[data-in]'); if(!el) return;
   var kind=el.dataset['in'], v=el.value;
 
+  if(kind==='food-w'){ S.food.wText=v; return; }
   if(kind.indexOf('p-')===0){
     if(!S.food.pending) return;
     var f={'p-name':'name','p-kcal':'kcal','p-protein':'protein','p-carbs':'carbs',
