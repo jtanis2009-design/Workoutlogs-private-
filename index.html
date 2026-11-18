@@ -856,14 +856,14 @@ var NLD={
 "Heaviest set, kg":"Zwaarste set, kg","Best week, kg lifted → Nox":"Beste week, kg getild → Nox","Weeks on target → Volt":"Weken op doel → Volt","Heaviest single set, kg → Static":"Zwaarste set, kg → Static",
 "Under set target":"Onder setdoel","to":"tot","heaviest set ever":"zwaarste set ooit","best set":"beste set","PR wall":"PR-muur",
 "For that group:":"Voor die groep:","or Plank.":"of Plank.","Which one did you do?":"Welke heb je gedaan?","For example":"Bijvoorbeeld",
-"in a message means the seated crunch machine.":"betekent in een bericht de zittende crunchmachine.",
-"Abdominals is the muscle group. Pick an exercise, e.g. abdominal crunches.":"Buikspieren is de spiergroep. Kies een oefening, bijv. abdominal crunches.",
+"means the B-Fit machine of that name,":"is de B-Fit-machine met die naam,","the seated crunch machine.":"de zittende crunchmachine.",
+"Abs is the muscle group. Pick an exercise, e.g. Abdominals or abdominal crunches.":"Buikspieren is de spiergroep. Kies een oefening, bijv. Abdominals of abdominal crunches.",
 "Weight is per side":"Gewicht is per kant","Weight is the total":"Gewicht is het totaal","· bodyweight":"· lichaamsgewicht","Added to your finished workout on":"Toegevoegd aan je afgeronde training van","Saved as a finished workout on":"Opgeslagen als afgeronde training op",", with":", met","Looks":"Skins","(this day only).":"(alleen deze dag).",", and in your standing routine.":", en ook in je vaste routine.","in your workout in progress":"in je lopende training","in today's workout":"in de training van vandaag",
 "That did not go through, so nothing changed. The note above says why; try saying it another way.":"Dat is niet gelukt, dus er is niets veranderd. De melding hierboven zegt waarom; probeer het anders te zeggen.",
 "Part of that did not go through, see the note above.":"Een deel daarvan is niet gelukt, zie de melding hierboven.","That is the same exercise twice.":"Dat is twee keer dezelfde oefening.",
 "There is no exercise":"Er is geen oefening","Could not reorder_exercises:":"Kon de volgorde niet aanpassen:","Could not change_exercise:":"Kon de oefening niet aanpassen:",
 "Language":"Taal","Taal / Language":"Taal / Language",
-"Abdominals is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.",
+"Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
 "Set a calorie goal in You, Goals and body.":"Stel een caloriedoel in bij Jij, Doelen en lichaam.",
 "Two workouts are logged on":"Er staan twee trainingen gelogd op",
@@ -988,7 +988,7 @@ var NLIN=[
  [/\bextra training\b/g,'extra session'],[/\bhoe laat (?:gaat|is) de (?:sportschool|gym) dicht\b/g,'when does the gym close'],
  [/\bhoe (?:gaat|staat) (?:het met )?mijn (?:voortgang|progressie)\b/g,'how is my progress'],[/\bwat staat er deze week\b/g,'what is on this week'],
  [/\bwat is (?:de |het |een )?/g,'what is '],[/\bhoeveel eiwit\b.*\b(?:nog|over|te gaan)\b/g,'how much protein to go'],[/\beiwit\b/g,'protein'],
- [/\bweekrapport\b|\bweek ?verslag\b/g,'weekly report'],[/\bbuikspieren\b/g,'abdominals']
+ [/\bweekrapport\b|\bweek ?verslag\b/g,'weekly report'],[/\bbuikspieren\b/g,'abs']
 ];
 function nlIn(text){
   var t=String(text||''), lo=t.toLowerCase();
@@ -3435,7 +3435,8 @@ var EXLIB=[
  ['cable-crunch','Cable Crunch',/cable ?crunch|kneeling ?(cable )?crunch|rope ?crunch/i,'abs','Kneel facing a high cable with a rope by your head. Curl your ribs toward your hips by rounding the spine; the hips stay still.','kg',['ab-machine','decline-crunch','leg-raise']],
  ['decline-crunch','Decline Crunch',/decline ?(crunch|sit.?up)/i,'abs','Feet hooked on a decline bench. Curl up until your lower back just lifts, then lower slowly. Hold a plate on your chest to add load.','bw',['ab-machine','cable-crunch','floor-crunch']],
  ['reverse-crunch','Reverse Crunch',/reverse ?crunch/i,'lower abs','Lie on your back, knees bent. Roll your hips off the floor toward your chest using the abs, not a leg swing, then lower slowly.','bw',['leg-raise','floor-crunch','plank']],
- ['ab-machine','Abdominal Crunch Machine',/\babdominals? ?(crunch(es)?|machine)\b|\bab ?(crunch )?machine|crunch ?machine|\bab ?crunch(es)?\b/i,'abs (rectus abdominis)','The seated crunch machine, also called abdominal crunches or the ab machine. Pads on your chest or shoulders, feet hooked. Curl your ribs down toward your hips by rounding the upper back, breathe out at the bottom, pause, come back slowly. Do not pull with the arms or just bend at the hips.','kg',['cable-crunch','decline-crunch','floor-crunch']],
+ ['abdominals','Abdominals',/^\s*abdominals(?: machine)?\s*$|\babdominals machine\b/i,'abs (rectus abdominis)','The machine called Abdominals at B-Fit, a different machine from the abdominal crunch machine. Set the seat so the pads sit right before you start. Brace, then curl your ribs toward your hips with your abs, breathe out at the end, pause, and come back slowly. Do not pull with your arms or swing with your hips.','kg',['ab-machine','cable-crunch','leg-raise']],
+ ['ab-machine','Abdominal Crunch Machine',/\babdominals? ?crunch(es)?\b|\babdominal machine\b|\bab ?(crunch )?machine|crunch ?machine|\bab ?crunch(es)?\b/i,'abs (rectus abdominis)','The seated crunch machine, also called abdominal crunches or the ab machine. Pads on your chest or shoulders, feet hooked. Curl your ribs down toward your hips by rounding the upper back, breathe out at the bottom, pause, come back slowly. Do not pull with the arms or just bend at the hips.','kg',['cable-crunch','decline-crunch','floor-crunch']],
  ['floor-crunch','Crunches (floor)',/\bcrunch(es)?\b|sit.?ups?/i,'abs','On your back, knees bent, hands by your temples. Lift your shoulder blades by curling the ribs toward the hips, breathe out at the top, lower slowly. Do not yank your neck.','bw',['ab-machine','reverse-crunch','plank']],
  ['dead-hang','Dead Hang',/dead ?hangs?|bar ?hangs?|(passive|active) ?hangs?|\bhangs?\b(?! ?(clean|snatch|power))(?!ing)/i,'grip and forearms, with a stretch for the lats and shoulders','Hang from a pull-up bar with straight arms and a full grip, shoulders relaxed (passive) or pulled slightly down (active). Hold for time; the reps box is seconds. Stop when your grip starts to open. Add a belt with weight once 60 seconds is easy.','time',['pullup','farmer-carry','shrug']],
  ['farmer-carry','Farmer Carry',/farmer'?s? ?(carry|walk)/i,'grip, traps and core','Heavy dumbbells at your sides, stand tall and walk with short steps. The reps box is seconds.','time',['dead-hang','shrug']],
@@ -3491,8 +3492,8 @@ function exLib(name){
   return null;
 }
 /* "abdominals" / "abs" alone is the muscle group; "abdominal crunches" is the machine */
-function isMuscleWord(n){ return /^\s*(abs|abdominals?|abdominal muscles|stomach|core|buik|buikspieren)\s*$/i.test(String(n||'')); }
-var ABS_MSG='Abdominals is the muscle group, not one exercise. For that group: Abdominal Crunch Machine ("abdominal crunches"), Cable Crunch, Decline Crunch, Leg Raise or Plank.';
+function isMuscleWord(n){ return /^\s*(abs|abdominal muscles|stomach|core|buik|buikspieren)\s*$/i.test(String(n||'')); }
+var ABS_MSG='Abs is the muscle group, not one exercise. For that group: Abdominals (the B-Fit machine), Abdominal Crunch Machine ("abdominal crunches"), Cable Crunch, Decline Crunch, Leg Raise or Plank.';
 /* one key per exercise, so "Abdominal Machine" and "Abdominal Crunches" share history and weights */
 var EXKEYC={};
 function exKey(name){
@@ -3509,7 +3510,7 @@ function exInfo(l){
 function exGlossary(){
   var seenG={};
   return EXLIB.filter(function(x){ if(seenG[x[0]]) return false; seenG[x[0]]=1; return x[5]!=='cardio'; }).map(function(x){
-    return '  '+x[1]+' ('+x[3]+')'+(x[0]==='ab-machine'?' — "abdominal crunches", "ab machine" and "Abdominal Machine" all mean this seated crunch machine. "Abdominals" or "abs" on its own is the muscle group, not this machine: ask which exercise they mean':'');
+    return '  '+x[1]+' ('+x[3]+')'+(x[0]==='ab-machine'?' — "abdominal crunches", "ab machine" and "Abdominal Machine" mean this seated crunch machine. "Abdominals" is a DIFFERENT machine at their gym (B-Fit): never merge or swap the two. "Abs" on its own is the muscle group: ask which exercise they mean':'');
   }).join('\n');
 }
 
@@ -4090,8 +4091,8 @@ function setLogReply(r){
 function ruleCoach(text){
   text=nlIn(text);
   var lt=String(text||'').toLowerCase();
-  if(/\b(what|which)\b.*\b(abs|abdominals?)\b(?! ?(crunch|machine))/.test(lt)&&!/\d+\s*[x×]\s*\d+/.test(lt))
-    return ABS_MSG+'\n\n"Abdominal crunches" in a message means the seated crunch machine.';
+  if(/\b(what|which)\b.*\b(abs|core)\b/.test(lt)&&!/\d+\s*[x×]\s*\d+/.test(lt))
+    return ABS_MSG+'\n\n"Abdominals" means the B-Fit machine of that name, "abdominal crunches" the seated crunch machine.';
   var ro=parseReorder(text);
   if(ro){ try{ return reorderReply(reorderExercises(ro)); }catch(e){ return String(e.message||e); } }
   var mm=lt.match(/\b(normal|failure|recovery|strength|pump|quick|hypertrophy|heavy|light|easy)[\s-]+(mode|day|session|workout)\b/)
@@ -5535,7 +5536,7 @@ var MODES=[
   ai:'Short on time: only the first four lifts, fewer sets, short rest. Keep advice brief.'}
 ];
 var ISOLATION={'lateral-raise':1,'pec-deck':1,'cable-fly':1,'leg-ext':1,'leg-curl':1,'bicep-machine':1,'db-curl':1,'hammer-curl':1,
-  'tricep-press':1,'pushdown':1,'calf-raise':1,'lp-calf':1,'rear-delt':1,'ab-machine':1,'cable-crunch':1,'shrug':1,'abductor':1,'adductor':1};
+  'tricep-press':1,'pushdown':1,'calf-raise':1,'lp-calf':1,'rear-delt':1,'ab-machine':1,'abdominals':1,'cable-crunch':1,'shrug':1,'abductor':1,'adductor':1};
 function modeById(id){ return MODES.filter(function(m){ return m.id===id; })[0]||MODES[0]; }
 function curMode(){ return modeById(S.profile.trainMode||'normal'); }
 function sesMode(s){ return modeById((s&&s.mode)||'normal'); }
@@ -6176,7 +6177,7 @@ function liveChange(fn,msg){
 function liveSwap(ei,name,typed){
   name=String(name||'').trim(); if(!name) return;
   var s=active(); if(!s||!s.ex[ei]) return;
-  if(typed&&isMuscleWord(name)){ toast('Abdominals is the muscle group. Pick an exercise, e.g. abdominal crunches.'); return; }
+  if(typed&&isMuscleWord(name)){ toast('Abs is the muscle group. Pick an exercise, e.g. Abdominals or abdominal crunches.'); return; }
   var old=s.ex[ei], nm=typed?typedExName(name):name;
   liveChange(function(c){
     var e=c.ex[ei], done=(e.sets||[]).filter(function(x){ return x.done; }).length, left=(e.sets||[]).length-done;
@@ -6188,7 +6189,7 @@ function liveSwap(ei,name,typed){
 }
 function liveAdd(name,at,typed){
   name=String(name||'').trim(); if(!name) return;
-  if(typed&&isMuscleWord(name)){ toast('Abdominals is the muscle group. Pick an exercise, e.g. abdominal crunches.'); return; }
+  if(typed&&isMuscleWord(name)){ toast('Abs is the muscle group. Pick an exercise, e.g. Abdominals or abdominal crunches.'); return; }
   var nm=typed?typedExName(name):name;
   liveChange(function(c){
     var pos=at!=null?at:c.ex.length;
