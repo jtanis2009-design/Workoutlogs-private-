@@ -400,6 +400,14 @@
   .seg2 button{padding:9px;border-radius:8px;font-size:13px;font-weight:700;color:var(--mut2)}
   .seg2 button.on{background:var(--card2);color:var(--txt)}
   .seg2.five button{padding:9px 2px;font-size:12px}
+  .mach{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--mut);margin:0 0 8px}
+  .mach.ed{display:block;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .vsl{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--mut2);margin:-2px 0 6px}
+  .vsl b.up{color:var(--acc)} .vsl b.dn{color:#e8b04a}
+  .srow button.snum{background:none;border:0;color:inherit;font:inherit;padding:0;cursor:pointer}
+  .srow.warm{opacity:.7} .srow.warm button.snum{color:#e8b04a;font-weight:800}
+  .pickrow{display:flex;justify-content:space-between;width:100%;padding:9px 4px;border-top:1px solid var(--line);font-size:13px;text-align:left}
+  .pickrow.on{color:var(--acc)}
   .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
   .chips button{font-size:13px;font-weight:600;padding:9px 14px;border-radius:999px;background:var(--card);
     border:1px solid var(--line);color:var(--mut)}
@@ -434,6 +442,7 @@
 <div id="restbar"></div>
 <input type="file" id="phin" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <input type="file" id="photoin" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+<input type="file" id="labelin" accept="image/*" capture="environment" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <input type="file" id="avatarin" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <input type="file" id="charin" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <input type="file" id="backupin" accept="application/json,.json" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
@@ -899,6 +908,32 @@ var NLD={
 "estimated max":"geschatte max","Share my":"Deel mijn","Your":"Je","recap is ready.":"jaaroverzicht staat klaar.","Open":"Openen",
 "No finished workouts in":"Nog geen afgeronde trainingen in","yet. Your year recap fills in as you train.":". Je jaaroverzicht vult zich terwijl je traint.",
 "Stats → Year has the full recap and a share image.":"Stats → Jaar heeft het volledige overzicht en een afbeelding om te delen.",
+"Save seat and pin settings":"Stoel- en pinstand opslaan","steps of":"stappen van","(learned)":"(geleerd)","Seat, pads, pins":"Stoel, kussens, pinnen","Weight step (kg)":"Gewichtstap (kg)",
+"— all reps hit, but +":"— alle reps gehaald, maar +","kg is a big jump on this machine, so first get":"kg is een grote sprong op deze machine, dus haal eerst","reps on every set":"reps bij elke set",
+"Last time:":"Vorige keer:","so far":"tot nu toe","% volume":"% volume","Tap to mark as a warm-up set":"Tik om als opwarmset te markeren",
+"You are losing about":"Je valt ongeveer af:","% of your weight a week (":"% van je gewicht per week (","kg). Above 1% muscle is at risk: eat about":"kg). Boven 1% loop je spier kwijt: eet ongeveer","kcal more a day.":"kcal per dag meer.",
+"While you are cutting, keep your sets where they are and count held weights as wins.":"Zolang je cut, houd je sets gelijk en tel gelijk gebleven gewichten als winst.",
+"Pace":"Tempo","% a week":"% per week","0.5 to 1% a week keeps the most muscle while you lose. Slower is easier to stick to.":"0,5 tot 1% per week behoudt de meeste spier terwijl je afvalt. Langzamer is makkelijker vol te houden.",
+"Take a 2-week diet break":"Neem 2 weken dieetpauze","Two weeks at maintenance, then your goal comes back by itself. Useful when the cut has dragged on and energy is low.":"Twee weken op onderhoud, daarna komt je doel vanzelf terug. Handig als de cut lang duurt en je energie laag is.",
+"Diet break until":"Dieetpauze tot",": eat around maintenance (":": eet rond onderhoud (","kcal). Training stays the same.":"kcal). Training blijft hetzelfde.","End it":"Stoppen","End it now":"Nu stoppen",", goal set to maintenance.":", doel staat op onderhoud.",
+"Diet break ended":"Dieetpauze gestopt","kcal a day for two weeks":"kcal per dag, twee weken lang","Diet break:":"Dieetpauze:",
+"Label":"Etiket","Search":"Zoeken","Save items as a meal":"Items opslaan als maaltijd","Copy this day to today":"Kopieer deze dag naar vandaag","This day is incomplete":"Deze dag is onvolledig","Marked incomplete (undo)":"Gemarkeerd als onvolledig (ongedaan)",
+"Only":"Maar","kcal logged here. If you forgot to log some meals, mark it incomplete so it does not skew your measured calorie burn.":"kcal gelogd hier. Ben je maaltijden vergeten, markeer de dag dan als onvolledig zodat je gemeten verbranding niet scheef gaat.",
+"Tap the items that belong together":"Tik de items aan die bij elkaar horen","Name for the meal":"Naam voor de maaltijd","e.g. Breakfast":"bijv. Ontbijt","Save as one-tap meal":"Opslaan als één-tik-maaltijd",
+"copied to today":"gekopieerd naar vandaag","Nothing logged on that day.":"Niets gelogd op die dag.","Pick at least one item.":"Kies minstens één item.","as a one-tap meal":"als één-tik-maaltijd",
+"Anything the photo cannot show?":"Iets wat de foto niet laat zien?","Cooking oil, 1 tbsp":"Bakolie, 1 el","Butter, 10 g":"Boter, 10 g","Sauce or dressing, 2 tbsp":"Saus of dressing, 2 el","Mayonnaise, 1 tbsp":"Mayonaise, 1 el",
+"Or: protein you want (g)":"Of: eiwit dat je wilt (g)","Or: calories you want":"Of: calorieën die je wilt","e.g. 30":"bijv. 30","e.g. 250":"bijv. 250",
+"Reading labels needs an AI key. Add one in You, Settings.":"Etiketten lezen heeft een AI-sleutel nodig. Voeg er een toe bij Jij, Instellingen.",
+"No nutrition table could be read. Take the photo straight on, close enough that the numbers fill the frame.":"Er kon geen voedingstabel gelezen worden. Maak de foto recht van voren, zo dichtbij dat de getallen het beeld vullen.",
+"Read from the label:":"Van het etiket gelezen:","g protein per 100 g. Saved to your own foods, so searching its name finds it next time. Change the grams to what you ate.":"g eiwit per 100 g. Opgeslagen bij je eigen producten, dus zoeken op de naam vindt hem volgende keer. Pas de grammen aan naar wat je at.",
+"Rest is over, next set.":"Rust is voorbij, volgende set.","A new version of the app is ready.":"Er is een nieuwe versie van de app klaar.","Reload":"Herladen",
+"Planned deload":"Geplande deload","Every":"Elke","Make next week a deload now":"Maak volgende week nu een deload",
+"A lighter week every 5 to 6 weeks is what most lifters use: half the sets, same weights. Without a schedule the app still suggests one when your lifts stall.":"Een lichtere week elke 5 tot 6 weken is wat de meeste lifters doen: de helft van de sets, dezelfde gewichten. Zonder schema stelt de app er nog steeds een voor als je oefeningen vastlopen.",
+"Your planned deload: it has been":"Je geplande deload: het is","weeks since the last lighter week (you set every":"weken sinds de laatste lichtere week (je koos elke",
+"Export workouts as CSV (Strong format)":"Trainingen exporteren als CSV (Strong-formaat)","No finished workouts to export yet":"Nog geen afgeronde trainingen om te exporteren","sets exported":"sets geëxporteerd",
+"The CSV opens in Excel or Google Sheets, and Hevy and Strong can import it.":"De CSV opent in Excel of Google Sheets, en Hevy en Strong kunnen hem importeren.",
+"This browser has agreed to keep the app's data, including progress photos, when space runs low.":"Deze browser bewaart de data van de app, ook je voortgangsfoto's, als de ruimte krap wordt.",
+"This browser may clear the app's data when space runs low; installing the app to your home screen protects it.":"Deze browser kan de data van de app wissen als de ruimte krap wordt; de app op je startscherm zetten beschermt hem.",
 "Language":"Taal","Taal / Language":"Taal / Language",
 "Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
@@ -910,7 +945,7 @@ var NLD={
 };
 /* numeric and ordering patterns; applied before phrase matching */
 var NLR=[
- [/^Today\b/,'Vandaag'],[/^Logged (.+) on (\d{4}-\d\d-\d\d)$/,'Gelogd: $1 op $2'],[/\b(\d\d:\d\d) to (\d\d:\d\d)\b/g,'$1 tot $2'],[/(\S) Today\b/g,'$1 vandaag'],[/(\S) Tomorrow\b/g,'$1 morgen'],[/^Tomorrow\b/,'Morgen'],[/^Yesterday\b/,'Gisteren'],
+ [/^Today\b/,'Vandaag'],[/\bweeks\)$/,'weken)'],[/^Every (\d+) weeks$/,'Elke $1 weken'],[/\bget (\d+) reps\b/,'haal $1 reps'],[/^Logged (.+) on (\d{4}-\d\d-\d\d)$/,'Gelogd: $1 op $2'],[/\b(\d\d:\d\d) to (\d\d:\d\d)\b/g,'$1 tot $2'],[/(\S) Today\b/g,'$1 vandaag'],[/(\S) Tomorrow\b/g,'$1 morgen'],[/^Tomorrow\b/,'Morgen'],[/^Yesterday\b/,'Gisteren'],
  [/\b(\d+(?:[.,]\d+)?) of (\d+(?:[.,]\d+)?)\b/g,'$1 van $2'],
  [/\bin (\d+) days\b/g,'over $1 dagen'],[/\b(\d+) days ago\b/g,'$1 dagen geleden'],[/\b1 day ago\b/g,'1 dag geleden'],
  [/\b(\d+) days\b/g,'$1 dagen'],[/\b1 day\b/g,'1 dag'],[/\b(\d+) weeks\b/g,'$1 weken'],[/\b1 week\b/g,'1 week'],
@@ -1106,14 +1141,14 @@ function setLoad(e,s){ return (num(s.kg)+exBase(e))*(perSide(e)?2:1); }
 function effReps(s){ return num(s.reps)+(String(s.rir||'').trim()===''?0:num(s.rir)); }
 /* Epley, on the per-implement load. Unreliable past ~12 reps, so refuse rather than mislead. */
 function e1rm(e,s){
-  if(isTimed(e)) return 0;
+  if(isTimed(e)||(s&&s.warm)) return 0;
   var w=num(s.kg)+exBase(e); if(!w) return 0;
   var r=effReps(s); if(r<1||r>12) return 0;
   return w*(1+r/30);
 }
 function volume(ses){
   var v=0;
-  (ses.ex||[]).forEach(function(e){ if(isTimed(e)) return; (e.sets||[]).forEach(function(s){ if(s.done) v+=setLoad(e,s)*num(s.reps); }); });
+  (ses.ex||[]).forEach(function(e){ if(isTimed(e)) return; (e.sets||[]).forEach(function(s){ if(s.done&&!s.warm) v+=setLoad(e,s)*num(s.reps); }); });
   return v;
 }
 function counts(ses){ var d=0,t=0;(ses.ex||[]).forEach(function(e){
@@ -1346,14 +1381,14 @@ function historyFor(name){
   finished().forEach(function(s){
     (s.ex||[]).forEach(function(e){
       if(exKey(e.name)!==key) return;
-      var done=(e.sets||[]).filter(function(x){return x.done;});
+      var done=(e.sets||[]).filter(function(x){return x.done&&!x.warm;});
       if(done.length) out.push({at:s.finishedAt,target:e.target||{},sets:done.map(function(x){
         return {kg:num(x.kg),reps:num(x.reps)}; })});
     });
   });
   return out;   // newest first (finished() is newest first)
 }
-function stepFor(e){ return num(e&&e.step)||num(S.settings.step)||STEP; }
+function stepFor(e){ return num(e&&e.step)||machStep(e&&e.name)||num(S.settings.step)||STEP; }
 function roundStep(kg,st){ st=num(st)||STEP; return Math.round(kg/st)*st; }
 function suggest(name,planKg,planReps,planSets,st){
   st=num(st)||num(S.settings.step)||STEP;
@@ -1370,6 +1405,8 @@ function suggest(name,planKg,planReps,planSets,st){
     var prevTop=h[1]&&h[1].sets.every(function(s){ return s.reps>=top; })&&h[1].sets.some(function(s){ return s.kg>=maxKg; });
     if(!prevTop) return {kg:maxKg,why:'Last time '+fmt(maxKg)+'kg × '+hit+' — all reps hit, but you are losing about '+fmt(Math.abs(bs.rate))+' kg a week, so own it once more before adding weight'};
   }
+  if(allTop&&maxKg>0&&st/maxKg>=0.1&&!last.sets.every(function(s){ return s.reps>=top+2; }))
+    return {kg:maxKg,why:'Last time '+fmt(maxKg)+'kg × '+hit+' — all reps hit, but +'+fmt(st)+'kg is a big jump on this machine, so first get '+(top+2)+' reps on every set'};
   if(allTop) return {kg:roundStep(maxKg+st,st),
     why:'Last time '+fmt(maxKg)+'kg × '+hit+' — all reps hit, so +'+fmt(st)+'kg'+(bs&&bs.ready&&bs.phase==='gaining'?' (you are gaining weight, a good time to push)':'')};
   var prevMax=0; if(h[1]) h[1].sets.forEach(function(s){ if(s.kg>prevMax) prevMax=s.kg; });
@@ -1468,7 +1505,7 @@ function startRest(){
   var n=modeRest();
   if(n<=0){ S.rest=null; paintRest(); return; }
   S.rest={until:Date.now()+n*1000,rung:false};
-  paintRest();
+  saveRest(); paintRest();
 }
 function paintRest(){
   var el=document.getElementById('restbar'); if(!el) return;
@@ -1488,10 +1525,17 @@ setTimeout(function(){ try{ S.notif=notifyState(); }catch(e){} },500);
 setInterval(function(){
   if(!S.rest) return;
   var left=S.rest.until-Date.now();
-  if(left<=0&&!S.rest.rung){ S.rest.rung=true; beep(); }
-  if(left<-20000){ S.rest=null; }
+  if(left<=0&&!S.rest.rung){ S.rest.rung=true; beep(); restDone(); saveRest(); }
+  if(left<-20000){ S.rest=null; saveRest(); }
   paintRest();
 },1000);
+try{ var rs0=JSON.parse(localStorage.getItem('wl_rest')||'null'); if(rs0&&rs0.until>Date.now()-20000) S.rest=rs0; }catch(e){}
+setInterval(function(){ try{ if(active()) wakeOn(); else wakeOff(); }catch(e){} },5000);
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'){ try{ paintRest(); wakeOn(); checkUpdate(); breakCheck(); }catch(e){} }
+});
+setTimeout(function(){ try{ breakCheck(); checkUpdate(); }catch(e){} },8000);
+setInterval(function(){ try{ checkUpdate(); }catch(e){} },30*60000);
 
 /* ---------------- progress charts ---------------- */
 function exerciseNames(){
@@ -1513,7 +1557,7 @@ function progData(name){
   finished().slice().reverse().forEach(function(s){      /* oldest first */
     (s.ex||[]).forEach(function(e){
       if(exKey(e.name)!==key) return;
-      var done=(e.sets||[]).filter(function(x){return x.done;});
+      var done=(e.sets||[]).filter(function(x){return x.done&&!x.warm;});
       if(!done.length) return;
       var top=0,vol=0,best=0;
       done.forEach(function(x){
@@ -2262,7 +2306,7 @@ function energy(){
   var bmr=p.sex==='m'?male:p.sex==='f'?female:(male+female)/2;
   var af=(ACT.filter(function(x){ return x[0]===(p.activity||'light'); })[0]||ACT[1])[2];
   var tdee=bmr*af;
-  var adj=(AIM.filter(function(x){ return x[0]===(p.aim||'keep'); })[0]||AIM[1])[2];
+  var adj=aimAdj(p.aim||'keep');
   return {bmr:Math.round(bmr),tdee:Math.round(tdee),
     target:Math.max(1200,Math.round((tdee+adj)/10)*10),
     floored:(tdee+adj)<1200, protein:Math.round(w*1.8)};
@@ -2290,8 +2334,8 @@ function adaptiveTDEE(){
   if(days<10) return {ready:false,why:'Needs about two weeks between your first and last weigh-in.'};
   var logged=0,total=0;
   for(var i=0;i<=days;i++){
-    var kc=dayTotals(ymd(new Date(win[0].at+i*86400000))).kcal;
-    if(kc>0){ total+=kc; logged++; }
+    var dsx=ymd(new Date(win[0].at+i*86400000)), kc=dayTotals(dsx).kcal;
+    if(kc>0&&!partialDay(dsx)){ total+=kc; logged++; }
   }
   var missing=days+1-logged;
   if(logged<Math.ceil((days+1)*0.7))
@@ -2499,7 +2543,7 @@ function searchHTML(){
   if(s.loading) h+='<div class="fs-hint"><span class="spin"></span>Searching for '+esc(s.q)+'…</div>';
   if(s.err) h+='<div class="fs-hint" style="color:#e8d98a">'+esc(s.err)+'</div>';
   (s.results||[]).forEach(function(r,i){
-    h+='<button class="fs-row" data-act="pick-food" data-i="'+i+'"><span><b>'+esc(r.name)+'</b>'
+    h+='<button class="fs-row" data-act="pick-food" data-i="'+i+'"><span><b>'+(r.mine?'★ ':'')+esc(r.name)+'</b>'
       + '<small>'+r.k100+' kcal and '+r.p100+' g protein per 100 g'+(r.serving?', serving '+esc(r.serving):'')+'</small></span>'
       + '<i>'+r.kcal+'</i></button>';
   });
@@ -2534,12 +2578,12 @@ function foodSearch(q){
   offSearch(q)
   .then(function(list){
     if(seq!==searchSeq) return;
-    var out=list.map(offItem).filter(Boolean).slice(0,8);
+    var out=myFoodMatches(q).concat(list.map(offItem).filter(Boolean)).slice(0,10);
     S.food.search={q:q,results:out,done:true}; paintSearch();
   })
   .catch(function(e){
     if(seq!==searchSeq) return;
-    S.food.search={q:q,results:[],err:lookupErr(e)}; paintSearch();
+    S.food.search={q:q,results:myFoodMatches(q),err:lookupErr(e)}; paintSearch();
   });
 }
 function namePrompt(q){
@@ -2752,11 +2796,12 @@ function viewFood(){
     qm.forEach(function(m,i){ h+='<button class="qmeal" data-act="qa-meal" data-i="'+i+'">'+(m.fav?'<em>★</em>':'')+'<b>'+esc(m.name)+'</b><small>'+Math.round(num(m.kcal))+' kcal · '+Math.round(num(m.protein))+'p</small></button>'; });
     h+='</div>';
   }
-  h+='<div class="tri3" style="margin-bottom:12px">'
+  h+='<div class="tri3" style="margin-bottom:12px;grid-template-columns:repeat(4,1fr)">'
     + (S.food.analyzing?'<button class="btn p" disabled><span class="spin"></span>Reading…</button>'
         :'<label class="btn p" for="photoin">Photo</label>')
     + '<button class="btn" data-act="scan">Barcode</button>'
-    + '<button class="btn" data-act="manual">Search or type</button></div>';
+    + '<label class="btn" for="labelin">Label</label>'
+    + '<button class="btn" data-act="manual">Search</button></div>';
 
   if(S.food.err) h+='<div class="banner">'+esc(S.food.err)+'</div>';
   h+='<div class="card"><div class="card-b" style="padding-top:12px">';
@@ -2773,6 +2818,7 @@ function viewFood(){
       + '<div class="kc">'+Math.round(num(m.kcal))+'</div></div>';
   });
   h+='</div></div>';
+  h+=foodDayTools(d,meals);
 
   return h;
 }
@@ -2809,7 +2855,7 @@ function mealEditor(pd){
         + 'value="'+esc(it.grams||'')+'" placeholder="g"'+(it.per?'':' disabled style="opacity:.4"')+'>'
         + '<button class="x" data-act="rm-item" data-i="'+i+'">✕</button></div>';
     });
-    h+='<div class="tot" id="mtot">'+totInner(pd)+'</div>';
+    h+='<div class="tot" id="mtot">'+totInner(pd)+'</div>'+extrasHTML(pd)+byMacroHTML(pd);
     if(pd.low&&pd.high&&pd.high>pd.low)
       h+='<div style="font-size:11.5px;color:var(--mut2);font-weight:700;margin-top:6px">'
         + 'likely somewhere between '+pd.low+' and '+pd.high+' kcal</div>';
@@ -2876,13 +2922,16 @@ function profileBody(){
   AIM.forEach(function(o){
     h+='<button class="'+((p.aim||'keep')===o[0]?'on':'')+'" data-act="pr-aim" data-v="'+o[0]+'">'+o[1]+' weight</button>';
   });
-  h+='</div>';
+  h+='</div>'+paceChips();
+  if(dietBreak()) h+='<div class="note" style="margin-bottom:10px">Diet break until '+esc(dateLabel(dietBreak()).split(' · ')[0])+', goal set to maintenance. <button class="lnk" data-act="break-end">End it now</button></div>';
+  else if((p.aim||'keep')==='lose') h+='<button class="btn g" style="margin:0 0 12px" data-act="break-go">Take a 2-week diet break</button>'
+    + '<div class="hint" style="margin:-6px 0 12px">Two weeks at maintenance, then your goal comes back by itself. Useful when the cut has dragged on and energy is low.</div>';
 
   var ad=adaptiveTDEE();
   if(ad&&ad.ready){
     var rateTxt=ad.rate>0.05?'gaining about '+fmt(ad.rate)+' kg a week'
       :ad.rate<-0.05?'losing about '+fmt(Math.abs(ad.rate))+' kg a week':'holding steady';
-    var adj=(AIM.filter(function(x){ return x[0]===(p.aim||'keep'); })[0]||AIM[1])[2];
+    var adj=aimAdj(p.aim||'keep');
     var adTarget=Math.max(1200,Math.round((ad.tdee+adj)/10)*10);
     h+='<div class="note">From your own logs you are burning about <b>'+ad.tdee+'</b> kcal a day. '
       + 'Over the last '+ad.days+' days you averaged '+ad.intake+' kcal and were '+rateTxt+'.<br><br>'
@@ -2971,7 +3020,7 @@ function segNums(e,s){
 }
 function bestStrength(e){
   var kg=0, e1=0, bestSet=null;
-  (e.sets||[]).forEach(function(x){ if(!x.done) return;
+  (e.sets||[]).forEach(function(x){ if(!x.done||x.warm) return;
     var k=num(x.kg)+exBase(e); if(k>kg) kg=k;
     var v=e1rm(e,x); if(v>e1){ e1=v; bestSet=x; } });
   return {kg:kg,e1:e1,set:bestSet};
@@ -3031,7 +3080,7 @@ function prChip(){ return ' <span class="chip a" style="font-size:10px;padding:2
 /* Per set, 0–4. Reps-in-reserve beats everything. Without it, read the evidence:
    falling below the rep range, reps dropping at the same weight, cutting the weight, or a PR. */
 function exEffort(e,pr){
-  var done=(e.sets||[]).filter(function(x){ return x.done; });
+  var done=(e.sets||[]).filter(function(x){ return x.done&&!x.warm; });
   if(!done.length) return null;
   var rng=String((e.target&&e.target.reps)||'').match(/\d+/g)||[], bot=rng.length?+rng[0]:0, top=rng.length?+rng[rng.length-1]:0;
   var best={v:0,why:'',rir:false};
@@ -4913,6 +4962,10 @@ function viewYou(){
       + '<div class="hint">The weight jump is the smallest step your stacks really move in. '
       + 'Set 0 for the rest timer to turn the countdown off. '
       + 'Pausing counts those weeks as on target, for illness, holidays or a planned deload.</div>'
+      + '<div style="font-size:14px;font-weight:700;margin:18px 0 8px">Planned deload</div><div class="chips" style="margin-bottom:6px">'
+      + [4,5,6,8].map(function(w){ return '<button class="'+(num(S.profile.deloadEvery)===w?'on':'')+'" data-act="del-every" data-v="'+w+'">Every '+w+' weeks</button>'; }).join('')+'</div>'
+      + '<button class="btn g" data-act="deload-go">Make next week a deload now</button>'
+      + '<div class="hint">A lighter week every 5 to 6 weeks is what most lifters use: half the sets, same weights. Without a schedule the app still suggests one when your lifts stall.</div>'
       + '<div style="font-size:14px;font-weight:700;margin:18px 0 10px">Reminders</div>'
       + '<button class="btn'+(S.profile.remind?' p':'')+'" data-act="toggle-remind">'
       + (S.profile.remind?'Reminders are on':'Turn reminders on')+'</button>'
@@ -4959,13 +5012,16 @@ function viewYou(){
            + '<button class="btn g" style="margin-top:8px" data-act="imp-cancel">Cancel</button></div>'
          : '<div class="duo" style="margin-top:0">'
            + '<button class="btn" data-act="export">Export a backup</button>'
-           + '<label class="btn" for="backupin">Restore a backup</label></div>')
+           + '<label class="btn" for="backupin">Restore a backup</label></div>'
+           + '<button class="btn g" style="margin-top:8px" data-act="export-csv">Export workouts as CSV (Strong format)</button>')
       + '<div class="hint">A backup is one JSON file with every workout, meal, weigh-in and routine'
       + (backupAge()==null?'':', last saved '+(backupAge()===0?'today':backupAge()+' days ago'))+'. '
       + (offlineReady()?'This app is saved on the device and opens without a connection. ':'')
       + (hosted()?'It is also how you move data into the browser version.'
           :(typeof AUTH!=='undefined'&&AUTH)?'Your account already keeps a copy online; a file is an extra safety net.'
-          :'Your data lives in this browser only, so export one every couple of weeks.')+'</div>';
+          :'Your data lives in this browser only, so export one every couple of weeks.')
+      + ' The CSV opens in Excel or Google Sheets, and Hevy and Strong can import it.'
+      + (S.persisted===true?' This browser has agreed to keep the app\'s data, including progress photos, when space runs low.':S.persisted===false?' This browser may clear the app\'s data when space runs low; installing the app to your home screen protects it.':'')+'</div>';
   });
   return h;
 }
@@ -5357,6 +5413,7 @@ function deloadState(){
     if(out.weeksSince<4){ out.recent=true; out.upcoming=last>ymd(); return out; } }
   var recent=finished().filter(function(s){ return s.finishedAt>=now-28*864e5; });
   if(recent.length<4) return out;
+  var cutNow=cutting();
   var names={};
   recent.forEach(function(s){ (s.ex||[]).forEach(function(e){ if(e.kind!=='protocol'&&!isTimed(e)) names[exKey(e.name)]=e.name; }); });
   Object.keys(names).forEach(function(k){
@@ -5364,10 +5421,11 @@ function deloadState(){
     if(pts.length<3) return;
     out.checked++;
     var st=stallInfo(rows), a=pts[pts.length-1].e1rm, b=pts[pts.length-2].e1rm, dp=b?(b-a)/b*100:0;
-    if(dp>=3) out.lifts.push({name:names[k],why:'down '+fmt(Math.round(dp))+'% on last time'});
-    else if(st&&st.stalled) out.lifts.push({name:names[k],why:'flat for about '+fmt(Math.max(1,Math.round(st.weeks)))+' weeks'});
+    if(dp>=(cutNow?5:3)) out.lifts.push({name:names[k],why:'down '+fmt(Math.round(dp))+'% on last time'});
+    else if(st&&st.stalled&&!cutNow) out.lifts.push({name:names[k],why:'flat for about '+fmt(Math.max(1,Math.round(st.weeks)))+' weeks'});
   });
   out.due=out.lifts.length>=2&&out.lifts.length>=Math.ceil(out.checked*0.4);
+  out.planned=plannedDeload(); if(out.planned) out.due=true;
   if(out.due&&S.profile.deloadSnooze&&S.profile.deloadSnooze>=ymd()) out.snoozed=true;
   return out;
 }
@@ -5402,7 +5460,8 @@ function deloadCard(){
   if(!d.due||d.snoozed) return '';
   var h='<div class="card hl"><div class="card-b" style="padding-top:14px">'
     + '<div style="font-size:15.5px;font-weight:800;margin-bottom:4px">Time for a lighter week?</div>'
-    + '<div style="font-size:13px;color:var(--mut);line-height:1.5;margin-bottom:8px">'+d.lifts.length+' of your '+d.checked+' main lifts have stopped moving:</div>';
+    + (d.planned?'<div style="font-size:13px;color:var(--mut);line-height:1.5;margin-bottom:8px">Your planned deload: it has been '+d.planned.weeks+' weeks since the last lighter week (you set every '+d.planned.every+').</div>':'')
+    + (d.lifts.length?'<div style="font-size:13px;color:var(--mut);line-height:1.5;margin-bottom:8px">'+d.lifts.length+' of your '+d.checked+' main lifts have stopped moving:</div>':'');
   d.lifts.slice(0,5).forEach(function(l){ h+='<div class="hline"><span>'+esc(l.name)+'</span><span style="color:var(--mut2)">'+esc(l.why)+'</span></div>'; });
   var bs=bodyState();
   h+='<div class="hint">A deload week (half the sets, same weights, about 3 reps left in each set) lets fatigue clear so the weights move again.'
@@ -5456,7 +5515,8 @@ function weekFocus(r){
   if(r.missed.length) f.push('Get every planned workout in. Missed: '+r.missed.join(', ')+'.');
   if(r.protGoal&&r.foodDays>=3&&r.avgProt<r.protGoal*0.9) f.push('Protein averaged '+r.avgProt+' g against your '+r.protGoal+' g goal. Add one protein-heavy meal a day.');
   if(r.checkin&&num(r.checkin.sleep)<=2) f.push('Sleep was rough. Protect it before chasing heavier weights.');
-  if(r.low.length&&r.done) f.push('Add 2 to 3 sets for '+r.low.slice(0,2).map(function(m){ return MNAME[m]||m; }).join(' and ')+'.');
+  if(r.low.length&&r.done&&!cutting()) f.push('Add 2 to 3 sets for '+r.low.slice(0,2).map(function(m){ return MNAME[m]||m; }).join(' and ')+'.');
+  if(cutting()) f.push('While you are cutting, keep your sets where they are and count held weights as wins.');
   if(r.foodDays<5) f.push('Log food at least 5 days, so your real calorie burn can be measured.');
   if(r.weighIns<3) f.push('Weigh in 3 mornings, so your weight trend stays accurate.');
   if(!f.length) f.push('Keep it going: same plan, and beat last week\'s reps.');
@@ -5702,7 +5762,7 @@ function prWall(){
       var key=exKey(e.name), b=best[key]||(best[key]={name:e.name,kg:0,reps:0,kgAt:0,e1:0,e1Set:null,secs:0,secsAt:0,timed:isTimed(e)});
       b.name=e.name;
       (e.sets||[]).forEach(function(x){
-        if(!x.done) return;
+        if(!x.done||x.warm) return;
         var kg=num(x.kg), r=num(x.reps);
         if(b.timed){ if(r>b.secs){ b.secs=r; b.secsAt=s.finishedAt; } return; }
         if(kg>b.kg||(kg===b.kg&&r>b.reps)){ b.kg=kg; b.reps=r; b.kgAt=s.finishedAt; }
@@ -6180,6 +6240,323 @@ function recapText(Y){
   return t+'\n\nStats → Year has the full recap and a share image.';
 }
 
+/* ================= MACHINES: real weight steps and saved settings ================= */
+function machOf(name){ var m=(S.profile.mach||{})[exKey(name)]; return m||{}; }
+function setMach(name,patch){
+  var all=Object.assign({},S.profile.mach||{}), k=exKey(name);
+  all[k]=Object.assign({},all[k]||{},patch);
+  if(!num(all[k].step)) delete all[k].step;
+  if(!String(all[k].set||'').trim()) delete all[k].set;
+  if(!Object.keys(all[k]).length) delete all[k];
+  saveProfile({mach:all});
+}
+/* the step this machine actually moves in, learned from the weights you have logged on it */
+var MSTEP={k:'',v:{}};
+function learnedStep(name){
+  var fin=finished(), ck=fin.length+':'+(fin[0]?fin[0].finishedAt:0);
+  if(MSTEP.k!==ck) MSTEP={k:ck,v:{}};
+  var key=exKey(name); if(MSTEP.v[key]!==undefined) return MSTEP.v[key];
+  var ws={};
+  fin.forEach(function(s){ (s.ex||[]).forEach(function(e){ if(exKey(e.name)!==key) return;
+    (e.sets||[]).forEach(function(x){ if(x.done&&num(x.kg)>0) ws[Math.round(num(x.kg)*100)/100]=1; }); }); });
+  var list=Object.keys(ws).map(Number).sort(function(a,b){ return a-b; }), best=0;
+  if(list.length>=3){
+    var d=[]; for(var i=1;i<list.length;i++){ var g=Math.round((list[i]-list[i-1])*100)/100; if(g>=0.5) d.push(g); }
+    if(d.length){ best=Math.min.apply(null,d); if(best>20) best=0; }
+  }
+  MSTEP.v[key]=best; return best;
+}
+function machStep(name){ var m=machOf(name); return num(m.step)||learnedStep(name)||0; }
+function machLine(e,ei){
+  if(e.kind==='protocol'||isTimed(e)) return '';
+  var lb=exLib(e.name); if(lb&&lb.load&&lb.load!=='kg') return '';
+  var m=machOf(e.name), st=num(m.step), ls=learnedStep(e.name);
+  if(S.machEdit===ei){
+    return '<div class="mach ed"><div class="duo" style="margin:0">'
+      + '<div class="fld"><label>Seat, pads, pins</label><input data-fkey="ms'+ei+'" data-in="mach-set" data-ei="'+ei+'" value="'+esc(m.set||'')+'" placeholder="e.g. seat 4, back pad 2"></div>'
+      + '<div class="fld"><label>Weight step (kg)</label><input data-fkey="mp'+ei+'" data-in="mach-step" data-ei="'+ei+'" type="text" inputmode="decimal" value="'+esc(st?fmt(st):'')+'" placeholder="'+(ls?fmt(ls)+' (learned)':'e.g. 5')+'"></div></div>'
+      + '<button class="lnk" data-act="mach-done">Done</button></div>';
+  }
+  var bits=[];
+  if(m.set) bits.push(esc(m.set));
+  if(st||ls) bits.push('steps of '+fmt(st||ls)+' kg'+(st?'':' (learned)'));
+  return '<div class="mach"><span>⚙ '+(bits.length?bits.join(' · '):'<span style="color:var(--mut2)">Save seat and pin settings</span>')+'</span>'
+    + '<button class="lnk" data-act="mach-edit" data-ei="'+ei+'">'+(bits.length?'Edit':'Add')+'</button></div>';
+}
+
+/* ================= CUT-AWARE COACHING ================= */
+function cutting(){ try{ var b=bodyState(); return b.ready&&b.phase==='cutting'; }catch(e){ return false; } }
+function lossWarning(){
+  var b; try{ b=bodyState(); }catch(e){ return null; }
+  if(!b.ready||b.phase!=='cutting'||b.pct>-1) return null;
+  var extra=Math.round(((Math.abs(b.pct)-0.75)/100*b.kg*7700/7)/50)*50;
+  return {pct:Math.abs(b.pct),kg:Math.abs(b.rate),extra:Math.max(100,extra)};
+}
+function lossBanner(){
+  var w=lossWarning(); if(!w) return '';
+  try{ if(localStorage.getItem('wl_lossx')===weekKey(0)) return ''; }catch(e){}
+  return '<div class="lbar" style="margin:0 0 12px"><span>You are losing about '+fmt(w.pct)+'% of your weight a week ('+fmt(w.kg)+' kg). Above 1% muscle is at risk: eat about '+w.extra+' kcal more a day.</span>'
+    + '<button data-act="loss-x">OK</button></div>';
+}
+
+/* ================= DIET PHASES, DIET BREAK, INCOMPLETE DAYS ================= */
+var PACE={lose:[0.5,0.75,1],gain:[0.25,0.5]};
+function aimAdj(aim){
+  aim=aim||S.profile.aim||'keep';
+  if(dietBreak()) return 0;
+  var r=num(S.profile.pace), kg=num(S.profile.weightKg)||(function(){ try{ return bodyState().kg; }catch(e){ return 0; } })();
+  if(r&&kg&&(aim==='lose'||aim==='gain')) return Math.round((aim==='lose'?-1:1)*r/100*kg*7700/7/10)*10;
+  return (AIM.filter(function(x){ return x[0]===aim; })[0]||AIM[1])[2];
+}
+function paceChips(){
+  var p=S.profile, aim=p.aim||'keep'; if(!PACE[aim]) return '';
+  var kg=num(p.weightKg), cur=num(p.pace);
+  return '<div style="font-size:12px;color:var(--mut2);margin:-4px 0 6px">Pace</div><div class="chips">'
+    + PACE[aim].map(function(r){ return '<button class="'+(cur===r?'on':'')+'" data-act="pr-pace" data-v="'+r+'">'+fmt(r)+'% a week'+(kg?' ('+fmt(Math.round(kg*r)/100)+' kg)':'')+'</button>'; }).join('')
+    + '</div>'+(aim==='lose'?'<div class="hint" style="margin:-6px 0 10px">0.5 to 1% a week keeps the most muscle while you lose. Slower is easier to stick to.</div>':'');
+}
+function dietBreak(){ var u=String(S.profile.breakUntil||''); return u&&u>=ymd()?u:''; }
+function breakCheck(){
+  var u=String(S.profile.breakUntil||'');
+  if(u&&u<ymd()){ var back=num(S.profile.breakGoalBefore); saveProfile({breakUntil:'',breakGoalBefore:0,calGoal:back||S.profile.calGoal}); }
+}
+function startBreak(){
+  var ad=null; try{ ad=adaptiveTDEE(); }catch(e){}
+  var e=energy(), maint=ad&&ad.ready?ad.tdee:e?e.tdee:0;
+  if(!maint) throw new Error('Put your weight in first');
+  saveProfile({breakUntil:shiftYmd(ymd(),13),breakGoalBefore:num(S.profile.calGoal),calGoal:Math.round(maint/10)*10});
+  return maint;
+}
+function endBreak(){ var back=num(S.profile.breakGoalBefore); saveProfile({breakUntil:'',breakGoalBefore:0,calGoal:back||S.profile.calGoal}); }
+function breakBanner(){
+  var u=dietBreak(); if(!u) return '';
+  return '<div class="lbar" style="margin:0 0 12px"><span>Diet break until '+esc(dateLabel(u).split(' · ')[0])+': eat around maintenance ('+num(S.profile.calGoal)+' kcal). Training stays the same.</span><button data-act="break-end">End it</button></div>';
+}
+function partialDay(d){ return (S.profile.partialDays||[]).indexOf(d)>=0; }
+function togglePartial(d){
+  var a=(S.profile.partialDays||[]).slice(), i=a.indexOf(d);
+  if(i>=0) a.splice(i,1); else a.push(d);
+  saveProfile({partialDays:a.sort().slice(-150)});
+}
+
+/* ================= FOOD: labels, extras, copy a day, saved meals, log by macro ================= */
+function labelPrompt(){
+  return 'This photo shows a food package, mostly its nutrition table (Dutch: "Voedingswaarde", "per 100 g", "per portie"). Read it.\n'
+    + 'Give the values per 100 g (or per 100 ml). If only per-portion values are printed, convert them using the portion size. If energy is only in kJ, divide by 4.184.\n'
+    + 'Name: the product name and brand as printed on the front if visible, otherwise a short description.\n'
+    + 'Reply with ONLY this JSON, no prose: {"name":"","per100":{"kcal":0,"protein":0,"carbs":0,"fat":0},"serving_g":0,"readable":true}\n'
+    + 'Set readable to false if there is no legible nutrition table.';
+}
+function myFoodItem(f,g){
+  g=num(g)||num(f.serving)||100;
+  var p={kcal:num(f.k100)/100,protein:num(f.p100)/100,carbs:num(f.c100)/100,fat:num(f.f100)/100};
+  return {name:f.name,grams:g,k100:Math.round(num(f.k100)),p100:Math.round(num(f.p100)*10)/10,serving:num(f.serving)?fmt(num(f.serving))+' g':'',
+    kcal:Math.round(p.kcal*g),protein:Math.round(p.protein*g*10)/10,carbs:Math.round(p.carbs*g*10)/10,fat:Math.round(p.fat*g*10)/10,per:p,mine:true};
+}
+function myFoodMatches(q){
+  q=String(q||'').toLowerCase().trim(); if(!q) return [];
+  var w=q.split(/\s+/);
+  return (S.profile.myFoods||[]).filter(function(f){ var n=String(f.name).toLowerCase(); return w.every(function(x){ return n.indexOf(x)>=0; }); })
+    .slice(0,4).map(function(f){ return myFoodItem(f); });
+}
+function saveMyFood(f){
+  var a=(S.profile.myFoods||[]).filter(function(x){ return String(x.name).toLowerCase()!==String(f.name).toLowerCase(); });
+  a.unshift(f); saveProfile({myFoods:a.slice(0,120)});
+}
+function analyzeLabel(file){
+  if(!aiKey()){ S.food.err='Reading labels needs an AI key. Add one in You, Settings.'; S.view='food'; render(); return; }
+  S.food.analyzing=true; S.food.err=''; S.view='food'; render();
+  shrink(file,1400,0.9,false).catch(function(){ return file; })
+  .then(function(b){ return geminiCall(labelPrompt(),{images:[b],json:true}); })
+  .then(function(res){
+    var d=looseJSON(res&&res.text), p=d&&d.per100;
+    if(!d||d.readable===false||!p||!num(p.kcal)) throw new Error('label');
+    var f={name:String(d.name||'Product').trim().slice(0,80),k100:num(p.kcal),p100:num(p.protein),c100:num(p.carbs),f100:num(p.fat),serving:num(d.serving_g)>0&&num(d.serving_g)<1500?num(d.serving_g):0};
+    saveMyFood(f);
+    S.food.analyzing=false;
+    var it=myFoodItem(f);
+    useFoodItem(it,'label');
+    if(S.food.pending) S.food.pending.assumptions='Read from the label: '+fmt(f.k100)+' kcal and '+fmt(f.p100)+' g protein per 100 g. Saved to your own foods, so searching its name finds it next time. Change the grams to what you ate.';
+    render();
+  })
+  .catch(function(e){
+    S.food.analyzing=false;
+    S.food.err=e&&e.message==='label'?'No nutrition table could be read. Take the photo straight on, close enough that the numbers fill the frame.':photoErr(e);
+    render();
+  });
+}
+var EXTRAS={oil:['Cooking oil, 1 tbsp',10,{kcal:8.84,protein:0,carbs:0,fat:1}],
+  butter:['Butter, 10 g',10,{kcal:7.17,protein:0.009,carbs:0.006,fat:0.81}],
+  sauce:['Sauce or dressing, 2 tbsp',30,{kcal:2,protein:0.01,carbs:0.12,fat:0.16}],
+  mayo:['Mayonnaise, 1 tbsp',15,{kcal:6.8,protein:0.01,carbs:0.01,fat:0.75}]};
+function extrasHTML(pd){
+  if(pd.source!=='photo'||!(pd.items&&pd.items.length)) return '';
+  var have={}; (pd.items||[]).forEach(function(i){ if(i.extra) have[i.extra]=1; });
+  return '<div style="font-size:12.5px;font-weight:700;margin:14px 0 6px">Anything the photo cannot show?</div><div class="chips" style="margin:0">'
+    + Object.keys(EXTRAS).map(function(k){ var x=EXTRAS[k];
+        return '<button class="'+(have[k]?'on':'')+'" data-act="add-extra" data-k="'+k+'">'+(have[k]?'✓ ':'+ ')+esc(x[0])+' · '+Math.round(x[2].kcal*x[1])+' kcal</button>'; }).join('')
+    + '</div>';
+}
+function toggleExtra(k){
+  var pd=S.food.pending, x=EXTRAS[k]; if(!pd||!x) return;
+  pd.items=pd.items||[];
+  var i=-1; pd.items.forEach(function(it,j){ if(it.extra===k) i=j; });
+  if(i>=0) pd.items.splice(i,1);
+  else pd.items.push({name:x[0],grams:x[1],per:x[2],extra:k,kcal:Math.round(x[2].kcal*x[1]),protein:Math.round(x[2].protein*x[1]*10)/10,carbs:Math.round(x[2].carbs*x[1]*10)/10,fat:Math.round(x[2].fat*x[1]*10)/10});
+  recalc(pd);
+}
+function byMacroHTML(pd){
+  if(!(pd.items&&pd.items.length===1&&pd.items[0].per)) return '';
+  var it=pd.items[0];
+  return '<div class="duo" style="margin-top:10px">'
+    + (it.per.protein>0?'<div class="fld"><label>Or: protein you want (g)</label><input data-fkey="bmp" data-in="by-prot" type="text" inputmode="decimal" placeholder="e.g. 30"></div>':'')
+    + '<div class="fld"><label>Or: calories you want</label><input data-fkey="bmk" data-in="by-kcal" type="text" inputmode="numeric" placeholder="e.g. 250"></div></div>';
+}
+function setByMacro(kind,v){
+  var pd=S.food.pending; if(!pd||!pd.items||pd.items.length!==1) return;
+  var it=pd.items[0], t=num(v), rate=kind==='by-prot'?it.per.protein:it.per.kcal;
+  if(!t||!rate) return;
+  var g=Math.round(t/rate);
+  it.grams=String(g); it.kcal=Math.round(it.per.kcal*g); it.protein=Math.round(it.per.protein*g*10)/10;
+  it.carbs=Math.round(it.per.carbs*g*10)/10; it.fat=Math.round(it.per.fat*g*10)/10;
+  recalc(pd);
+}
+function copyDay(from,to){
+  var src=dayMeals(from); if(!src.length) throw new Error('Nothing logged on that day.');
+  var n=0, base=Date.now();
+  src.forEach(function(m){ var c=JSON.parse(JSON.stringify(m)); c.id=uid(); c.date=to; c.at=base+(n++); put('meals',c,true); });
+  return n;
+}
+function saveCombo(ids,name){
+  var ms=S.meals.filter(function(m){ return ids.indexOf(m.id)>=0; });
+  if(ms.length<1) throw new Error('Pick at least one item.');
+  name=String(name||'').trim()||ms.map(function(m){ return m.name; }).join(' + ').slice(0,60);
+  var t={name:name,kcal:0,protein:0,carbs:0,fat:0};
+  ms.forEach(function(m){ t.kcal+=num(m.kcal); t.protein+=num(m.protein); t.carbs+=num(m.carbs); t.fat+=num(m.fat); });
+  ['kcal','protein','carbs','fat'].forEach(function(k){ t[k]=Math.round(t[k]); });
+  var favs=(S.profile.favMeals||[]).filter(function(f){ return String(f.name).toLowerCase()!==name.toLowerCase(); });
+  favs.unshift(t); saveProfile({favMeals:favs.slice(0,40)});
+  return t;
+}
+function foodDayTools(d,meals){
+  var h='';
+  if(S.food.combo){
+    var sel=S.food.combo.ids||[];
+    h+='<div class="card"><div class="card-b" style="padding-top:12px"><div style="font-size:13px;font-weight:800;margin-bottom:6px">Tap the items that belong together</div>';
+    meals.forEach(function(m){ var on=sel.indexOf(m.id)>=0;
+      h+='<button class="pickrow'+(on?' on':'')+'" data-act="combo-pick" data-id="'+m.id+'"><span>'+(on?'☑':'☐')+' '+esc(m.name||'Meal')+'</span><span>'+Math.round(num(m.kcal))+' kcal</span></button>'; });
+    h+='<div class="fld" style="margin-top:8px"><label>Name for the meal</label><input data-fkey="cbn" data-in="combo-name" value="'+esc(S.food.combo.name||'')+'" placeholder="e.g. Breakfast"></div>'
+      + '<div class="duo" style="margin-top:10px"><button class="btn p" data-act="combo-save"'+(sel.length?'':' disabled')+'>Save as one-tap meal</button><button class="btn" data-act="combo-cancel">Cancel</button></div></div></div>';
+    return h;
+  }
+  var bits=[];
+  if(meals.length>1) bits.push('<button class="lnk" data-act="combo-open">Save items as a meal</button>');
+  if(meals.length&&d<ymd()) bits.push('<button class="lnk" data-act="copy-day">Copy this day to today</button>');
+  if(meals.length&&d<ymd()) bits.push('<button class="lnk" data-act="partial">'+(partialDay(d)?'Marked incomplete (undo)':'This day is incomplete')+'</button>');
+  if(bits.length) h+='<div class="hint" style="margin:-4px 2px 12px;display:flex;flex-wrap:wrap;gap:6px 14px">'+bits.join('')+'</div>';
+  if(meals.length&&d<ymd()&&!partialDay(d)){
+    var goal=num(S.profile.calGoal), t=dayTotals(d).kcal;
+    if(goal&&t<goal*0.6) h+='<div class="hint" style="margin:-6px 2px 12px">Only '+Math.round(t)+' kcal logged here. If you forgot to log some meals, mark it incomplete so it does not skew your measured calorie burn.</div>';
+  }
+  return h;
+}
+
+/* ================= REST TIMER THAT SURVIVES THE PHONE SLEEPING ================= */
+var WLOCK=null;
+function wakeOn(){
+  try{ if(!active()||WLOCK||!navigator.wakeLock||document.visibilityState!=='visible') return;
+    navigator.wakeLock.request('screen').then(function(l){ WLOCK=l; l.addEventListener('release',function(){ WLOCK=null; }); }).catch(function(){}); }catch(e){}
+}
+function wakeOff(){ try{ if(WLOCK){ WLOCK.release(); WLOCK=null; } }catch(e){} }
+function saveRest(){ try{ if(S.rest) localStorage.setItem('wl_rest',JSON.stringify(S.rest)); else localStorage.removeItem('wl_rest'); }catch(e){} }
+function restDone(){
+  try{ if(navigator.vibrate) navigator.vibrate([250,120,250]); }catch(e){}
+  try{
+    if(document.visibilityState!=='visible'&&typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      var msg=T_('Rest is over, next set.');
+      if(navigator.serviceWorker&&navigator.serviceWorker.controller) navigator.serviceWorker.ready.then(function(r){ r.showNotification('Workout Log',{body:msg,tag:'wl-rest',renotify:true,vibrate:[250,120,250]}); }).catch(function(){});
+      else new Notification('Workout Log',{body:msg,tag:'wl-rest'});
+    }
+  }catch(e){}
+}
+
+/* ================= NEW VERSION AVAILABLE ================= */
+var APP_VERSION='2026-11-18f';
+function checkUpdate(){
+  try{
+    if(hosted()||location.protocol!=='https:') return;
+    fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'}).then(function(r){ return r.ok?r.text():''; }).then(function(t){
+      var m=String(t).match(/var APP_VERSION='([^']+)'/);
+      if(m&&m[1]!==APP_VERSION&&!S.newVersion){ S.newVersion=m[1]; render(); }
+    }).catch(function(){});
+  }catch(e){}
+}
+function updateBanner(){
+  if(!S.newVersion) return '';
+  return '<div class="lbar" style="margin:0 0 12px"><span>A new version of the app is ready.</span><button data-act="app-reload">Reload</button></div>';
+}
+
+/* ================= PLANNED DELOADS ================= */
+function plannedDeload(){
+  var every=num(S.profile.deloadEvery); if(!every) return null;
+  var fin=finished(); if(fin.length<4) return null;
+  var from=S.profile.lastDeload?fromYmd(S.profile.lastDeload).getTime():fin[fin.length-1].finishedAt;
+  var weeks=Math.floor((Date.now()-from)/(7*864e5));
+  return weeks>=every?{weeks:weeks,every:every}:null;
+}
+
+/* ================= VS LAST TIME, WHILE LOGGING ================= */
+function vsLast(e){
+  if(e.kind==='protocol') return '';
+  var h=historyFor(e.name); if(!h.length) return '';
+  var last=h[0], done=(e.sets||[]).filter(function(x){ return x.done&&!x.warm; });
+  var timed=isTimed(e), unit=timed?' s':'';
+  var lastTxt=last.sets.map(function(x){ return timed?fmt(x.reps)+'s':fmt(x.kg)+'×'+fmt(x.reps); }).join(' · ');
+  var out='<div class="vsl"><span>Last time: '+esc(lastTxt)+'</span>';
+  if(done.length){
+    var nowV=0,lastV=0,nowR=0,lastR=0;
+    done.forEach(function(x,i){ nowV+=num(x.kg)*num(x.reps); nowR+=num(x.reps); var l=last.sets[i]; if(l){ lastV+=l.kg*l.reps; lastR+=l.reps; } });
+    var cmp='';
+    if(!timed&&lastV>0&&nowV>0){ var pc=Math.round((nowV-lastV)/lastV*100); cmp=(pc>0?'+':'')+pc+'% volume'; }
+    else if(lastR>0){ var dr=nowR-lastR; cmp=(dr>0?'+':'')+fmt(dr)+(timed?' s':' reps'); }
+    if(cmp) out+='<b class="'+(/^\+/.test(cmp)?'up':/^-/.test(cmp)?'dn':'')+'">'+esc(cmp)+' so far</b>';
+  }
+  return out+'</div>';
+}
+
+/* ================= CSV EXPORT (Strong format, which Hevy and others import) ================= */
+function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function strongCSV(){
+  var rows=[['Date','Workout Name','Duration','Exercise Name','Set Order','Weight','Reps','Distance','Seconds','Notes','Workout Notes','RPE']];
+  var p2=function(n){ return (n<10?'0':'')+n; };
+  finished().slice().sort(function(a,b){ return a.finishedAt-b.finishedAt; }).forEach(function(s){
+    var st=new Date(s.startedAt||s.finishedAt), date=st.getFullYear()+'-'+p2(st.getMonth()+1)+'-'+p2(st.getDate())+' '+p2(st.getHours())+':'+p2(st.getMinutes())+':'+p2(st.getSeconds());
+    var mins=Math.max(1,Math.round(((s.finishedAt||0)-(s.startedAt||s.finishedAt||0))/60000)), dur=(mins>=60?Math.floor(mins/60)+'h ':'')+(mins%60)+'m';
+    (s.ex||[]).forEach(function(e){
+      if(e.kind==='protocol'){
+        (e.segs||[]).forEach(function(x,i){ if(!x.done) return; var n=segNums(e,x);
+          rows.push([date,s.dayName||'Workout',dur,e.name,i+1,'','',n.kmh&&n.min?Math.round(n.kmh*n.min/60*100)/100:'',n.min?Math.round(n.min*60):'',x.label||'',s.notes||'','']); });
+        return;
+      }
+      var timed=isTimed(e), k=0;
+      (e.sets||[]).forEach(function(x){ if(!x.done) return; k++;
+        var rpe=x.rir!=null&&x.rir!==''?Math.max(1,10-num(x.rir)):(x.fail?10:'');
+        rows.push([date,s.dayName||'Workout',dur,e.name,x.warm?'W':k,num(x.kg)?num(x.kg):(timed?'':0),timed?'':num(x.reps),'',timed?num(x.reps):'',e.comment||'',s.notes||'',rpe]); });
+    });
+  });
+  return rows.map(function(r){ return r.map(csvCell).join(','); }).join('\n');
+}
+function exportCSV(){
+  var txt=strongCSV(), n=txt.split('\n').length-1;
+  if(!n){ toast('No finished workouts to export yet'); return; }
+  try{
+    var b=new Blob([txt],{type:'text/csv'}), u=URL.createObjectURL(b), a=document.createElement('a');
+    a.href=u; a.download='workout-log-'+ymd()+'.csv'; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); },1500);
+    toast(n+' sets exported');
+  }catch(e){ toast('Could not save the file here'); }
+}
+
 /* ================= WATER ================= */
 function waterOn(d){ return (S.water||[]).filter(function(w){ return w.date===d; })[0]; }
 function waterGoal(d){
@@ -6530,7 +6907,7 @@ function viewToday(){
   if(bt.ready&&bt.phase!=='steady') h+='<div class="hint" style="margin:-4px 2px 12px">Body weight '+fmt(bt.kg)+' kg, '+(bt.rate>0?'+':'')+fmt(bt.rate)+' kg a week. '
     + (bt.phase==='cutting'?'Weights are held a session longer while you lose.':'Weights go up as soon as you hit your reps.')+'</div>';
 
-  try{ h+=recapBanner(); }catch(e){}
+  try{ h+=updateBanner()+breakBanner()+lossBanner()+recapBanner(); }catch(e){}
   var dbl=doubleLogs();
   if(dbl.length) h+='<div class="lbar" style="margin:0 0 12px"><span>'+(dbl.length===1?'Two workouts are':'More than one workout is')+' logged on '
     + esc(dbl.map(function(d){ return dateLabel(d).split(' · ')[0]; }).join(', '))+'. Probably a double log.</span><button data-act="dbl-go">Review</button></div>';
@@ -6727,6 +7104,7 @@ function liveView(ses){
       + '<button class="lchg'+(mOpen?' on':'')+'" data-act="lv-menu" data-ei="'+ei+'">'+(mOpen?'Close':'Change')+'</button></div>';
     if(mOpen) h+=liveMenuHTML(ses,ei);
     if(S.liveMenu==='add'+(ei+1)) h+=liveAddHTML(ses,ei+1);
+    h+=machLine(e,ei);
     if(e.note) h+='<div class="fo-box">'+esc(e.note)+'</div>';
     if(e.hint) h+='<div class="prog">'+esc(e.hint)+'</div>';
     if(e.cue) h+='<div class="prog" style="color:var(--acc)">'+esc(e.cue)+'</div>';
@@ -6756,12 +7134,13 @@ function liveView(ses){
         + ((e.segs||[]).length>1?'<button data-act="del-seg" data-ei="'+ei+'">remove block</button>':'')+'</div>';
     } else {
       (e.sets||[]).forEach(function(st,si){
-        h+='<div class="srow'+(st.done?' done':'')+'"><div class="snum">'+(si+1)+'</div>'
+        h+='<div class="srow'+(st.done?' done':'')+(st.warm?' warm':'')+'"><button class="snum" data-act="set-warm" data-ei="'+ei+'" data-si="'+si+'" title="Tap to mark as a warm-up set">'+(st.warm?'W':(si+1))+'</button>'
           + '<div class="unit"><input data-fkey="sk'+ei+'_'+si+'" data-in="set-kg" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="decimal" value="'+esc(st.kg)+'"><span>kg</span></div>'
           + '<div class="unit"><input data-fkey="sr'+ei+'_'+si+'" data-in="set-reps" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="numeric" value="'+esc(st.reps)+'"><span>'+(isTimed(e)?'sec':'reps')+'</span></div>'
           + '<div class="unit"><input data-fkey="si'+ei+'_'+si+'" data-in="set-rir" data-ei="'+ei+'" data-si="'+si+'" type="text" inputmode="numeric" value="'+esc(st.rir==null?'':st.rir)+'" placeholder="'+(st.fail?'0':'–')+'"><span>'+(st.fail?'fail':'rir')+'</span></div>'
           + '<button class="chk'+(st.done?' on':'')+'" data-act="tick" data-ei="'+ei+'" data-si="'+si+'">'+(st.done?'✓':'')+'</button></div>';
       });
+      h+=vsLast(e);
       h+='<div class="mini"><button data-act="add-set" data-ei="'+ei+'">add set</button>'
         + ((e.sets||[]).length>1?'<button data-act="del-set" data-ei="'+ei+'">remove set</button>':'')+'</div>';
     }
@@ -7349,7 +7728,23 @@ document.addEventListener('click',function(ev){
   if(act==='pr-sex'){ saveProfile({sex:t.dataset.v}); return; }
   if(act==='set-lang'){ if((t.dataset.v==='nl')!==nlOn()) setLang(t.dataset.v); return; }
   if(act==='pr-act'){ saveProfile({activity:t.dataset.v}); return; }
-  if(act==='pr-aim'){ saveProfile({aim:t.dataset.v}); return; }
+  if(act==='pr-aim'){ saveProfile({aim:t.dataset.v,pace:0}); return; }
+  if(act==='pr-pace'){ var pv=num(t.dataset.v); saveProfile({pace:num(S.profile.pace)===pv?0:pv}); return; }
+  if(act==='break-go'){ try{ var mt=startBreak(); toast('Diet break: '+mt+' kcal a day for two weeks'); }catch(e){ toast(String(e.message||e)); } render(); return; }
+  if(act==='break-end'){ endBreak(); toast('Diet break ended'); render(); return; }
+  if(act==='loss-x'){ try{ localStorage.setItem('wl_lossx',weekKey(0)); }catch(e){} render(); return; }
+  if(act==='app-reload'){ location.reload(); return; }
+  if(act==='mach-edit'){ S.machEdit=parseInt(t.dataset.ei,10); render(); return; }
+  if(act==='mach-done'){ S.machEdit=null; render(); return; }
+  if(act==='export-csv'){ exportCSV(); return; }
+  if(act==='del-every'){ var de=num(t.dataset.v); saveProfile({deloadEvery:num(S.profile.deloadEvery)===de?0:de}); return; }
+  if(act==='add-extra'){ toggleExtra(t.dataset.k); render(); return; }
+  if(act==='copy-day'){ try{ var cn=copyDay(foodDate(),ymd()); S.food.date=ymd(); toast(cn+' item'+(cn===1?'':'s')+' copied to today'); }catch(e){ toast(String(e.message||e)); } render(); return; }
+  if(act==='partial'){ togglePartial(foodDate()); return; }
+  if(act==='combo-open'){ S.food.combo={ids:[],name:''}; render(); return; }
+  if(act==='combo-cancel'){ S.food.combo=null; render(); return; }
+  if(act==='combo-pick'){ var cb=S.food.combo; if(cb){ var ci=cb.ids.indexOf(t.dataset.id); if(ci>=0) cb.ids.splice(ci,1); else cb.ids.push(t.dataset.id); } render(); return; }
+  if(act==='combo-save'){ try{ var cm=saveCombo(S.food.combo.ids,S.food.combo.name); S.food.combo=null; toast('Saved “'+cm.name+'” as a one-tap meal'); }catch(e){ toast(String(e.message||e)); } render(); return; }
   if(act==='use-measured'){
     var en2=energy();
     saveProfile({calGoal:num(t.dataset.v),proteinGoal:en2?en2.protein:num(S.profile.proteinGoal)});
@@ -7367,8 +7762,8 @@ document.addEventListener('click',function(ev){
   }
   if(act==='prog-ex'){ S.progEx=t.dataset.n; render(); return; }
   if(act==='log-past'){ logPast(t.dataset.id,t.dataset.d); return; }
-  if(act==='rest-add'){ if(S.rest){ S.rest.until=Math.max(Date.now(),S.rest.until)+30000; S.rest.rung=false; paintRest(); } return; }
-  if(act==='rest-skip'){ S.rest=null; paintRest(); return; }
+  if(act==='rest-add'){ if(S.rest){ S.rest.until=Math.max(Date.now(),S.rest.until)+30000; S.rest.rung=false; saveRest(); paintRest(); } return; }
+  if(act==='rest-skip'){ S.rest=null; saveRest(); paintRest(); return; }
   if(act==='fill-day'){
     var fd=resolveDay(t.dataset.id);
     if(fd&&fd._virtual) fd=materialize(t.dataset.id);
@@ -7444,6 +7839,7 @@ document.addEventListener('click',function(ev){
     put('sessions',c2); return;
   }
   if(act==='stamp'){ c2.ex[ei][t.dataset.k==='t1'?'t1':'t0']=nowHM(); put('sessions',c2); return; }
+  if(act==='set-warm'){ var ws=c2.ex[ei].sets[si]; if(ws){ ws.warm=!ws.warm; put('sessions',c2); } return; }
   if(act==='add-set'){ var st=c2.ex[ei].sets,l=st[st.length-1]||{kg:'0',reps:''};
     st.push({kg:l.kg,reps:l.reps,rir:'',done:false}); put('sessions',c2); return; }
   if(act==='del-set'){ if(c2.ex[ei].sets.length>1){ c2.ex[ei].sets.pop(); put('sessions',c2); } return; }
@@ -7494,6 +7890,9 @@ function inputMain(ev){
   var kind=el.dataset['in'], v=el.value;
 
   if(kind.indexOf('mv-')===0&&mvInput(kind,el)) return;
+  if(kind==='mach-set'||kind==='mach-step'){ var me=(active()||{ex:[]}).ex[parseInt(el.dataset.ei,10)]; if(me) setMach(me.name,kind==='mach-set'?{set:v}:{step:num(v)}); return; }
+  if(kind==='by-prot'||kind==='by-kcal'){ S.food[kind]=v; setByMacro(kind,v); render(); return; }
+  if(kind==='combo-name'){ if(S.food.combo) S.food.combo.name=v; return; }
   if(kind==='food-w'){ S.food.wText=v; return; }
   if(kind==='cal-time'){ saveProfile({calTime:v}); return; }
   if(kind==='cal-dur'){ saveProfile({calDur:num(v)||75}); return; }
@@ -7652,6 +8051,10 @@ function inputMain(ev){
   });
 })();
 (function(){
+  var li=document.getElementById('labelin');
+  if(li) li.addEventListener('change',function(){ if(li.files&&li.files[0]) analyzeLabel(li.files[0]); li.value=''; });
+})();
+(function(){
   var fi=document.getElementById('photoin');
   if(fi) fi.addEventListener('change',function(){
     if(fi.files&&fi.files.length) analyzePhoto(Array.prototype.slice.call(fi.files),'');
@@ -7665,7 +8068,7 @@ setInterval(function(){
   el.textContent=clock(Date.now()-s.startedAt);
 },30000);
 
-try{ if(!hosted()&&navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+try{ if(!hosted()&&navigator.storage&&navigator.storage.persist) navigator.storage.persist().then(function(ok){ S.persisted=!!ok; }).catch(function(){}); }catch(e){}
 /* offline: only on your own https address, and only if sw.js was uploaded next to this file */
 try{
   if(!hosted()&&'serviceWorker' in navigator&&location.protocol==='https:')
