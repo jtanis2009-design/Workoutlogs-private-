@@ -858,7 +858,11 @@ var NLD={
 "For that group:":"Voor die groep:","or Plank.":"of Plank.","Which one did you do?":"Welke heb je gedaan?","For example":"Bijvoorbeeld",
 "in a message means the seated crunch machine.":"betekent in een bericht de zittende crunchmachine.",
 "Abdominals is the muscle group. Pick an exercise, e.g. abdominal crunches.":"Buikspieren is de spiergroep. Kies een oefening, bijv. abdominal crunches.",
-"Weight is per side":"Gewicht is per kant","Weight is the total":"Gewicht is het totaal","· bodyweight":"· lichaamsgewicht","Added to your finished workout on":"Toegevoegd aan je afgeronde training van","Saved as a finished workout on":"Opgeslagen als afgeronde training op",", with":", met","Looks":"Skins","Language":"Taal","Taal / Language":"Taal / Language",
+"Weight is per side":"Gewicht is per kant","Weight is the total":"Gewicht is het totaal","· bodyweight":"· lichaamsgewicht","Added to your finished workout on":"Toegevoegd aan je afgeronde training van","Saved as a finished workout on":"Opgeslagen als afgeronde training op",", with":", met","Looks":"Skins","(this day only).":"(alleen deze dag).",", and in your standing routine.":", en ook in je vaste routine.","in your workout in progress":"in je lopende training","in today's workout":"in de training van vandaag",
+"That did not go through, so nothing changed. The note above says why; try saying it another way.":"Dat is niet gelukt, dus er is niets veranderd. De melding hierboven zegt waarom; probeer het anders te zeggen.",
+"Part of that did not go through, see the note above.":"Een deel daarvan is niet gelukt, zie de melding hierboven.","That is the same exercise twice.":"Dat is twee keer dezelfde oefening.",
+"There is no exercise":"Er is geen oefening","Could not reorder_exercises:":"Kon de volgorde niet aanpassen:","Could not change_exercise:":"Kon de oefening niet aanpassen:",
+"Language":"Taal","Taal / Language":"Taal / Language",
 "Abdominals is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
 "Set a calorie goal in You, Goals and body.":"Stel een caloriedoel in bij Jij, Doelen en lichaam.",
@@ -971,6 +975,7 @@ var NLIN=[
  [/\bherstel\s*modus\b|\bherstelmodus\b/g,'recovery mode'],[/\bkracht\s*modus\b|\bkrachtmodus\b/g,'strength mode'],[/\bsnelle\s*modus\b|\bsnelmodus\b/g,'quick mode'],
  [/\bnormale\s*modus\b/g,'normal mode'],[/\b(?:tot\s+)?falen\s*modus\b/g,'failure mode'],[/\bpump\s*modus\b/g,'pump mode'],[/\bcoach\s*modus\b|\bmodi\b/g,'coach mode'],
  [/\bzet (?:op|naar)\b|\bschakel (?:over )?naar\b/g,'switch to'],
+ [/\bwissel\s+((?:(?:de\s+)?oefening(?:en)?\s+)?\d{1,2})\s+(?:en|met|om)\s+(\d{1,2})\b/g,'swap $1 and $2'],[/\bverplaats\s+(.+?)\s+(voor|na)\s+(.+)/g,function(m,a,w,b){ return 'move '+a+(w==='voor'?' before ':' after ')+b; }],[/\balleen\b/g,'only'],
  [/\bvervang\s+(.+?)\s+(?:door|voor|met)\s+(.+)/g,'swap $1 for $2'],[/\bwissel\s+(.+?)\s+(?:voor|met|door)\s+(.+)/g,'swap $1 for $2'],
  [/\bdoe\s+(.+?)\s+in plaats van\s+(.+)/g,'do $1 instead of $2'],[/\bin plaats van\b/g,'instead of'],
  [/\btussen\s+(.+?)\s+en\s+(.+?)\s+(?:voeg\s+)?(.+?)(?:\s+toe)?$/gm,'between $1 and $2 add $3'],
@@ -987,7 +992,7 @@ var NLIN=[
 ];
 function nlIn(text){
   var t=String(text||''), lo=t.toLowerCase();
-  if(!/\b(gisteren|vandaag|eergisteren|geleden|vorige|afgelopen|zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|januari|februari|maart|mei|juni|juli|augustus|oktober|week|begin|eind|einde|klaar|falen|gefaald|weeg|gewicht|gedronken|glas|glazen|fles|modus|zet|schakel|vervang|wissel|doe|tussen|voeg|verwijder|haal|verplaats|ongedaan|verhoog|wat|hoe|hoeveel|eiwit|weekrapport|buikspieren|extra|tot|gestopt|morgen|vanochtend|vanavond|vanmorgen)\b/.test(lo)) return t;
+  if(!/\b(gisteren|vandaag|eergisteren|geleden|vorige|afgelopen|zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|januari|februari|maart|mei|juni|juli|augustus|oktober|week|begin|eind|einde|klaar|falen|gefaald|weeg|gewicht|gedronken|glas|glazen|fles|modus|zet|schakel|vervang|wissel|doe|tussen|voeg|verwijder|haal|verplaats|ongedaan|verhoog|wat|hoe|hoeveel|eiwit|weekrapport|buikspieren|extra|tot|gestopt|alleen|morgen|vanochtend|vanavond|vanmorgen)\b/.test(lo)) return t;
   NLIN.forEach(function(r){ lo=lo.replace(r[0],r[1]); });
   return lo;
 }
@@ -2020,6 +2025,10 @@ function coachTools(){
       put('weights',{id:'w-'+d,date:d,kg:v},true); if(d>=ymd()) saveProfile({weightKg:v});
       var b=bodyState(); return {ok:true,saved:v,trend_kg:b.kg,phase:b.phase,kg_per_week:b.rate}; }},
 
+  { name:'reorder_exercises',
+    description:'Change the ORDER of exercises in one workout without replacing any, e.g. "switch exercise 3 and 5", "do leg press before chest press". a and b are 1-based positions as shown in the workout, or exercise names. mode swap trades their places; before/after moves a next to b. Defaults to today (the workout in progress if one is running).',
+    inputSchema:{type:'object',properties:{a:{type:'string'},b:{type:'string'},mode:{type:'string',enum:['swap','before','after']},date:{type:'string'},every_week:{type:'boolean'}},required:['a','b']},
+    execute:function(a){ return reorderExercises(a); }},
   { name:'undo_last_change',
     description:'Undo the last change_exercise or log_sets.',
     inputSchema:{type:'object',properties:{}},
@@ -2124,7 +2133,7 @@ function coachSend(text){
   S.draft=''; S.busy=true; S.stream=''; render();
   setTimeout(scrollEnd,30);
   var pm=null, tx=nlIn(text); try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(tx)?null:parseSetMessage(tx); }catch(e){}
-  if(pm){ coachRules(text); return; }                /* exact numbers are logged by the app, not paraphrased by a model */
+  if(pm||parseReorder(tx)){ coachRules(text); return; }                /* exact numbers are logged by the app, not paraphrased by a model */
   if(!S.sample){ if(aiKey()) coachGemini(text); else coachRules(text); return; }
 
   var msgs=[{role:'user',content:coachPreamble()+'\n\nReply to this setup message with exactly: Ready.'},
@@ -3720,6 +3729,85 @@ function undoChange(){
   return {ok:true};
 }
 
+/* ---- reorder: "switch exercise 3 and 5", "move leg press before chest press" ---- */
+function reorderTarget(date){
+  var today=ymd(), s=active();
+  if(date===today&&s) return {coll:'sessions',doc:s,list:s.ex||[],where:'your workout in progress'};
+  var p=plannedFor(date);
+  if(!p) throw new Error('Nothing is planned on '+(date===today?'today':date)+'.');
+  return {coll:'days',doc:p._virtual?null:p,virtual:p._virtual?p:null,list:p.exercises||[],where:(date===today?"today's":dateLabel(date)+"'s")+' workout'};
+}
+function reorderPick(list,q){
+  q=String(q==null?'':q).trim();
+  var m=q.match(/^(?:#|no\.?|nr\.?|number|exercise|oefening)?\s*(\d{1,2})$/i);
+  if(m){ var i=+m[1]-1; return i>=0&&i<list.length?i:-1; }
+  return anchorIdx(list,q);
+}
+function reorderApply(list,ia,ib,mode){
+  var l=list.slice();
+  if(mode==='before'||mode==='after'){
+    var it=l.splice(ia,1)[0], j=l.indexOf(list[ib]); l.splice(mode==='after'?j+1:j,0,it);
+  } else { var t=l[ia]; l[ia]=l[ib]; l[ib]=t; }
+  return l;
+}
+function reorderExercises(o){
+  o=o||{};
+  var mode=/^(before|after)$/i.test(o.mode||'')?String(o.mode).toLowerCase():'swap';
+  var date=/^\d{4}-\d\d-\d\d$/.test(String(o.date||''))?String(o.date):ymd();
+  var T=reorderTarget(date), list=T.list;
+  var ia=reorderPick(list,o.a), ib=reorderPick(list,o.b);
+  var miss=function(q){ return /^\D*\d+$/.test(String(q))?'There is no exercise '+String(q).replace(/\D/g,'')+' in '+T.where+'; it has '+list.length+'.':'Could not find "'+q+'" in '+T.where+'.'; };
+  if(ia<0) throw new Error(miss(o.a));
+  if(ib<0) throw new Error(miss(o.b));
+  if(ia===ib) throw new Error('That is the same exercise twice.');
+  var A=list[ia].name||'Exercise', B=list[ib].name||'Exercise', nl=reorderApply(list,ia,ib,mode), undo=[];
+  if(T.coll==='sessions'){
+    var c=JSON.parse(JSON.stringify(T.doc)); undo.push({coll:'sessions',id:c.id,before:JSON.parse(JSON.stringify(T.doc))});
+    c.ex=JSON.parse(JSON.stringify(nl)); S.liveMenu=null; put('sessions',c,true);
+  } else if(T.virtual){
+    var d={id:uid(),name:T.virtual.name,date:date,note:T.virtual.note||'',exercises:JSON.parse(JSON.stringify(nl)),source:'routine'};
+    undo.push({coll:'days',id:d.id,before:null}); put('days',d,true);
+  } else {
+    var dd=JSON.parse(JSON.stringify(T.doc)); undo.push({coll:'days',id:dd.id,before:JSON.parse(JSON.stringify(T.doc))});
+    dd.exercises=JSON.parse(JSON.stringify(nl)); put('days',dd,true);
+  }
+  var weekly=false;
+  if(o.every_week){
+    var r=routineFor(fromYmd(date).getDay(),date);
+    if(r){ var rl=r.exercises||[], ra=anchorIdx(rl,A), rb=anchorIdx(rl,B);
+      if(ra>=0&&rb>=0&&ra!==rb){ var rc=JSON.parse(JSON.stringify(r)); undo.push({coll:'routines',id:r.id,before:JSON.parse(JSON.stringify(r))});
+        rc.exercises=JSON.parse(JSON.stringify(reorderApply(rl,ra,rb,mode))); put('routines',rc,true); weekly=true; } }
+  }
+  UNDO={label:'reorder',items:undo};
+  return {ok:true,mode:mode,a:A,b:B,where:T.where,weekly:weekly,order:nl.map(function(e){ return e.name; })};
+}
+function reorderReply(r){
+  var head=r.mode==='swap'?'Swapped **'+r.a+'** and **'+r.b+'**':'Moved **'+r.a+'** '+r.mode+' **'+r.b+'**';
+  return head+' in '+r.where+(r.weekly?', and in your standing routine':' (this day only)')+'.\n\n'
+    + r.order.map(function(n,i){ return (i+1)+'. '+n; }).join('\n')+'\n\nSay "undo" to put it back.';
+}
+/* reads a reorder request from a message, or returns null */
+function parseReorder(text){
+  var t=String(text||'').toLowerCase().replace(/[’']/g,''), m, o=null;
+  var NUM='(?:(?:the\\s+)?(?:ex[a-z]*|oef[a-z]*|number|no\\.?|nr\\.?|#)\\s*)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(?:ex[a-z]*|one))?';
+  if((m=t.match(new RegExp('\\b(?:switch|swap|flip|change|trade|exchange|reverse|wissel)\\s+(?:the\\s+)?(?:order\\s+of\\s+)?(?:places\\s+of\\s+)?'+NUM+'\\s*(?:and|&|with|,|en|met)\\s*'+NUM+'\\b'))))
+    o={mode:'swap',a:m[1],b:m[2]};
+  else if((m=t.match(new RegExp('\\b(?:move|put|do)\\s+'+NUM+'\\s+(before|after|voor|na)\\s+'+NUM+'\\b'))))
+    o={mode:/before|voor/.test(m[2])?'before':'after',a:m[1],b:m[3]};
+  else if((m=t.match(/\b(?:switch|swap|flip|reverse)\s+(?:the\s+)?order\s+of\s+(.+?)\s+(?:and|&)\s+(.+?)(?=\s+(?:only|just|today|tomorrow|every|for|this|from)\b|[.!?]|$)/))
+       ||(m=t.match(/\b(?:switch|swap|flip)\s+(?!the order)(.+?)\s+(?:and|&)\s+(.+?)(?=\s+(?:only|just|today|tomorrow|every|for|this|from|around)\b|[.!?]|$)/)))
+    o={mode:'swap',a:m[1].trim(),b:m[2].trim(),byName:true};
+  else if((m=t.match(/\b(?:move|put|do)\s+(.+?)\s+(before|after)\s+(.+?)(?=\s+(?:only|just|today|tomorrow|every|for|this|from)\b|[.!?]|$)/)))
+    o={mode:m[2],a:m[1].trim(),b:m[3].trim(),byName:true};
+  if(!o) return null;
+  o.every_week=/\b(every ?week|always|from now on|for good|permanently|in my routine|standing)\b/.test(t);
+  o.date=/\btomorrow\b/.test(t)?shiftYmd(ymd(),1):ymd();
+  if(o.byName){   /* only a reorder when both are already in that workout; "swap leg press and hack squat" with one missing is a replacement */
+    try{ var T=reorderTarget(o.date); if(anchorIdx(T.list,o.a)<0||anchorIdx(T.list,o.b)<0) return null; }catch(e){ return null; }
+  }
+  return o;
+}
+
 /* ---- plain-language parsing for the built-in coach ---- */
 var DAYWORD=/\b(?:on |for |this |next |just |only )*(today|tonight|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/;
 var SCOPEALL=/\b(everywhere|from now on|for good|permanently|always|every ?week|in (all|every) (my )?(workouts?|days?)|in my (plan|routine))\b/g;
@@ -4004,6 +4092,8 @@ function ruleCoach(text){
   var lt=String(text||'').toLowerCase();
   if(/\b(what|which)\b.*\b(abs|abdominals?)\b(?! ?(crunch|machine))/.test(lt)&&!/\d+\s*[x×]\s*\d+/.test(lt))
     return ABS_MSG+'\n\n"Abdominal crunches" in a message means the seated crunch machine.';
+  var ro=parseReorder(text);
+  if(ro){ try{ return reorderReply(reorderExercises(ro)); }catch(e){ return String(e.message||e); } }
   var mm=lt.match(/\b(normal|failure|recovery|strength|pump|quick|hypertrophy|heavy|light|easy)[\s-]+(mode|day|session|workout)\b/)
        ||lt.match(/\b(?:switch|go|change|set|put me)\s+(?:back\s+)?(?:to|into|on)\s+(?:a\s+|the\s+)?(normal|failure|recovery|strength|pump|quick|hypertrophy)\b/);
   if(mm&&!/\bwhat\b.*\b(mean|is)\b/.test(lt)){
@@ -4201,6 +4291,7 @@ var ACTION_PROTOCOL=[
  '- log_workout {date:"YYYY-MM-DD", name, minutes?, notes?, results}',
  '- change_exercise {action:"replace"|"remove"|"add", exercise?, new_exercise?, when:"all"|"date", date?, weekday?, after?, before?, sets?, reps?, kg?, cue?}  (for "between A and B add C" use after:A)',
  '- log_sets {exercise, sets:"25x12, 25x10"}  (today only; pairs are kg x reps)',
+ '- reorder_exercises {a, b, mode?:"swap"|"before"|"after", date?, every_week?}  (changes the ORDER only; a and b are 1-based positions or names. "switch exercise 3 and 5" is this, never change_exercise)',
  '- log_body_weight {kg, date?}',
  '- make_deload {undo?}',
  '- log_water {ml}',
@@ -4212,14 +4303,16 @@ var ACTION_PROTOCOL=[
  'results format: '+RESULT_FORMAT,
  'Never claim a change in your reply unless it is in the ACTIONS line. Leave ACTIONS out when nothing changes.'
 ].join('\n');
+var RUNFAIL=0;
 function runActions(raw){
+  RUNFAIL=0;
   var a=raw.indexOf('['), b=raw.lastIndexOf(']'); if(a<0||b<a) return 0;
   var list; try{ list=JSON.parse(raw.slice(a,b+1)); }catch(e){ return 0; }
   var tools={}, n=0; coachTools().forEach(function(t){ tools[t.name]=t; });
   (Array.isArray(list)?list:[]).forEach(function(it){
     var t=tools[it&&it.tool];
     if(!t){ sysMsg('Unknown action skipped: '+String(it&&it.tool)); return; }
-    try{ t.execute(it.args||{}); n++; }catch(e){ sysMsg('Could not '+it.tool+': '+String(e.message||e).slice(0,80)); }
+    try{ t.execute(it.args||{}); n++; }catch(e){ RUNFAIL++; sysMsg('Could not '+it.tool+': '+String(e.message||e).slice(0,80)); }
   });
   return n;
 }
@@ -4233,7 +4326,9 @@ function coachGemini(text){
     put('chat',{id:uid(),role:'assistant',text:t||'(no reply)',at:Date.now()},true); setTimeout(scrollEnd,30); };
   geminiCall(msgs).then(function(res){
     var t=String(res.text||''), i=t.lastIndexOf('ACTIONS:');
-    if(i>=0){ runActions(t.slice(i+8)); t=t.slice(0,i).trim(); }
+    if(i>=0){ var done=runActions(t.slice(i+8)); t=t.slice(0,i).trim();
+      if(RUNFAIL&&!done) t='That did not go through, so nothing changed. The note above says why; try saying it another way.';
+      else if(RUNFAIL) t+='\n\n_Part of that did not go through, see the note above._'; }
     settle(t||'Done.');
   }).catch(function(e){
     var fb=''; try{ fb=ruleCoach(text); }catch(x){}
