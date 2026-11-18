@@ -3962,6 +3962,16 @@ function isoWeek(d){
   var first=new Date(t.getFullYear(),0,4);
   return t.getFullYear()+'-'+Math.round(((t-first)/86400000-3+((first.getDay()+6)%7))/7);
 }
+function daysTrained(a,b){
+  var d={}; finished().forEach(function(s){ if(s.finishedAt>=a&&s.finishedAt<b) d[ymd(new Date(s.finishedAt))]=1; });
+  return Object.keys(d).length;
+}
+/* dates in the last 3 weeks with more than one finished workout: usually a double log */
+function doubleLogs(){
+  var c={}, cut=Date.now()-21*864e5;
+  finished().forEach(function(s){ if(s.finishedAt>=cut){ var k=ymd(new Date(s.finishedAt)); c[k]=(c[k]||0)+1; } });
+  return Object.keys(c).filter(function(k){ return c[k]>1; }).sort();
+}
 function weeksOnTarget(){
   var target=Math.max(1,num(S.profile.weekTarget)||3), ws=weekStart(), n=0, pausedW=0;
   var pause=String(S.profile.pauseUntil||'');
@@ -3969,8 +3979,7 @@ function weeksOnTarget(){
     var a=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()-i*7);
     var b=new Date(a.getFullYear(),a.getMonth(),a.getDate()+7);
     if(pause&&fromYmd(pause).getTime()>=a.getTime()){ n++; pausedW++; continue; }
-    var c=finished().filter(function(s){ return s.finishedAt>=a.getTime()&&s.finishedAt<b.getTime(); }).length;
-    if(c>=target) n++;
+    if(daysTrained(a.getTime(),b.getTime())>=target) n++;
   }
   return {weeks:n,target:target,paused:pausedW};
 }
@@ -4723,7 +4732,7 @@ function weekReport(off){
   var wk=weeklySets(off), lo=num(S.profile.setsLo)||10;
   var low=trackedMuscles().filter(function(m){ return (wk.total[m]||0)<lo; })
     .sort(function(x,y){ return (wk.total[x]||0)-(wk.total[y]||0); }).slice(0,3);
-  var r={off:off,start:dates[0],end:dates[6],done:ses.length,planned:planned,missed:missed,sets:t.sets,vol:Math.round(t.vol),
+  var r={off:off,start:dates[0],end:dates[6],done:daysTrained(a,b),planned:planned,missed:missed,sets:t.sets,vol:Math.round(t.vol),
     prevSets:tp.sets,prevVol:Math.round(tp.vol),prs:prs,foodDays:fdays,
     avgKcal:fdays?Math.round(kc/fdays):0,avgProt:fdays?Math.round(pr/fdays):0,calGoal:cg,protGoal:pg,protHit:protHit,
     weighIns:wins,body:bodyState(),waterAvg:wdays?Math.round(wml/wdays):0,waterDays:wdays,low:low,lowSets:low.map(function(m){ return Math.round((wk.total[m]||0)*10)/10; }),
@@ -5375,6 +5384,9 @@ function viewToday(){
   if(bt.ready&&bt.phase!=='steady') h+='<div class="hint" style="margin:-4px 2px 12px">Body weight '+fmt(bt.kg)+' kg, '+(bt.rate>0?'+':'')+fmt(bt.rate)+' kg a week. '
     + (bt.phase==='cutting'?'Weights are held a session longer while you lose.':'Weights go up as soon as you hit your reps.')+'</div>';
 
+  var dbl=doubleLogs();
+  if(dbl.length) h+='<div class="lbar" style="margin:0 0 12px"><span>'+(dbl.length===1?'Two workouts are':'More than one workout is')+' logged on '
+    + esc(dbl.map(function(d){ return dateLabel(d).split(' · ')[0]; }).join(', '))+'. Probably a double log.</span><button data-act="dbl-go">Review</button></div>';
   if(!a){ h+=deloadCard(); h+=weekCardToday();
     if(measDue()) h+='<div class="lbar" style="margin:0 0 12px"><span>Two weeks since your last measurements.</span><button data-act="meas-go">Measure</button></div>'; }
   if(a){
@@ -5405,11 +5417,11 @@ function viewToday(){
   }
   else if(p&&(p.exercises||[]).length&&!doneToday){ h+=briefCard(p,true); }
   else {
-    var fin=finished(), week=fin.filter(function(s){ return s.finishedAt>Date.now()-7*86400000; });
+    var ws0=weekStart().getTime(), weekDays=daysTrained(ws0,ws0+7*864e5);   /* this week, Monday to Sunday */
     var wot=weeksOnTarget(), wkS=weeklySets(0).total;
     var setsThis=Math.round(Object.keys(wkS).reduce(function(x,m){ return x+wkS[m]; },0));
     h+='<div class="stats">'
-      + '<div class="stat"><b>'+week.length+'/'+wot.target+'</b><small>sessions this week</small></div>'
+      + '<div class="stat"><b>'+weekDays+'/'+wot.target+'</b><small>sessions this week</small></div>'
       + '<div class="stat"><b>'+wot.weeks+'/12</b><small>weeks on target</small></div>'
       + '<div class="stat"><b>'+setsThis+'</b><small>sets this week</small></div></div>';
     var msg,btn='';
@@ -5997,6 +6009,8 @@ document.addEventListener('click',function(ev){
   }
   if(act==='ics'){ exportICS(); return; }
   if(act==='ph-pose'){ S.photoPose=t.dataset.p; render(); return; }
+  if(act==='dbl-go'){ var dd=doubleLogs(); S.view='history'; S.histTab='log';
+    finished().forEach(function(z){ if(dd.indexOf(ymd(new Date(z.finishedAt)))>=0) S.openSes[z.id]=true; }); render(); return; }
   if(act==='water'){ var nm=addWater(parseInt(t.dataset.ml,10)); if(parseInt(t.dataset.ml,10)>0) toast('Water: '+fmt(nm/1000)+' L'); return; }
   if(act==='pr-more'){ S.prMore=!S.prMore; render(); return; }
   if(act==='meas-go'){ S.view='you'; S.panels.meas=true; render(); return; }
