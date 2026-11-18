@@ -439,6 +439,564 @@
    exercise: {id,kind:'strength',name,sets,reps,kg,note}
              {id,kind:'protocol',name,spec,note,segs:[{label,detail}]}
    ================================================================= */
+var NLD={
+"TODAY":"VANDAAG","PLAN":"PLAN","FOOD":"ETEN","COACH":"COACH","STATS":"STATS","YOU":"JIJ",
+"Today":"Vandaag","Tomorrow":"Morgen","Yesterday":"Gisteren","Any day":"Elke dag","today":"vandaag","today.":"vandaag.","now":"nu","live":"live",
+"Plan":"Plan","Food":"Eten","Coach":"Coach","Stats":"Stats","You":"Jij",
+"kg":"kg","pick a weight":"kies een gewicht","days":"dagen","days ago":"dagen geleden","day":"dag",
+"Phone storage is full, some changes may not be saved. Export a backup.":"De opslag van je telefoon is vol, sommige wijzigingen worden misschien niet bewaard. Exporteer een back-up.",
+"no fixed days":"geen vaste dagen",
+"Last time":"Vorige keer",
+"— all reps hit, but you are losing about":"— alle reps gehaald, maar je valt ongeveer",
+"kg a week, so own it once more before adding weight":"kg per week af, dus doe het nog één keer voordat je gewicht toevoegt",
+"— all reps hit, so +":"— alle reps gehaald, dus +",
+"(you are gaining weight, a good time to push)":"(je komt aan, een goed moment om door te pakken)",
+"— hold the weight and beat the reps":"— houd het gewicht en haal meer reps",
+", so start at":", dus begin op",
+"New workout":"Nieuwe training","Protocol":"Protocol","Exercise":"Oefening",
+"You already have a workout in progress":"Je hebt al een training bezig",
+"Correct the numbers, then submit":"Verbeter de getallen en verstuur dan",
+"Correct the numbers, then submit again":"Verbeter de getallen en verstuur opnieuw",
+"Skip":"Overslaan","Done":"Klaar","done":"klaar",
+"Only one day logged so far. Log another and the trend appears.":"Nog maar één dag gelogd. Log er nog een en de trend verschijnt.",
+"Nothing logged yet.":"Nog niets gelogd.","latest":"laatste","range":"bereik","change":"verschil",
+"Bodyweight":"Lichaamsgewicht","bodyweight":"lichaamsgewicht","Calories":"Calorieën",
+"Log a workout and your weights start plotting here.":"Log een training en je gewichten verschijnen hier.",
+"smoothed trend through your weigh-ins, kg":"afgevlakte trend door je wegingen, kg",
+"Calories per day":"Calorieën per dag","total logged each day, kcal":"totaal gelogd per dag, kcal",
+"est 1RM kg":"geschatte 1RM kg","best est 1RM":"beste geschatte 1RM","heaviest set":"zwaarste set",
+"Stalled":"Vastgelopen","Estimated 1RM has been flat for about":"Geschatte 1RM staat al ongeveer",
+"weeks with no new best. Change something: more sets, a rep target, or a different movement.":"weken stil zonder nieuw record. Verander iets: meer sets, een ander rep-doel of een andere oefening.",
+"New best in the last 4 weeks.":"Nieuw record in de laatste 4 weken.","Trend is":"Trend is","% a week.":"% per week.",
+"Only one session logged for":"Nog maar één training gelogd voor","Estimated 1RM":"Geschatte 1RM",
+"· Epley on your best set, using reps plus RIR":"· Epley op je beste set, met reps plus RIR",
+"Estimated 1RM needs sets of 12 reps or fewer.":"Geschatte 1RM heeft sets van 12 reps of minder nodig.",
+"Add RIR as you log and this chart fills in.":"Vul RIR in bij het loggen en deze grafiek vult zich.",
+"Volume":"Volume","· load × reps across completed sets, kg":"· gewicht × reps over afgeronde sets, kg",
+"Best reps at each weight":"Beste reps per gewicht","Session by session":"Training per training",
+"kg est 1RM ·":"kg geschatte 1RM ·","completed":"afgerond","hard sets":"zware sets","load moved":"verplaatst gewicht",
+"vs last time (":"t.o.v. vorige keer (",
+"Reading through your session…":"Je training wordt doorgelezen…",
+"Showing the built-in review instead.":"In plaats daarvan de ingebouwde review.",
+"The review took too long — summary instead.":"De review duurde te lang — samenvatting in plaats daarvan.",
+"AI review not available here — summary instead.":"AI-review is hier niet beschikbaar — samenvatting in plaats daarvan.",
+"Rate limited — summary instead, try again in a minute.":"Te veel verzoeken — samenvatting in plaats daarvan, probeer het over een minuut opnieuw.",
+"Could not reach the AI reviewer — summary instead.":"Kon de AI-review niet bereiken — samenvatting in plaats daarvan.",
+"Could not start the AI review.":"Kon de AI-review niet starten.",
+"Finisher":"Finisher",
+"That took too long — try asking again.":"Dat duurde te lang — vraag het nog eens.",
+"Rate limited — give it a minute and ask again.":"Te veel verzoeken — wacht een minuut en vraag het opnieuw.",
+"(Answered without plan editing this time, so nothing in your calendar changed.)":"(Deze keer beantwoord zonder het plan aan te passen, dus er is niets in je kalender veranderd.)",
+"Coach unavailable":"Coach niet beschikbaar","Thinking…":"Aan het denken…",
+"Sedentary":"Zittend","Lightly active":"Licht actief","Moderately active":"Gemiddeld actief","Very active":"Zeer actief",
+"Lose":"Afvallen","Maintain":"Behouden","Gain":"Aankomen","Lose weight":"Afvallen","Maintain weight":"Gewicht behouden","Gain weight":"Aankomen",
+"Weigh in a few more times over a couple of weeks.":"Weeg jezelf nog een paar keer over een paar weken.",
+"Needs about two weeks between your first and last weigh-in.":"Er moet ongeveer twee weken tussen je eerste en laatste weging zitten.",
+"Food is logged on":"Eten is gelogd op","of the last":"van de laatste","days. It needs about 70%.":"dagen. Er is ongeveer 70% nodig.",
+"The numbers do not look settled yet. Keep logging.":"De getallen zijn nog niet stabiel. Blijf loggen.",
+"Weigh in a few times over a week or more and training advice will follow your trend.":"Weeg jezelf een paar keer over een week of langer en het trainingsadvies volgt je trend.",
+"Losing fast (about":"Snel aan het afvallen (ongeveer","Losing about":"Je valt ongeveer af:","Gaining fast (about":"Snel aan het aankomen (ongeveer","Gaining about":"Je komt ongeveer aan:",
+"kg a week. Good time to push weights up.":"kg per week. Goed moment om de gewichten te verhogen.",
+"Weight is steady. Progress comes from beating reps, then adding weight.":"Gewicht is stabiel. Vooruitgang komt van meer reps, daarna meer gewicht.",
+"Your goal is set to":"Je doel staat op",", so the trend and the goal disagree.":", dus de trend en het doel spreken elkaar tegen.",
+"× body weight":"× lichaamsgewicht",
+"Could not process that image":"Kon die afbeelding niet verwerken","That file is not an image I can read":"Dat bestand is geen afbeelding die ik kan lezen",
+"g protein":"g eiwit","Item":"Item",
+"You are offline. Type the numbers in, or try again with signal.":"Je bent offline. Typ de getallen in, of probeer het opnieuw met bereik.",
+"The food database is busy. Wait a moment and search again.":"De voedingsdatabase is druk. Wacht even en zoek opnieuw.",
+"The food database gave an error (":"De voedingsdatabase gaf een fout (","). Try again shortly.":"). Probeer het zo opnieuw.",
+"The food database cannot be reached from inside Claude. It works in the browser version.":"De voedingsdatabase is niet bereikbaar binnen Claude. In de browserversie werkt het wel.",
+"Could not reach the food database. Check your connection and try again.":"Kon de voedingsdatabase niet bereiken. Controleer je verbinding en probeer het opnieuw.",
+"One serving on the label is":"Eén portie op het etiket is",
+"No serving size on the label, so this starts at 100 g. Change the grams to what you ate.":"Geen portiegrootte op het etiket, dus dit begint op 100 g. Pas de grammen aan naar wat je at.",
+"Type a product or meal and matches appear here.":"Typ een product of maaltijd en de resultaten verschijnen hier.",
+"Searching for":"Zoeken naar","kcal and":"kcal en","g protein per 100 g":"g eiwit per 100 g",", serving":", portie",
+"No packaged product matches that name.":"Geen verpakt product past bij die naam.",
+"Estimating…":"Schatten…","Estimate “":"Schat “","” as a meal":"” als maaltijd",
+"For home-cooked or restaurant food that has no label":"Voor zelfgekookt of restauranteten zonder etiket",
+"A barcode has 8 to 13 digits.":"Een barcode heeft 8 tot 13 cijfers.","Found":"Gevonden",
+"That product is listed without calories. Add it manually.":"Dat product staat erin zonder calorieën. Voeg het handmatig toe.",
+"is not in the database. Add it manually.":"staat niet in de database. Voeg het handmatig toe.",
+"Barcode":"Barcode","Scan a barcode":"Scan een barcode","Close":"Sluiten","Starting the camera…":"Camera starten…",
+"Take a photo of the barcode instead":"Maak in plaats daarvan een foto van de barcode","Look up":"Opzoeken","Enter":"Invoeren",
+"Reading the photo…":"Foto lezen…",
+"No barcode found in that photo. Fill the frame with the bars and try again.":"Geen barcode gevonden op die foto. Vul het beeld met de streepjes en probeer het opnieuw.",
+"Could not read that photo. Type the number instead.":"Kon die foto niet lezen. Typ het nummer in.",
+"Take a photo of the barcode, or type the number.":"Maak een foto van de barcode, of typ het nummer.",
+"Type the number printed under the bars.":"Typ het nummer dat onder de streepjes staat.",
+"This browser cannot read barcodes from the camera.":"Deze browser kan geen barcodes lezen met de camera.",
+"The camera is not available on this page.":"De camera is niet beschikbaar op deze pagina.",
+"Hold the barcode on the line.":"Houd de barcode op de lijn.","The camera was blocked or is in use.":"De camera is geblokkeerd of in gebruik.",
+"The AI answered but not in a form I could read. Try again, or add it manually.":"De AI antwoordde, maar niet in een vorm die ik kan lezen. Probeer het opnieuw of voeg het handmatig toe.",
+"That image could not be used. Try a JPEG or PNG under 20 MB.":"Die afbeelding kon niet gebruikt worden. Probeer een JPEG of PNG onder 20 MB.",
+"Rate limited. Try again in a minute.":"Te veel verzoeken. Probeer het over een minuut opnieuw.",
+"No photo came through from the picker. Try choosing it again.":"Er kwam geen foto door. Kies hem nog een keer.",
+"Could not estimate that photo":"Kon die foto niet schatten",
+"Photo estimates need an AI key. Add one in You, Settings.":"Foto-schattingen hebben een AI-sleutel nodig. Voeg er een toe bij Jij, Instellingen.",
+"Meal":"Maaltijd","kcal":"kcal","Protein":"Eiwit","Carbs":"Koolhydraten","Fat":"Vet",
+"Weighed in at":"Gewogen:","on this day":"op deze dag","Change":"Wijzigen","this day":"deze dag","Log weight":"Gewicht loggen",
+"Added":"Toegevoegd","Undo":"Ongedaan maken","Reading…":"Lezen…","Photo":"Foto","Search or type":"Zoek of typ","Nothing logged":"Niets gelogd",
+"· photo":"· foto","Back":"Terug","· fixed":"· vast","likely somewhere between":"waarschijnlijk ergens tussen",
+"Type the totals myself instead":"Zelf de totalen invullen","Protein (g)":"Eiwit (g)","Carbs (g)":"Koolhydraten (g)","Fat (g)":"Vet (g)",
+"confidence":"zekerheid","Tell it what you know":"Vertel wat je weet","Re-reading…":"Opnieuw lezen…","Re-estimate with this":"Opnieuw schatten hiermee",
+"Anything you type here beats what it can see. Weighing the protein source is the single biggest accuracy win.":"Wat je hier typt weegt zwaarder dan wat hij ziet. De eiwitbron afwegen maakt het meeste verschil.",
+"Fill in what you know. Calories alone are enough.":"Vul in wat je weet. Alleen calorieën is genoeg.",
+"★ In your one-tap favourites (tap to remove)":"★ In je favorieten (tik om te verwijderen)","☆ Add to one-tap favourites":"☆ Toevoegen aan favorieten",
+"Save changes":"Wijzigingen opslaan","Add to":"Toevoegen aan","meal:":"maaltijd:","Tap again":"Tik nog eens","Delete":"Verwijderen","Cancel":"Annuleren",
+"Name":"Naam","Age":"Leeftijd","Height (cm)":"Lengte (cm)","Weight (kg)":"Gewicht (kg)","Male":"Man","Female":"Vrouw","Rather not say":"Zeg ik liever niet",
+"weight":"gewicht","gaining about":"je komt ongeveer aan:","kg a week":"kg per week","losing about":"je valt ongeveer af:","holding steady":"stabiel",
+"From your own logs you are burning about":"Volgens je eigen logs verbrand je ongeveer","kcal a day.":"kcal per dag.",
+"Over the last":"Over de laatste","days you averaged":"dagen at je gemiddeld","kcal and were":"kcal en was je",
+"weight that points to":"gewicht wijst dat op","Use these as my goals":"Gebruik dit als mijn doelen",
+"Measured, not predicted: your intake and your smoothed weight say what you actually burn.":"Gemeten, niet voorspeld: je inname en je afgevlakte gewicht laten zien wat je echt verbrandt.",
+"It beats a formula once there are a couple of weeks of data, but a new creatine or carb change can skew it for a week or two.":"Na een paar weken data is dit beter dan een formule, maar nieuwe creatine of andere koolhydraten kunnen het een week of twee vertekenen.",
+"A formula puts you at about":"Een formule schat je op ongeveer",
+"That deficit would drop you under 1200 kcal, so it is held there. Going lower is worth asking a doctor or dietitian about first.":"Dat tekort zou je onder 1200 kcal brengen, dus het blijft daar. Wil je lager, overleg dan eerst met een arts of diëtist.",
+"Once there is enough, this switches to what you actually burn.":"Zodra er genoeg data is, schakelt dit over naar wat je echt verbrandt.",
+"A starting guess, not a measurement. Log food and weigh in and it gets replaced by your real numbers.":"Een eerste schatting, geen meting. Log eten en weeg jezelf, dan worden het je echte getallen.",
+"Add your age, height and weight and I can suggest a daily calorie and protein target.":"Vul je leeftijd, lengte en gewicht in en ik stel een dagelijks calorie- en eiwitdoel voor.",
+"Calorie goal":"Caloriedoel","Protein goal (g)":"Eiwitdoel (g)","Water goal (ml a day)":"Waterdoel (ml per dag)","(from your weight)":"(op basis van je gewicht)",
+"Log":"Log",
+"Chest":"Borst","Lower chest":"Onderborst","Upper chest":"Bovenborst","Core":"Core","Abs":"Buikspieren","Front delts":"Voorste schouders","Side delts":"Zijkant schouders","Rear delts":"Achterste schouders",
+"Upper back":"Bovenrug","Lats":"Lats","Lower back":"Onderrug","Biceps":"Biceps","Triceps":"Triceps","Forearms":"Onderarmen","Glutes":"Billen",
+"Hamstrings":"Hamstrings","Quads":"Quadriceps","Calves":"Kuiten","Shoulders":"Schouders","Arms":"Armen","Legs":"Benen",
+"km/h for":"km/u voor","longest at that pace before:":"langste op dat tempo eerder:","fastest ever at that incline":"snelste ooit op die helling",
+"longest ever:":"langste ooit:","heaviest ever:":"zwaarste ooit:","best set ever:":"beste set ooit:","estimated max":"geschatte max","kg, was":"kg, was",
+"PR":"PR","PRs":"PR's","you logged":"je logde","left":"over",
+"reps held steady, so probably a few left in the tank":"reps bleven gelijk, dus waarschijnlijk nog wat over in de tank",
+"well above the":"ruim boven het","range, so the weight was light":"bereik, dus het gewicht was licht","reps fell":"reps daalden",
+"you cut the weight after":"je verlaagde het gewicht na","fell short of the":"bleef onder het","a new PR (":"een nieuw PR (",
+"(helping)":"(helpend)","not hit":"niet gehaald","to failure":"tot falen","To failure":"Tot falen","FRONT":"VOOR","BACK":"ACHTER",
+"This week":"Deze week","Last week":"Vorige week",
+"Log a workout and your weekly set counts appear here.":"Log een training en je sets per week verschijnen hier.",
+"in range":"binnen bereik","direct":"direct","Target from":"Doel van","Target to":"Doel tot",
+"A set counts 1.0 toward the muscle it mainly works and about half toward the ones that help.":"Een set telt 1,0 voor de spier die hij vooral traint en ongeveer de helft voor de spieren die helpen.",
+"10 to 20 sets a week is the most commonly cited range for growth, but it varies a lot between people":"10 tot 20 sets per week is het meest genoemde bereik voor groei, maar het verschilt veel tussen mensen",
+"and between muscles, so treat the band as yours to move.":"en tussen spieren, dus schuif de band gerust zelf.",
+"Muscles worked":"Getrainde spieren","only as a helper":"alleen als helper",
+"Where you filled in RIR, that decides it.":"Waar je RIR invulde, bepaalt dat het.",
+"Without RIR this is an estimate from rep drop-offs, weight cuts and PRs. Fill in RIR (reps you had left) on your last set and it is exact.":"Zonder RIR is dit een schatting op basis van dalende reps, lager gewicht en PR's. Vul RIR (reps die je nog over had) in bij je laatste set en het klopt precies.",
+"No lifts matched a muscle group. Rename an exercise to something standard and it will map.":"Geen oefening paste bij een spiergroep. Geef een oefening een standaardnaam en hij wordt herkend.",
+"Could not read the image":"Kon de afbeelding niet lezen",
+"No Gemini key yet. Add one in You, Settings.":"Nog geen Gemini-sleutel. Voeg er een toe bij Jij, Instellingen.",
+"Google says this key is not valid. Copy it again from aistudio.google.com (Get API key) and paste it in You, Settings.":"Google zegt dat deze sleutel niet geldig is. Kopieer hem opnieuw van aistudio.google.com (Get API key) en plak hem bij Jij, Instellingen.",
+"Gemini rate limit reached (free keys allow a handful of requests a minute). Wait a minute and try again.":"Gemini-limiet bereikt (gratis sleutels staan een paar verzoeken per minuut toe). Wacht een minuut en probeer het opnieuw.",
+"Gemini error":"Gemini-fout",
+"Everything on the plan got done":"Alles van het plan is gedaan","Most of the plan got done":"Het meeste van het plan is gedaan","A partial session":"Een gedeeltelijke training",
+"hard sets":"zware sets","— first comparison point":"— eerste vergelijkingspunt","% on last time":"% t.o.v. vorige keer","— estimated 1RM":"— geschatte 1RM",
+"- You are losing about":"- Je valt ongeveer af:","kg a week, which explains some of the dips. Holding your weights during a cut is a win.":"kg per week, dat verklaart een deel van de dips. Je gewichten vasthouden tijdens een cut is winst.",
+"- Getting stronger while losing about":"- Sterker worden terwijl je afvalt, ongeveer","kg a week is a great sign.":"kg per week, is een heel goed teken.",
+"- You are gaining weight, so these lifts should be climbing. Push the weights next time.":"- Je komt aan, dus deze oefeningen zouden moeten stijgen. Verhoog volgende keer de gewichten.",
+"- Not done:":"- Niet gedaan:","minutes on timed exercises. Longest:":"minuten op getimede oefeningen. Langste:","min.":"min.","min before":"min voor",
+"- Slow changeovers:":"- Trage wissels:","go to":"ga naar","stay at":"blijf op","kg and add reps":"kg en voeg reps toe",
+"- Repeat this session and beat one number in it.":"- Herhaal deze training en verbeter er één getal in.",
+"Sunday":"Zondag","Monday":"Maandag","Tuesday":"Dinsdag","Wednesday":"Woensdag","Thursday":"Donderdag","Friday":"Vrijdag","Saturday":"Zaterdag",
+"works the":"traint de","Swaps if it is taken:":"Alternatieven als hij bezet is:","the machine":"de machine",
+"Unreadable date:":"Onleesbare datum:","Which exercise should go in?":"Welke oefening moet erin?",
+"the plan for":"het plan voor","your upcoming plan":"je komende plan","Say which day to add it to.":"Zeg aan welke dag ik hem moet toevoegen.",
+"Could not find \"":"Kon \"","Nothing is planned on":"Er staat niets gepland op","to add it to.":"om hem aan toe te voegen.","workout to add it to.":"training om hem aan toe te voegen.",
+"The sets you already ticked on it are kept.":"De sets die je al hebt afgevinkt blijven staan.",
+"set you already did stays":"set die je al deed blijft","sets you already did stay":"sets die je al deed blijven","moved to":"verplaatst naar",
+"your workout in progress":"je lopende training","Nothing changed.":"Er is niets veranderd.","Removed":"Verwijderd",
+"There is nothing to undo.":"Er is niets om ongedaan te maken.","Undid the last exercise change":"Laatste oefeningwijziging ongedaan gemaakt",
+"Done, the last exercise change is undone.":"Klaar, de laatste oefeningwijziging is ongedaan gemaakt.",
+"Starting weight":"Startgewicht","kg, from what you logged.":"kg, op basis van wat je logde.",
+"It is bodyweight, so leave the weight empty or add a plate.":"Het is lichaamsgewicht, dus laat het gewicht leeg of voeg een schijf toe.",
+"No weight logged for it yet, so pick a start weight on the first set.":"Er is nog geen gewicht voor gelogd, dus kies een startgewicht bij de eerste set.",
+"Say \"undo\" to put it back.":"Zeg \"ongedaan\" of \"undo\" om het terug te zetten.",
+"I could not find":"Ik kon","in today's workout or the next two weeks.":"niet vinden in de training van vandaag of de komende twee weken.",
+"That is for this one day. Add \"every week\" to the message to put it in your routine too.":"Dat geldt alleen voor deze dag. Zet \"elke week\" in je bericht om het ook in je routine te zetten.",
+"to Thursday\".":"aan donderdag toe\".",", same sets and reps":", zelfde sets en reps","Swapped":"Gewisseld:",
+"Workout":"Training","Logged":"Gelogd",
+"It was not in today's plan, so I added it.":"Het stond niet in het plan van vandaag, dus ik heb het toegevoegd.",
+"The plan had":"Het plan had","sets.":"sets.","The plan said":"Het plan zei","kg, so check the weight is right.":"kg, dus check of het gewicht klopt.",
+"Saved as a finished workout":"Opgeslagen als afgeronde training","Added to your finished workout":"Toegevoegd aan je afgeronde training",
+"marked to failure":"gemarkeerd tot falen","Saved into your workout in progress.":"Opgeslagen in je lopende training.",
+"Added to the workout you already finished today.":"Toegevoegd aan de training die je vandaag al hebt afgerond.",
+"I opened today's workout (":"Ik heb de training van vandaag geopend (",
+") with this filled in. Log the rest as you go, then finish it as usual.":") met dit ingevuld. Log de rest tijdens het trainen en rond hem af zoals altijd.",
+"I read each pair as kg × reps. Say \"undo\" if that was wrong.":"Ik las elk paar als kg × reps. Zeg \"undo\" als dat niet klopt.",
+"Coach mode is now":"Coachmodus is nu","It applies when you start your next workout.":"Hij geldt vanaf je volgende training.",
+"Coach modes:":"Coachmodi:","Current:":"Huidig:",". Say for example \"switch to recovery mode\".":". Zeg bijvoorbeeld \"zet op herstelmodus\".",
+"Deload removed. Next week is back to normal.":"Deload verwijderd. Volgende week is weer normaal.","Done. Next week is a deload:":"Klaar. Volgende week is een deload:",
+"with half the sets at your normal weights. Stop each set with about 3 reps left.":"met de helft van de sets op je normale gewichten. Stop elke set met ongeveer 3 reps over.",
+"There is nothing planned next week to lighten.":"Er staat volgende week niets gepland om lichter te maken.",
+"Yes, it is time:":"Ja, het is tijd:","Not yet. Your lifts are still moving":"Nog niet. Je oefeningen gaan nog vooruit","flat or down)":"gelijk of omlaag)",
+"Set a protein goal in You, Goals and body, and I will track the gap.":"Stel een eiwitdoel in bij Jij, Doelen en lichaam, dan houd ik het tekort bij.",
+"You have hit your protein for today.":"Je hebt je eiwit voor vandaag gehaald.","protein to go today.":"eiwit te gaan vandaag.",
+"g protein to go today.":"g eiwit te gaan vandaag.","From what you usually eat:":"Uit wat je meestal eet:","The Food tab has these as one-tap adds.":"Op het tabblad Eten staan ze klaar om met één tik toe te voegen.",
+"— goal reached.":"— doel gehaald.","L to go.":"L te gaan.","for today. Trend:":"voor vandaag. Trend:",
+"No weigh-ins yet. Tell me \"I weigh 72.5\" or log it on the Food tab, and I will start adapting to it.":"Nog geen wegingen. Zeg \"I weigh 72.5\" of log het op het tabblad Eten, dan pas ik me erop aan.",
+"Your trend weight is":"Je trendgewicht is",
+"While you lose, I hold a weight for one more session before adding to it, and I count a held lift as a win.":"Zolang je afvalt houd ik een gewicht nog één training vast voordat het omhoog gaat, en telt een gelijk gebleven oefening als winst.",
+"There is nothing planned on":"Er staat niets gepland op","to move.":"om te verplaatsen.",
+"already has a workout. Clear it first, or pick another day.":"heeft al een training. Maak hem eerst leeg of kies een andere dag.",
+"is closed on":"is dicht op","Rest day":"Rustdag","Moved to":"Verplaatst naar","Moved":"Verplaatst","is now on":"staat nu op","(gym open":"(sportschool open","is free.":"is vrij.",
+"There is no free day left this week when the gym is open. Tell me a day to move something instead.":"Er is deze week geen vrije dag meer waarop de sportschool open is. Noem een dag om iets naartoe te verplaatsen.",
+"There are no workouts to copy yet. Build one in Plan first.":"Er zijn nog geen trainingen om te kopiëren. Maak er eerst een in Plan.",
+"and that day":"en die dag","was the only gap left":"was het enige gat dat over was","has a rest day either side":"heeft aan beide kanten een rustdag",
+"Nothing has earned a bump yet. A weight goes up once every set reaches the top of its rep range.":"Nog niets verdient een verhoging. Een gewicht gaat omhoog zodra elke set de bovenkant van het rep-bereik haalt.",
+"Raised":"Verhoogd","Raised these in your plan, because you hit the top of the range on every set last time:":"Deze heb ik in je plan verhoogd, omdat je vorige keer bij elke set de bovenkant van het bereik haalde:",
+"There are no workouts in your plan yet to choose between.":"Er staan nog geen trainingen in je plan om uit te kiezen.",
+"I would do":"Ik zou doen:","It covers what is furthest under your weekly target:":"Hij dekt wat het verst onder je weekdoel zit:",
+"Say \"add an extra session\" and I will put it on the calendar.":"Zeg \"add an extra session\" en ik zet hem in de kalender.",
+"Nothing is logged yet, so there is no trend to read.":"Er is nog niets gelogd, dus er is geen trend.",
+"Estimated 1RM, first logged to latest:":"Geschatte 1RM, eerste tot laatste log:","— stalled":"— vastgelopen","coming up":"komt eraan","Next seven days:":"Komende zeven dagen:",
+"missed (":"gemist (","· gym":"· sportschool","You already trained today.":"Je hebt vandaag al getraind.","is on today,":"staat vandaag op het plan,","items.":"onderdelen.",
+"Nothing is planned today.":"Er staat vandaag niets gepland.",
+"I am the built-in coach, so I understand a fixed set of requests:":"Ik ben de ingebouwde coach, dus ik begrijp een vaste set verzoeken:",
+"For free-form questions, add a free Gemini key in You, Settings and I can answer anything about your training.":"Voor vrije vragen: voeg een gratis Gemini-sleutel toe bij Jij, Instellingen en ik beantwoord alles over je training.",
+"That request tripped me up. Try rephrasing it.":"Dat verzoek snapte ik niet. Probeer het anders te formuleren.",
+"Unknown action skipped:":"Onbekende actie overgeslagen:","Could not":"Kon niet",
+"Gemini did not answer, so this came from the built-in coach.":"Gemini antwoordde niet, dus dit komt van de ingebouwde coach.",
+"closed today":"vandaag dicht","opens at":"opent om","closed for today (shut at":"vandaag dicht (dicht om","open until":"open tot",
+"sessions":"trainingen","dated workouts":"trainingen met datum","routines":"routines","meals":"maaltijden","weigh-ins":"wegingen",
+"Backup saved to your downloads":"Back-up opgeslagen in je downloads","Could not save the backup here":"Kon de back-up hier niet opslaan","Backup saved":"Back-up opgeslagen",
+"Backup copied to the clipboard":"Back-up naar het klembord gekopieerd","That file is not a Workout Log backup":"Dat bestand is geen Workout Log-back-up",
+"That file has no workout data in it":"Dat bestand bevat geen trainingsdata","Restored":"Hersteld","records":"records",
+"That file is not valid JSON":"Dat bestand is geen geldige JSON","Could not read that file":"Kon dat bestand niet lezen",
+"This view cannot show system notifications":"Deze weergave kan geen systeemmeldingen tonen","Reminders will show as notifications":"Herinneringen verschijnen als meldingen",
+"Notifications not allowed here":"Meldingen zijn hier niet toegestaan","is on today.":"staat vandaag op het plan.",
+"Red":"Rood","Lime":"Limoen","Cyan":"Cyaan","Magenta":"Magenta","Amber":"Amber","Violet":"Violet","Mono":"Mono",
+"No title":"Geen titel","Showed up":"Kwam opdagen","Regular":"Vaste klant","Consistent":"Consistent","Heavy hitter":"Zwaargewicht","Machine":"Machine","Tracked it all":"Alles bijgehouden",
+"Consistent 🔒":"Consistent 🔒","Heavy hitter 🔒":"Zwaargewicht 🔒","Machine 🔒":"Machine 🔒","Regular 🔒":"Vaste klant 🔒","Tracked it all 🔒":"Alles bijgehouden 🔒",
+"Plain and direct":"Duidelijk en direct","No sympathy, no exclamation marks":"Geen medelijden, geen uitroeptekens","Relentlessly hyped":"Altijd door het dolle heen",
+"Explains the why":"Legt het waarom uit","Talks in numbers":"Praat in getallen","Runs the gym like a job":"Runt de gym als een klus","Calm and spare":"Rustig en karig",
+"Radiant — Plain and direct":"Radiant — Duidelijk en direct",
+"School":"School","Family":"Familie","Sick":"Ziek","Work":"Werk",
+"workouts logged":"trainingen gelogd","weeks in a row":"weken op rij","weeks on target":"weken op doel","kg in a single week":"kg in één week","kg on a single set":"kg in één set",
+"days of food logged":"dagen eten gelogd","weekly check-ins":"wekelijkse check-ins","PRs set":"PR's gezet",
+"Custom":"Eigen","Your own character":"Je eigen personage",
+"Upload your own sprite — square works best. It gets cropped to a circle.":"Upload je eigen sprite — vierkant werkt het best. Hij wordt rond bijgesneden.",
+"One-line description":"Omschrijving in één regel","How she talks":"Hoe ze praat",
+"This only sets her voice. Every coach still reports your real numbers and still calls out a set you missed.":"Dit bepaalt alleen haar stem. Elke coach meldt nog steeds je echte getallen en benoemt nog steeds een gemiste set.",
+"Save character":"Personage opslaan","Your profile":"Je profiel",", best set":", beste set","Profile picture":"Profielfoto","Upload a photo":"Upload een foto","Use my coach":"Gebruik mijn coach",
+"A photo stays in your own app and never goes anywhere else.":"Een foto blijft in je eigen app en gaat nergens anders heen.",
+"workouts":"trainingen","heaviest kg":"zwaarste kg","Coach character":"Coachpersonage",
+"More characters from FAL125. A look only changes how your coach appears, never how it coaches.":"Meer personages uit FAL125. Een uiterlijk verandert alleen hoe je coach eruitziet, nooit hoe hij coacht.",
+"own look":"eigen uiterlijk","Make your own character":"Maak je eigen personage","Call it something else":"Noem het anders",
+"A character changes how the coach talks, never what it tells you.":"Een personage verandert hoe de coach praat, nooit wat hij je vertelt.",
+"Appearance":"Uiterlijk","colour and title":"kleur en titel","Locked colours open up as you train.":"Vergrendelde kleuren gaan open naarmate je traint.","Title":"Titel",
+"Body measurements":"Lichaamsmaten","waist":"taille","cm":"cm","not measured yet":"nog niet gemeten","Progress photos":"Voortgangsfoto's","on this phone":"op deze telefoon","on this phone only":"alleen op deze telefoon",
+"Goals and body":"Doelen en lichaam","kcal a day":"kcal per dag","no calorie goal yet":"nog geen caloriedoel","Milestones":"Mijlpalen","workouts so far":"trainingen tot nu toe",
+"Workouts logged":"Trainingen gelogd","Weeks on target":"Weken op doel","Heaviest single set, kg":"Zwaarste set, kg","Best week, kg lifted":"Beste week, kg getild",
+"Settings":"Instellingen","rest timer, weight jumps, reminders":"rusttimer, gewichtstappen, herinneringen","Rest timer (seconds)":"Rusttimer (seconden)","Weight jump (kg)":"Gewichtstap (kg)",
+"Sessions a week":"Trainingen per week","Pause targets until":"Doelen pauzeren tot",
+"The weight jump is the smallest step your stacks really move in.":"De gewichtstap is de kleinste stap waarmee je machines echt omhoog gaan.",
+"Set 0 for the rest timer to turn the countdown off.":"Zet de rusttimer op 0 om het aftellen uit te zetten.",
+"Pausing counts those weeks as on target, for illness, holidays or a planned deload.":"Pauzeren telt die weken als op doel, voor ziekte, vakantie of een geplande deload.",
+"Reminders":"Herinneringen","Reminders are on":"Herinneringen staan aan","Turn reminders on":"Herinneringen aanzetten","Remind every (hours)":"Herinner elke (uur)","Quiet hours":"Stille uren",
+"Reminders show as system notifications.":"Herinneringen verschijnen als systeemmeldingen.","Allow system notifications":"Systeemmeldingen toestaan",
+"System notifications are not available here, so reminders show inside the app.":"Systeemmeldingen zijn hier niet beschikbaar, dus herinneringen verschijnen in de app.",
+"Reminders only run while the app is open. A web page cannot wake itself up.":"Herinneringen werken alleen als de app open is. Een webpagina kan zichzelf niet wakker maken.",
+"Gemini API key":"Gemini API-sleutel","Testing…":"Testen…","Test the key":"Test de sleutel",
+"That looks too short for a Gemini key. Copy the whole key from aistudio.google.com.":"Dat lijkt te kort voor een Gemini-sleutel. Kopieer de hele sleutel van aistudio.google.com.",
+"Optional. Without a key the coach and reviews run on built-in rules. With one you get":"Optioneel. Zonder sleutel draaien de coach en reviews op ingebouwde regels. Met een sleutel krijg je",
+"open-ended coaching, written reviews and photo calorie estimates. The key stays in this browser,":"vrije coaching, geschreven reviews en calorieschattingen van foto's. De sleutel blijft in deze browser,",
+"is never included in backups, and requests go straight from your phone to Google.":"zit nooit in back-ups, en verzoeken gaan rechtstreeks van je telefoon naar Google.",
+"Gym hours":"Openingstijden sportschool","Gym":"Sportschool",
+"Clear both times for a day the gym is closed. These came from a public listing, so check them against the door.":"Maak beide tijden leeg voor een dag dat de sportschool dicht is. Deze komen van een openbare vermelding, dus check ze bij de deur.",
+"Your data":"Je data","This backup holds":"Deze back-up bevat","Exported":"Geëxporteerd","Add what is missing":"Voeg toe wat ontbreekt","Replace everything":"Alles vervangen",
+"Export a backup":"Exporteer een back-up","Restore a backup":"Zet een back-up terug",
+"A backup is one JSON file with every workout, meal, weigh-in and routine":"Een back-up is één JSON-bestand met elke training, maaltijd, weging en routine",", last saved":", laatst opgeslagen",
+"This app is saved on the device and opens without a connection.":"Deze app staat op het apparaat en opent zonder verbinding.",
+"It is also how you move data into the browser version.":"Zo zet je ook data over naar de browserversie.",
+"Your data lives in this browser only, so export one every couple of weeks.":"Je data staat alleen in deze browser, dus exporteer er om de paar weken een.",
+"No connection. Check your signal and try again.":"Geen verbinding. Controleer je bereik en probeer het opnieuw.",
+"That email already has an account. Log in instead.":"Dat e-mailadres heeft al een account. Log in plaats daarvan in.",
+"Email or password is not right.":"E-mail of wachtwoord klopt niet.","That does not look like an email address.":"Dat lijkt geen e-mailadres.",
+"Use a password of at least 6 characters.":"Gebruik een wachtwoord van minstens 6 tekens.","Too many tries. Wait a few minutes.":"Te veel pogingen. Wacht een paar minuten.",
+"This account has been disabled.":"Dit account is uitgeschakeld.","You were signed out. Log in again to keep syncing.":"Je bent uitgelogd. Log opnieuw in om te blijven synchroniseren.",
+"Offline. Changes are kept on this device and upload when you are back online.":"Offline. Wijzigingen blijven op dit apparaat en worden geüpload zodra je weer online bent.",
+"Sync is being rate limited. It will retry.":"Synchroniseren wordt beperkt. Het wordt opnieuw geprobeerd.","Sync failed (":"Synchroniseren mislukt (","). It will retry.":"). Het wordt opnieuw geprobeerd.",
+"Syncing…":"Synchroniseren…","Not synced yet on this device.":"Nog niet gesynchroniseerd op dit apparaat.","Synced":"Gesynchroniseerd","just now":"zojuist","a minute ago":"een minuut geleden","minutes ago":"minuten geleden","over an hour ago":"meer dan een uur geleden",
+"Make an account and your workouts, meals and plan follow you to every device.":"Maak een account en je trainingen, maaltijden en plan volgen je naar elk apparaat.",
+"Log in and your workouts, meals and plan follow you to every device.":"Log in en je trainingen, maaltijden en plan volgen je naar elk apparaat.",
+"I have an account":"Ik heb een account","I am new":"Ik ben nieuw","Email":"E-mail","Choose a password":"Kies een wachtwoord","Password":"Wachtwoord","Hide":"Verbergen","Show":"Tonen",
+"Creating your account…":"Account aanmaken…","Logging in…":"Inloggen…","Create account":"Account aanmaken","Log in":"Inloggen","Forgot password":"Wachtwoord vergeten",
+"Use without an account":"Gebruiken zonder account","Without an account everything stays on this device only.":"Zonder account blijft alles alleen op dit apparaat.",
+"Type your email first, then tap Forgot password.":"Typ eerst je e-mail en tik dan op Wachtwoord vergeten.",
+"If that email has an account, a reset link is on its way.":"Als dat e-mailadres een account heeft, is er een herstellink onderweg.",
+"Fill in both your email and a password.":"Vul je e-mail en een wachtwoord in.","Account created":"Account aangemaakt","Logged in":"Ingelogd",
+"No account yet? Tap “I am new” above.":"Nog geen account? Tik hierboven op “Ik ben nieuw”.",
+"Password changed. Use the new one on your other devices.":"Wachtwoord gewijzigd. Gebruik het nieuwe op je andere apparaten.","Password changed":"Wachtwoord gewijzigd",
+"For safety this needs a fresh login. Log out, log back in, then change it straight away.":"Voor de veiligheid moet je opnieuw inloggen. Log uit, log weer in en wijzig het meteen.",
+"You were signed out. Log in again first.":"Je bent uitgelogd. Log eerst opnieuw in.","Could not sign in":"Kon niet inloggen","Could not change it":"Kon het niet wijzigen",
+"Account":"Account","not logged in":"niet ingelogd",
+"Log in to sync between your phone and other devices. What is already on this device is uploaded to your account.":"Log in om te synchroniseren tussen je telefoon en andere apparaten. Wat al op dit apparaat staat, wordt naar je account geüpload.",
+"Log in or create account":"Inloggen of account aanmaken","Sync now":"Nu synchroniseren","Logging out…":"Uitloggen…","Tap again to log out":"Tik nog eens om uit te loggen","Log out":"Uitloggen",
+"New password":"Nieuw wachtwoord","Saving…":"Opslaan…","Save new password":"Nieuw wachtwoord opslaan","Change password":"Wachtwoord wijzigen",
+"Logging out clears this device so the next person starts clean.":"Uitloggen maakt dit apparaat leeg, zodat de volgende persoon schoon begint.",
+"not uploaded yet will be sent first if there is signal.":"nog niet geüpload worden eerst verstuurd als er bereik is.",
+"Everything is already in your account.":"Alles staat al in je account.",
+"Anyone else can create their own account on this same address and gets their own separate data.":"Iemand anders kan op dit adres een eigen account maken en krijgt eigen, aparte data.",
+"flat for about":"ongeveer gelijk gebleven,","weeks":"weken","down":"omlaag",
+"Deload week: half the sets at your normal weights, and stop every set with about 3 reps left.":"Deloadweek: de helft van de sets op je normale gewichten, en stop elke set met ongeveer 3 reps over.",
+"Next week is a deload week: half the sets, normal weights.":"Volgende week is een deloadweek: de helft van de sets, normale gewichten.",
+"Time for a lighter week?":"Tijd voor een lichtere week?","of your":"van je","main lifts have stopped moving:":"hoofdoefeningen gaan niet meer vooruit:",
+"A deload week (half the sets, same weights, about 3 reps left in each set) lets fatigue clear so the weights move again.":"Een deloadweek (de helft van de sets, dezelfde gewichten, ongeveer 3 reps over per set) laat vermoeidheid wegtrekken zodat de gewichten weer omhoog gaan.",
+"While you are losing weight this matters even more.":"Terwijl je afvalt is dit nog belangrijker.","Make next week a deload":"Maak volgende week een deload","Not now":"Niet nu",
+"Take a lighter week:":"Neem een lichtere week:","have stopped moving.":"gaan niet meer vooruit.","Get every planned workout in. Missed:":"Doe elke geplande training. Gemist:",
+"Protein averaged":"Eiwit gemiddeld","g against your":"g tegenover je","g goal. Add one protein-heavy meal a day.":"g doel. Voeg elke dag één eiwitrijke maaltijd toe.",
+"Sleep was rough. Protect it before chasing heavier weights.":"Je slaap was slecht. Bescherm die eerst voordat je zwaardere gewichten najaagt.",
+"Add 2 to 3 sets for":"Doe 2 tot 3 sets extra voor",
+"Log food at least 5 days, so your real calorie burn can be measured.":"Log minstens 5 dagen je eten, zodat je echte verbranding gemeten kan worden.",
+"Weigh in 3 mornings, so your weight trend stays accurate.":"Weeg jezelf 3 ochtenden, zodat je gewichtstrend klopt.",
+"Keep it going: same plan, and beat last week's reps.":"Ga zo door: zelfde plan, en verbeter de reps van vorige week.",
+"Week of":"Week van","planned workouts done":"geplande trainingen gedaan","(missed":"(gemist","sets,":"sets,","kg lifted":"kg getild","% on the week before)":"% t.o.v. de week ervoor)",
+"PRs:":"PR's:","Food logged":"Eten gelogd","days, averaging":"dagen, gemiddeld","(goal":"(doel","Water averaged":"Water gemiddeld","L a day on":"L per dag op","days.":"dagen.",
+"Body weight":"Lichaamsgewicht","kg a week.":"kg per week.","Check-in: energy":"Check-in: energie","/5, sleep":"/5, slaap","/5, recovery":"/5, herstel",", note:":", notitie:",
+"Under the weekly set target:":"Onder het wekelijkse setdoel:","Focus next week:":"Focus volgende week:",
+"1 is bad, 5 is great":"1 is slecht, 5 is top","Energy":"Energie","Sleep":"Slaap","Recovery":"Herstel","Save check-in":"Check-in opslaan",
+"This week so far":"Deze week tot nu toe","Full report":"Volledig rapport","protein a day":"eiwit per dag","Sets and kg lifted":"Sets en kg getild","Missed":"Gemist","missed":"gemist",
+"not logged":"niet gelogd","Water":"Water","L a day":"L per dag","kg/wk":"kg/wk","Under set target":"Onder setdoel","Check-in":"Check-in","energy":"energie","· sleep":"· slaap","· recovery":"· herstel",
+"Focus for next week":"Focus voor volgende week","Check-in for this week":"Check-in voor deze week","Ask the coach to talk it through":"Vraag de coach het door te nemen",
+"Weekly check-in":"Wekelijkse check-in","Three taps, then your week in review.":"Drie tikken, dan je week in review.",
+"Normal":"Normaal","Your plan as written":"Je plan zoals het er staat","Plan sets and reps. Weight goes up once every set hits the top of the range.":"Geplande sets en reps. Het gewicht gaat omhoog zodra elke set de bovenkant van het bereik haalt.",
+"Last set of every lift to failure":"Laatste set van elke oefening tot falen",
+"Same plan, but the last set of every exercise goes to failure: 0 reps left. Weight goes up as soon as your first set hits the top of the range. 2 minutes rest.":"Zelfde plan, maar de laatste set van elke oefening gaat tot falen: 0 reps over. Het gewicht gaat omhoog zodra je eerste set de bovenkant van het bereik haalt. 2 minuten rust.",
+"Lighter, leave reps in the tank":"Lichter, houd reps over in de tank",
+"One set fewer, about 80% of your usual weight, and stop every set with 3 or more reps left. No PR chasing. For bad sleep, sore days or a rough week.":"Eén set minder, ongeveer 80% van je normale gewicht, en stop elke set met 3 of meer reps over. Geen PR's najagen. Voor slecht slapen, spierpijn of een zware week.",
+"Strength":"Kracht","Heavier, 4 to 6 reps":"Zwaarder, 4 tot 6 reps",
+"Heavier weights for 4 to 6 reps, picked from your estimated max. 3 minutes rest. Best on big lifts.":"Zwaardere gewichten voor 4 tot 6 reps, gekozen op basis van je geschatte max. 3 minuten rust. Het best op grote oefeningen.",
+"Pump":"Pump","Lighter, 12 to 15 reps, short rest":"Lichter, 12 tot 15 reps, korte rust",
+"Lighter weights for 12 to 15 reps, one extra set on isolation lifts, and 60 seconds rest.":"Lichtere gewichten voor 12 tot 15 reps, één extra set op isolatie-oefeningen, en 60 seconden rust.",
+"Quick":"Snel","In and out in about 30 minutes":"In en uit in ongeveer 30 minuten",
+"Only the first 4 lifts, one set fewer each, 60 seconds rest, finisher cut to 5 minutes. For when time is short or the gym closes soon.":"Alleen de eerste 4 oefeningen, elk één set minder, 60 seconden rust, finisher ingekort tot 5 minuten. Voor als je weinig tijd hebt of de sportschool bijna dichtgaat.",
+"Quick mode: keep it to about 5 minutes.":"Snelle modus: houd het op ongeveer 5 minuten.","Recovery: easy pace, you should be able to talk.":"Herstel: rustig tempo, je moet nog kunnen praten.",
+"First set hit":"Eerste set haalde","last time, so +":"vorige keer, dus +","kg. Last set to failure.":"kg. Laatste set tot falen.","Last set: to failure, 0 reps left.":"Laatste set: tot falen, 0 reps over.",
+"Recovery: about 80% and 3+ reps left in every set.":"Herstel: ongeveer 80% en 3+ reps over in elke set.","Easy. Stop with 3 or more reps left.":"Rustig. Stop met 3 of meer reps over.",
+"From your estimated max: about":"Op basis van je geschatte max: ongeveer","kg for 6 with a rep left.":"kg voor 6 met één rep over.",
+"No max logged yet, so about 12% over your usual weight. Adjust after set 1.":"Nog geen max gelogd, dus ongeveer 12% boven je normale gewicht. Pas aan na set 1.",
+"Heavy and clean. Full rest between sets.":"Zwaar en netjes. Volledige rust tussen sets.","kg for 15.":"kg voor 15.",
+"About 75% of your usual weight. Adjust after set 1.":"Ongeveer 75% van je normale gewicht. Pas aan na set 1.",
+"Slow lowering, squeeze at the top, short rest.":"Langzaam zakken, knijpen bovenaan, korte rust.","Quick: short rest, keep moving.":"Snel: korte rust, blijf bewegen.",
+"Coach mode:":"Coachmodus:","Coach mode":"Coachmodus","mode":"modus","The gym closes in":"De sportschool gaat dicht over","minutes. Switch to Quick?":"minuten. Overschakelen naar Snel?",
+"Your last check-in said":"Je laatste check-in zei","was rough. Switch to Recovery today?":"was slecht. Vandaag overschakelen naar Herstel?",
+"Finish a workout and your bests show up here. A PR needs something to beat, so it counts from your second time on a lift.":"Rond een training af en je records verschijnen hier. Een PR heeft iets nodig om te verbeteren, dus het telt vanaf je tweede keer op een oefening.",
+"lifts tracked":"oefeningen bijgehouden","latest PR":"laatste PR","Recent PRs":"Recente PR's","Show fewer":"Minder tonen","Show all":"Alles tonen","Best ever, per lift":"Beste ooit, per oefening",
+"longest hold,":"langste hold,","heaviest set,":"zwaarste set,","· estimated max":"· geschatte max","kg (from":"kg (uit",
+"Estimated max is what you could probably lift once, worked out from your best set of 12 reps or fewer.":"Geschatte max is wat je waarschijnlijk één keer kunt tillen, berekend uit je beste set van 12 reps of minder.",
+"+ Glass":"+ Glas","+ Bottle":"+ Fles","+ Big":"+ Groot","undo glass":"glas ongedaan","+0.5 L on training days for what you sweat out.":"+0,5 L op trainingsdagen voor wat je uitzweet.",
+"Waist":"Taille","Arm (flexed)":"Arm (aangespannen)","Thigh":"Bovenbeen","Hips":"Heupen","Neck":"Nek","Body fat %":"Vetpercentage",
+"Waist (cm)":"Taille (cm)","Chest (cm)":"Borst (cm)","Arm (flexed) (cm)":"Arm (aangespannen) (cm)","Thigh (cm)":"Bovenbeen (cm)","Hips (cm)":"Heupen (cm)","Neck (cm)":"Nek (cm)",
+"Weight and waist are both coming down: that is mostly fat, which is what a cut should do.":"Gewicht en taille gaan allebei omlaag: dat is vooral vet, precies wat een cut moet doen.",
+"Weight is dropping but your waist is not. Check protein and keep lifting heavy so the loss is fat, not muscle.":"Je gewicht daalt maar je taille niet. Check je eiwit en blijf zwaar tillen, zodat je vet verliest en geen spier.",
+"Gaining weight with a steady waist: that is lean gain.":"Aankomen met een gelijke taille: dat is schone groei.",
+"Your waist is growing as fast as your weight. A smaller surplus would keep it leaner.":"Je taille groeit even snel als je gewicht. Een kleiner overschot houdt het strakker.",
+"Same weight, smaller waist: you are swapping fat for muscle.":"Zelfde gewicht, kleinere taille: je ruilt vet in voor spier.",
+"Measure in the morning before eating, tape level and snug, same spot each time. Every 2 weeks is enough.":"Meet 's ochtends voor het eten, meetlint recht en strak, elke keer op dezelfde plek. Elke 2 weken is genoeg.",
+"since":"sinds","last:":"vorige:","Save for":"Opslaan voor","History":"Geschiedenis","Ideas":"Ideeën","Protein to go":"Eiwit te gaan",
+"Log a few meals with protein and I will suggest your own foods to close the gap.":"Log een paar maaltijden met eiwit en ik stel je eigen eten voor om het tekort te dichten.",
+"From what you usually eat":"Uit wat je meestal eet",", keeping inside your":", binnen je","kcal left":"kcal over","g protein ·":"g eiwit ·","g short":"g tekort","+ Add":"+ Toevoegen",
+"Nothing planned in the next 4 weeks":"Niets gepland in de komende 4 weken","saved. Open the file to add them to your calendar.":"opgeslagen. Open het bestand om ze aan je kalender toe te voegen.",
+"Could not make the calendar file here":"Kon het kalenderbestand hier niet maken","Add to your phone's calendar":"Toevoegen aan de kalender van je telefoon",
+"The next 4 weeks of workouts as calendar events at B-Fit, with a reminder an hour before. Weekend times move earlier to fit the shorter hours.":"De komende 4 weken trainingen als kalenderafspraken bij B-Fit, met een herinnering een uur van tevoren. In het weekend schuiven de tijden naar voren door de kortere openingstijden.",
+"Usual start time":"Gebruikelijke begintijd","Length (min)":"Duur (min)","Save calendar file":"Kalenderbestand opslaan",
+"Open the downloaded file and your calendar app asks to add the events. If your plan changes, save it again: most calendars update the same workouts instead of doubling them.":"Open het gedownloade bestand en je kalender-app vraagt om de afspraken toe te voegen. Verandert je plan, sla het dan opnieuw op: de meeste kalenders werken dezelfde trainingen bij in plaats van ze dubbel te zetten.",
+"Calendar":"Kalender","Photos cannot be stored in this browser.":"Foto's kunnen niet in deze browser opgeslagen worden.","Loading…":"Laden…",
+"Photos stay on this phone only. They are not synced, not in backups, and never sent anywhere. Same spot, same light, same time of day makes them comparable.":"Foto's blijven alleen op deze telefoon. Ze worden niet gesynchroniseerd, zitten niet in back-ups en gaan nergens heen. Zelfde plek, zelfde licht, zelfde tijdstip maakt ze vergelijkbaar.",
+"Add a front photo":"Voeg een foto van voren toe","Add a side photo":"Voeg een foto van opzij toe","Add a back photo":"Voeg een foto van achteren toe","Front":"Voor","Side":"Zijkant",
+"First vs latest":"Eerste vs laatste","All":"Alle","photos":"foto's","tap again":"tik nog eens",
+"log what you eat":"log wat je eet","adjust your week":"pas je week aan","logged":"gelogd","profile, characters, settings":"profiel, personages, instellingen",
+"Saved in this browser only — the shared store is not reachable right now.":"Alleen in deze browser opgeslagen — de gedeelde opslag is nu niet bereikbaar.",
+"Your data lives only in this browser and has never been backed up.":"Je data staat alleen in deze browser en er is nog nooit een back-up van gemaakt.",
+"Last backup was":"Laatste back-up was","Tap to export one.":"Tik om er een te exporteren.","items":"onderdelen",
+"Switch":"Wissel","Start this workout":"Start deze training","Why not?":"Waarom niet?","Never mind":"Laat maar","Can't do this one":"Kan deze niet",
+"Weights are held a session longer while you lose.":"Gewichten blijven een training langer staan zolang je afvalt.","Weights go up as soon as you hit your reps.":"Gewichten gaan omhoog zodra je je reps haalt.",
+"Two workouts are":"Er staan twee trainingen","More than one workout is":"Er staat meer dan één training","logged on":"gelogd op","Review":"Bekijken",
+"Probably a double log.":"Waarschijnlijk dubbel gelogd.",
+"Two weeks since your last measurements.":"Twee weken sinds je laatste metingen.","Measure":"Meten","Paused,":"Gepauzeerd,","done,":"klaar,","Resume workout":"Training hervatten","Discard":"Weggooien",
+"Coming up":"Komt eraan","Missed today —":"Vandaag gemist —","was planned.":"stond gepland.","Nothing was planned.":"Er stond niets gepland.","Do it anyway":"Toch doen",
+"sessions this week":"trainingen deze week","sets this week":"sets deze week","Done for today. Nice work.":"Klaar voor vandaag. Goed gedaan.",
+"is on today, but it has no exercises yet.":"staat vandaag op het plan, maar heeft nog geen oefeningen.","Fill it in":"Vul hem in","Rest day. Nothing scheduled.":"Rustdag. Niets gepland.",
+"Nothing planned yet. Set up your week in Plan, or ask the coach to build it.":"Nog niets gepland. Stel je week in bij Plan of vraag de coach om hem te maken.","Ask the coach":"Vraag de coach",
+"(done sets kept)":"(afgeronde sets blijven)","Swap for":"Wissel voor","Swap":"Wissel","Sets you already ticked stay on":"Sets die je al afvinkte blijven op",
+"; the rest move to the new exercise.":"; de rest gaat naar de nieuwe oefening.","↑ Earlier":"↑ Eerder","↓ Later":"↓ Later","+ After this":"+ Hierna","Remove":"Verwijderen",
+"Add after":"Toevoegen na","Add an exercise":"Voeg een oefening toe","Add":"Toevoegen","This workout has no exercises yet.":"Deze training heeft nog geen oefeningen.",
+"Superset":"Superset",": alternate one set of each, rest after the second":": wissel om en om één set af, rust na de tweede",
+"Start":"Start","End":"Einde","RIR is reps you had left. Leave it blank if you did not judge it.":"RIR zijn de reps die je nog over had. Laat leeg als je het niet hebt ingeschat.",
+"km/h":"km/u","Type what you actually did if it differs from the plan. Blank means as planned. Speed and time count for PRs.":"Typ wat je echt deed als het afwijkt van het plan. Leeg betekent zoals gepland. Snelheid en tijd tellen voor PR's.",
+"add block":"blok toevoegen","remove block":"blok verwijderen","add set":"set toevoegen","remove set":"set verwijderen","+ Add exercise":"+ Oefening toevoegen",
+"How did it go?":"Hoe ging het?","Submit and get review":"Versturen en review krijgen",", logged":", gelogd","review":"review","Redo":"Opnieuw",
+"planned":"gepland","to fill":"in te vullen",", a main day":", een hoofddag","Missed —":"Gemist —","Nothing planned":"Niets gepland","Nothing planned on this day.":"Niets gepland op deze dag.",
+"Add a workout here":"Voeg hier een training toe","No exercises in it yet.":"Er staan nog geen oefeningen in.","Log this as done":"Log dit als gedaan","Standing week":"Vaste week",
+"item":"onderdeel","(since":"(sinds",", nothing in it yet":", er staat nog niets in","nothing set":"niets ingesteld","becomes":"wordt","Untitled":"Naamloos",", from your standing":", uit je vaste","routine":"routine",
+"Editing this makes a copy just for":"Als je dit aanpast, maak je een kopie alleen voor","and leaves your standing routine alone.":"en blijft je vaste routine ongemoeid.",
+"Date":"Datum","Workout note":"Trainingsnotitie","Spec":"Specificatie","Sets":"Sets","Reps":"Reps","Kg":"Kg","Step":"Stap","Base kg":"Basis kg",
+"Base kg is what the machine or bar weighs before you load it. Per side doubles it for volume.":"Basis kg is wat de machine of stang weegt voordat je hem belaadt. Per kant verdubbelt het voor het volume.",
+"Focus or note":"Focus of notitie","Add lift":"Oefening toevoegen","Add cardio":"Cardio toevoegen","Select your coach":"Kies je coach","New":"Nieuw",
+"Built-in coach: it handles a fixed set of requests":"Ingebouwde coach: hij begrijpt een vaste set verzoeken",
+"and changes your plan by rule. Add a free Gemini key in You, Settings for open questions and photo calories.":"en past je plan aan met regels. Voeg een gratis Gemini-sleutel toe bij Jij, Instellingen voor open vragen en calorieën van foto's.",
+"Built-in coach: it handles a fixed set of requests and changes your plan by rule. Add a free Gemini key in You, Settings for open questions and photo calories.":"Ingebouwde coach: hij begrijpt een vaste set verzoeken en past je plan aan met regels. Voeg een gratis Gemini-sleutel toe bij Jij, Instellingen voor open vragen en calorieën van foto's.",
+"Tell me what to change":"Vertel me wat ik moet aanpassen",
+"I can see your calendar, your standing week and every set you have logged.":"Ik zie je kalender, je vaste week en elke set die je hebt gelogd.",
+"Ask for a change and I will rewrite the plan, picking weights from what you actually lifted.":"Vraag om een wijziging en ik herschrijf het plan, met gewichten op basis van wat je echt tilde.",
+"I can see your calendar, your standing week and every set you have logged. Ask for a change and I will rewrite the plan, picking weights from what you actually lifted.":"Ik zie je kalender, je vaste week en elke set die je hebt gelogd. Vraag om een wijziging en ik herschrijf het plan, met gewichten op basis van wat je echt tilde.",
+"Add an extra session this week":"Voeg deze week een extra training toe","Bump my weights":"Verhoog mijn gewichten","What should I train next":"Wat moet ik hierna trainen","When does the gym close":"Hoe laat gaat de sportschool dicht",
+"Log a workout I already did":"Log een training die ik al deed","Tap again to clear":"Tik nog eens om te wissen","Clear conversation":"Gesprek wissen",
+"Finished workouts land here with every set you hit, your notes and the review.":"Afgeronde trainingen komen hier met elke set, je notities en de review.",
+"REVIEW":"REVIEW","km/h ×":"km/u ×","blocks":"blokken","View review":"Review bekijken","Get a review":"Review krijgen","Edit numbers":"Getallen aanpassen",
+"Tap again to delete":"Tik nog eens om te verwijderen","Delete session":"Training verwijderen","Loading your workouts…":"Je trainingen laden…",
+"Water:":"Water:","Type at least one measurement":"Vul minstens één maat in","Measurements saved":"Maten opgeslagen","Look set to":"Uiterlijk ingesteld op","Back to its own look":"Terug naar het eigen uiterlijk",
+"Next week is a deload:":"Volgende week is een deload:","set to half the sets":"op de helft van de sets gezet","Nothing is planned next week to lighten":"Er staat volgende week niets gepland om lichter te maken",
+"Asking again in a week":"Ik vraag het over een week opnieuw","Deload removed":"Deload verwijderd","Check-in saved":"Check-in opgeslagen",
+"Type your weight in kg, e.g. 72.5":"Typ je gewicht in kg, bijv. 72,5","Weight logged:":"Gewicht gelogd:","Reminders off":"Herinneringen uit","Reminders on":"Herinneringen aan","Works. Using":"Werkt. Gebruikt",
+"Give it a name or some calories":"Geef het een naam of wat calorieën","Marked as missed —":"Gemarkeerd als gemist —","Unmarked":"Markering weg","Give the character a name":"Geef het personage een naam",
+"Saved — coach is now":"Opgeslagen — coach is nu","Coach is now":"Coach is nu","Goals set from your own data":"Doelen ingesteld op basis van je eigen data","Goals set":"Doelen ingesteld",
+"Put your weight in first":"Vul eerst je gewicht in","Weight logged for":"Gewicht gelogd voor","Finish or discard the live workout first":"Rond eerst de lopende training af of gooi hem weg",
+"Straight to":"Direct naar","Workout logged 💪":"Training gelogd 💪","Could not read that image":"Kon die afbeelding niet lezen","Profile picture updated":"Profielfoto bijgewerkt",
+"Saving photo…":"Foto opslaan…","Photo saved on this phone":"Foto opgeslagen op deze telefoon","Could not save that photo. Try a JPEG or PNG.":"Kon die foto niet opslaan. Probeer een JPEG of PNG.",
+"Add to Today":"Toevoegen aan vandaag","Save for Today":"Opslaan voor vandaag","Week":"Week","Weekly":"Wekelijks","Progress":"Voortgang","Sessions":"Trainingen","Lift":"Oefening","lift":"oefening",
+"Anything else? (optional)":"Nog iets? (optioneel)","Ask for a change":"Vraag om een wijziging","Cues, setup, what to watch":"Aanwijzingen, instelling, waar je op let",
+"Energy, form, niggles, PRs, what felt heavy":"Energie, techniek, pijntjes, PR's, wat zwaar voelde","Exercise name":"Naam oefening","Your name":"Je naam",
+"e.g. Chicken and rice":"bijv. kip met rijst","note on this exercise (optional)":"notitie bij deze oefening (optioneel)","or type any exercise":"of typ een oefening",
+"paste a key from aistudio.google.com":"plak een sleutel van aistudio.google.com","trend chart":"trendgrafiek","type any exercise, e.g. dead hang":"typ een oefening, bijv. dead hang",
+"at least 6 characters":"minstens 6 tekens","you@example.com":"jij@voorbeeld.nl",
+"Heaviest set, kg":"Zwaarste set, kg","Best week, kg lifted → Nox":"Beste week, kg getild → Nox","Weeks on target → Volt":"Weken op doel → Volt","Heaviest single set, kg → Static":"Zwaarste set, kg → Static",
+"Under set target":"Onder setdoel","to":"tot","heaviest set ever":"zwaarste set ooit","best set":"beste set","PR wall":"PR-muur",
+"For that group:":"Voor die groep:","or Plank.":"of Plank.","Which one did you do?":"Welke heb je gedaan?","For example":"Bijvoorbeeld",
+"in a message means the seated crunch machine.":"betekent in een bericht de zittende crunchmachine.",
+"Abdominals is the muscle group. Pick an exercise, e.g. abdominal crunches.":"Buikspieren is de spiergroep. Kies een oefening, bijv. abdominal crunches.",
+"Weight is per side":"Gewicht is per kant","Weight is the total":"Gewicht is het totaal","· bodyweight":"· lichaamsgewicht","Added to your finished workout on":"Toegevoegd aan je afgeronde training van","Saved as a finished workout on":"Opgeslagen als afgeronde training op",", with":", met","Looks":"Skins","Language":"Taal","Taal / Language":"Taal / Language",
+"Abdominals is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.",
+"Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
+"Set a calorie goal in You, Goals and body.":"Stel een caloriedoel in bij Jij, Doelen en lichaam.",
+"Two workouts are logged on":"Er staan twee trainingen gelogd op",
+"Did this exercise":"Deze oefening gedaan","Rest":"Rust","rest":"rust","sec":"sec","Rest timer":"Rusttimer",
+"Body":"Lichaam","Mode":"Modus","Report":"Rapport","Today's workout":"Training van vandaag","Finish workout":"Training afronden","Finish":"Afronden",
+"Edit":"Aanpassen","Save":"Opslaan","Saved":"Opgeslagen","Open":"Openen","Yes":"Ja","No":"Nee","OK":"OK","Next":"Volgende","Previous":"Vorige","Off":"Uit","On":"Aan","on":"aan","off":"uit"
+};
+/* numeric and ordering patterns; applied before phrase matching */
+var NLR=[
+ [/^Today\b/,'Vandaag'],[/^Logged (.+) on (\d{4}-\d\d-\d\d)$/,'Gelogd: $1 op $2'],[/\b(\d\d:\d\d) to (\d\d:\d\d)\b/g,'$1 tot $2'],[/(\S) Today\b/g,'$1 vandaag'],[/(\S) Tomorrow\b/g,'$1 morgen'],[/^Tomorrow\b/,'Morgen'],[/^Yesterday\b/,'Gisteren'],
+ [/\b(\d+(?:[.,]\d+)?) of (\d+(?:[.,]\d+)?)\b/g,'$1 van $2'],
+ [/\bin (\d+) days\b/g,'over $1 dagen'],[/\b(\d+) days ago\b/g,'$1 dagen geleden'],[/\b1 day ago\b/g,'1 dag geleden'],
+ [/\b(\d+) days\b/g,'$1 dagen'],[/\b1 day\b/g,'1 dag'],[/\b(\d+) weeks\b/g,'$1 weken'],[/\b1 week\b/g,'1 week'],
+ [/\b(\d+) minutes\b/g,'$1 minuten'],[/\b(\d+) hours\b/g,'$1 uur'],
+ [/\b(\d+) items\b/g,'$1 onderdelen'],[/\b1 item\b/g,'1 onderdeel'],
+ [/\b(\d+) workouts\b/g,'$1 trainingen'],[/\b1 workout\b/g,'1 training'],
+ [/\b(\d+) weigh-ins\b/g,'$1 wegingen'],[/\b(\d+) PRs\b/g,"$1 PR's"],
+ [/\b(\d+) sessions\b/g,'$1 trainingen'],[/\b(\d+) meals\b/g,'$1 maaltijden'],[/\b(\d+) photos\b/g,"$1 foto's"],
+ [/^add ([\d.,]+)$/,'nog $1'],[/^drop ([\d.,]+)$/,'$1 minder'],
+ [/^Log ([\d.,]+) kg for (.+)$/,function(m,a,b){ return 'Log '+a+' kg voor '+(NLD[b]||b).toLowerCase(); }],
+ [/\bwas (\d+(?:\.\d+)?) kg\b/g,'was $1 kg'],
+ [/\b(\d+) direct\b/g,'$1 direct'],
+ [/\bon this phone\b/g,'op deze telefoon']
+];
+
+/* ================= LANGUAGE: English or Dutch, per device ================= */
+function nlOn(){ try{ return localStorage.getItem('wl_lang')==='nl'; }catch(e){ return false; } }
+function LOC(){ return nlOn()?'nl-NL':undefined; }
+var NLX=null, NLDAY=null, NLMUS=null;
+var NLDW={Sunday:'zondag',Monday:'maandag',Tuesday:'dinsdag',Wednesday:'woensdag',Thursday:'donderdag',Friday:'vrijdag',Saturday:'zaterdag',
+  Sun:'zo',Mon:'ma',Tue:'di',Wed:'wo',Thu:'do',Fri:'vr',Sat:'za',
+  January:'januari',February:'februari',March:'maart',April:'april',June:'juni',July:'juli',August:'augustus',September:'september',October:'oktober',November:'november',December:'december',
+  May:'mei',Jan:'jan',Feb:'feb',Mar:'mrt',Apr:'apr',Jun:'jun',Jul:'jul',Aug:'aug',Sep:'sep',Oct:'okt',Nov:'nov',Dec:'dec'};
+var NLMW={'Lower chest':'Onderborst','Upper chest':'Bovenborst','Front delts':'Voorste schouders','Side delts':'Zijkant schouders','Rear delts':'Achterste schouders',
+  'Upper back':'Bovenrug','Lower back':'Onderrug','Forearms':'Onderarmen','Glutes':'Billen','Quads':'Quadriceps','Calves':'Kuiten','Chest':'Borst','Core':'Core','Biceps':'Biceps','Triceps':'Triceps','Lats':'Lats','Hamstrings':'Hamstrings'};
+function nlEsc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+function nlBuild(){
+  var keys=Object.keys(NLD).filter(function(k){ return /[\s.,:;!?()"“”—–\-+·]/.test(k)&&k.length>3; })
+    .sort(function(a,b){ return b.length-a.length; });
+  NLX=new RegExp(keys.map(function(k){ return (/^[A-Za-z]/.test(k)?'(?<![A-Za-z])':'')+nlEsc(k)+(/[A-Za-z]$/.test(k)?'(?![A-Za-z])':''); }).join('|'),'g');
+  NLDAY=new RegExp('(?<![A-Za-z])('+Object.keys(NLDW).sort(function(a,b){ return b.length-a.length; }).join('|')+')(?![A-Za-z])(?! (?:Press|Raise|Fly|Curl|Row|Extension|Machine|Pulldown))','g');
+  var mk=Object.keys(NLMW).sort(function(a,b){ return b.length-a.length; }).map(nlEsc).join('|');
+  NLMUS=new RegExp('(?<![A-Za-z])('+mk+')(?= [\\d.]| and |, |\\.|$)','g');
+}
+function trText(s){
+  var t=String(s).trim(); if(!t||!/[A-Za-z]/.test(t)) return s;
+  var r=NLD[t];
+  if(r==null){
+    if(!NLX) nlBuild();
+    r=t;
+    r=r.replace(NLX,function(m){ return NLD[m]; });
+    for(var i=0;i<NLR.length;i++) r=r.replace(NLR[i][0],NLR[i][1]);
+    r=r.replace(NLMUS,function(m){ return NLMW[m]; });
+    r=r.replace(NLDAY,function(m,a,off){ var d=NLDW[m]; return off===0?d.charAt(0).toUpperCase()+d.slice(1):d; });
+    r=r.replace(/(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|\b(?:zo|ma|di|wo|do|vr|za)\b|Buikspieren|Onderarmen|Billen|Kuiten|Borst|Core|Biceps|Triceps) and /gi,'$1 en ');
+  }
+  return r===t?s:s.replace(t,r);
+}
+function nlSkip(el){ return !el||!el.closest||!!el.closest('.nt,script,style,textarea,[contenteditable]'); }
+var NLA=['placeholder','title','aria-label'];
+function nlAttr(el){
+  if(!el||!el.closest||el.closest('.nt')) return;
+  for(var i=0;i<NLA.length;i++){ var v=el.getAttribute(NLA[i]); if(v){ var w=trText(v); if(w!==v) el.setAttribute(NLA[i],w); } }
+}
+function nlNode(n){
+  if(n.nodeType===3){
+    if(n.__nl===n.nodeValue||nlSkip(n.parentNode)) return;
+    var v=trText(n.nodeValue); if(v!==n.nodeValue) n.nodeValue=v; n.__nl=n.nodeValue; return;
+  }
+  if(n.nodeType!==1||nlSkip(n)) return;
+  nlAttr(n);
+  if(n.querySelectorAll) Array.prototype.forEach.call(n.querySelectorAll('[placeholder],[title],[aria-label]'),nlAttr);
+  var w=document.createTreeWalker(n,NodeFilter.SHOW_TEXT), x, list=[];
+  while((x=w.nextNode())) list.push(x);
+  list.forEach(nlNode);
+}
+var NLOBS=null;
+function nlStart(){
+  if(!nlOn()||NLOBS||typeof MutationObserver==='undefined') return;
+  try{ document.documentElement.lang='nl'; nlBuild(); }catch(e){ return; }
+  nlNode(document.body);
+  NLOBS=new MutationObserver(function(ms){
+    ms.forEach(function(m){
+      if(m.type==='characterData') nlNode(m.target);
+      else if(m.type==='attributes') nlAttr(m.target);
+      else Array.prototype.forEach.call(m.addedNodes,nlNode);
+    });
+  });
+  NLOBS.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:NLA});
+}
+function setLang(l){
+  try{ if(l==='nl') localStorage.setItem('wl_lang','nl'); else localStorage.removeItem('wl_lang'); }catch(e){}
+  location.reload();
+}
+/* Dutch messages to the built-in coach: rewritten into the English it already understands */
+var NLIN=[
+ [/\beergisteren\b/g,'2 days ago'],[/\bgisteren\b/g,'yesterday'],[/\bvandaag\b/g,'today'],[/\bmorgen\b/g,'tomorrow'],
+ [/\bvanochtend\b|\bvanmorgen\b|\bvanavond\b/g,'today'],[/\b(\d+)\s+dagen?\s+geleden\b/g,'$1 days ago'],
+ [/\b(vorige|afgelopen)\s+(?=(?:zon|maan|dins|woens|donder|vrij|zater)dag\b)/g,'last '],
+ [/\bzondag\b/g,'sunday'],[/\bmaandag\b/g,'monday'],[/\bdinsdag\b/g,'tuesday'],[/\bwoensdag\b/g,'wednesday'],[/\bdonderdag\b/g,'thursday'],[/\bvrijdag\b/g,'friday'],[/\bzaterdag\b/g,'saturday'],
+ [/\b(\d{1,2})\s*(januari|februari|maart|mrt|april|mei|juni|juli|augustus|september|oktober|okt|november|december)\b/g,function(m,d,mo){
+   var k={januari:'jan',februari:'feb',maart:'mar',mrt:'mar',april:'apr',mei:'may',juni:'jun',juli:'jul',augustus:'aug',september:'sep',oktober:'oct',okt:'oct',november:'nov',december:'dec'}[mo]; return d+' '+k; }],
+ [/\bdeze week\b/g,'this week'],[/\bvolgende week\b/g,'next week'],[/\bvorige week\b/g,'last week'],[/\belke week\b|\biedere week\b/g,'every week'],
+ [/^(?:begin|start|gestart|begonnen)\s*(?:om\s*)?(\d{1,2}[:.]\d{2})\s*$/gm,'start $1'],
+ [/^(?:eind(?:e|igde)?|klaar|gestopt|tot|stop)\s*(?:om\s*)?(\d{1,2}[:.]\d{2})\s*$/gm,'end $1'],
+ [/\(\s*(?:tot\s+)?(?:falen|gefaald|faal)\s*\)/g,'(failure)'],
+ [/\bik\s+weeg\b/g,'i weigh'],[/\bmijn gewicht(?: is| was)?\b/g,'my weight is'],[/^\s*gewicht\b/g,'weight'],
+ [/\bgedronken\b/g,'drank'],[/\bglazen?\b/g,'glasses'],[/\bflessen?\b/g,'bottles'],[/\bliters?\b/g,'l'],
+ [/\bherstel\s*modus\b|\bherstelmodus\b/g,'recovery mode'],[/\bkracht\s*modus\b|\bkrachtmodus\b/g,'strength mode'],[/\bsnelle\s*modus\b|\bsnelmodus\b/g,'quick mode'],
+ [/\bnormale\s*modus\b/g,'normal mode'],[/\b(?:tot\s+)?falen\s*modus\b/g,'failure mode'],[/\bpump\s*modus\b/g,'pump mode'],[/\bcoach\s*modus\b|\bmodi\b/g,'coach mode'],
+ [/\bzet (?:op|naar)\b|\bschakel (?:over )?naar\b/g,'switch to'],
+ [/\bvervang\s+(.+?)\s+(?:door|voor|met)\s+(.+)/g,'swap $1 for $2'],[/\bwissel\s+(.+?)\s+(?:voor|met|door)\s+(.+)/g,'swap $1 for $2'],
+ [/\bdoe\s+(.+?)\s+in plaats van\s+(.+)/g,'do $1 instead of $2'],[/\bin plaats van\b/g,'instead of'],
+ [/\btussen\s+(.+?)\s+en\s+(.+?)\s+(?:voeg\s+)?(.+?)(?:\s+toe)?$/gm,'between $1 and $2 add $3'],
+ [/\bna\s+(.+?)\s+(?:voeg\s+)?(.+?)\s+toe\b/g,'after $1 add $2'],
+ [/\bvoeg\s+(.+?)\s+toe\s+(?:aan|op|voor)\s+(\w+)/g,'add $1 to $2'],[/\bvoeg\s+(.+?)\s+toe\b/g,'add $1'],
+ [/\bverwijder\b|\bhaal\s+(.+?)\s+weg\b/g,function(m,a){ return a?'remove '+a:'remove'; }],
+ [/\bverplaats\s+(.+?)\s+naar\s+(.+)/g,'move $1 to $2'],
+ [/\bongedaan(?: maken)?\b|\bterugzetten\b/g,'undo'],
+ [/\bverhoog (?:mijn )?gewichten\b/g,'bump my weights'],[/\bwat (?:moet|zal) ik (?:hierna |vandaag )?trainen\b/g,'what should i train'],
+ [/\bextra training\b/g,'extra session'],[/\bhoe laat (?:gaat|is) de (?:sportschool|gym) dicht\b/g,'when does the gym close'],
+ [/\bhoe (?:gaat|staat) (?:het met )?mijn (?:voortgang|progressie)\b/g,'how is my progress'],[/\bwat staat er deze week\b/g,'what is on this week'],
+ [/\bwat is (?:de |het |een )?/g,'what is '],[/\bhoeveel eiwit\b.*\b(?:nog|over|te gaan)\b/g,'how much protein to go'],[/\beiwit\b/g,'protein'],
+ [/\bweekrapport\b|\bweek ?verslag\b/g,'weekly report'],[/\bbuikspieren\b/g,'abdominals']
+];
+function nlIn(text){
+  var t=String(text||''), lo=t.toLowerCase();
+  if(!/\b(gisteren|vandaag|eergisteren|geleden|vorige|afgelopen|zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|januari|februari|maart|mei|juni|juli|augustus|oktober|week|begin|eind|einde|klaar|falen|gefaald|weeg|gewicht|gedronken|glas|glazen|fles|modus|zet|schakel|vervang|wissel|doe|tussen|voeg|verwijder|haal|verplaats|ongedaan|verhoog|wat|hoe|hoeveel|eiwit|weekrapport|buikspieren|extra|tot|gestopt|morgen|vanochtend|vanavond|vanmorgen)\b/.test(lo)) return t;
+  NLIN.forEach(function(r){ lo=lo.replace(r[0],r[1]); });
+  return lo;
+}
+
+/* added to every Gemini call while Dutch is on */
+var NL_AI='Write every word meant for the person in Dutch (Nederlands), informal (je/jij), the way Dutch gym-goers talk: keep sets, reps, PR, RIR, deload and the exercise names as they are. '
+  + 'Tool names, JSON keys and any ACTIONS lines stay exactly in the format you were given.';
+
+
 
 var app=document.getElementById('app');
 var STEP=2.5;               // default load increment
@@ -485,7 +1043,7 @@ function dateLabel(s){
   if(diff===0) return 'Today';
   if(diff===1) return 'Tomorrow';
   if(diff===-1) return 'Yesterday';
-  var t=a.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+  var t=a.toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short'});
   if(diff>1&&diff<8) return t+' · in '+diff+' days';
   if(diff<-1&&diff>-8) return t+' · '+(-diff)+' days ago';
   return t;
@@ -495,7 +1053,7 @@ function stampLabel(ts){
   if(diff===0) return 'Today';
   if(diff===1) return 'Yesterday';
   if(diff>1&&diff<7) return diff+' days ago';
-  return d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+  return d.toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short'});
 }
 function clock(ms){ var s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h?h+'h '+m+'m':m+'m'; }
 /* what the implement actually weighs: logged number plus any machine or bar base */
@@ -921,7 +1479,7 @@ function progData(name){
         vol+=setLoad(e,x)*num(x.reps);
         var r=e1rm(e,x); if(r>best) best=r;
       });
-      out.push({x:new Date(s.finishedAt).toLocaleDateString(undefined,{day:'numeric',month:'short'}),
+      out.push({x:new Date(s.finishedAt).toLocaleDateString(LOC(),{day:'numeric',month:'short'}),
         top:top,vol:vol,e1rm:Math.round(best*10)/10,sets:done.length,at:s.finishedAt});
     });
   });
@@ -968,12 +1526,12 @@ function calDays(){
   var by={};
   S.meals.forEach(function(m){ by[m.date]=(by[m.date]||0)+num(m.kcal); });
   return Object.keys(by).sort().map(function(k){
-    return {x:fromYmd(k).toLocaleDateString(undefined,{day:'numeric',month:'short'}),y:Math.round(by[k])};
+    return {x:fromYmd(k).toLocaleDateString(LOC(),{day:'numeric',month:'short'}),y:Math.round(by[k])};
   });
 }
 function weightDays(){
   return trendWeights().map(function(w){
-    return {x:fromYmd(w.date).toLocaleDateString(undefined,{day:'numeric',month:'short'}),y:w.trend};
+    return {x:fromYmd(w.date).toLocaleDateString(LOC(),{day:'numeric',month:'short'}),y:w.trend};
   });
 }
 function simpleTrend(title,cap,pts,color,unit){
@@ -1333,7 +1891,7 @@ function coachTools(){
       var old=S.days.filter(function(d){ return d.date===a.date; })[0];
       var d={id:old?old.id:uid(),name:String(a.name),date:String(a.date),note:String(a.note||''),exercises:ex,source:'coach'};
       put('days',d,true);
-      sysMsg((old?'Updated ':'Added ')+fromYmd(a.date).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})+' — '+d.name);
+      sysMsg((old?'Updated ':'Added ')+fromYmd(a.date).toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short'})+' — '+d.name);
       return {ok:true,date:d.date,exercises:ex.map(function(e){return e.name;})};
     }},
 
@@ -1344,7 +1902,7 @@ function coachTools(){
       var old=S.days.filter(function(d){ return d.date===a.date; })[0];
       if(old) drop('days',old.id);
       if(plannedFor(a.date)) put('days',{id:uid(),name:'Rest day',date:String(a.date),exercises:[],source:'coach'},true);
-      sysMsg('Cleared '+fromYmd(a.date).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'}));
+      sysMsg('Cleared '+fromYmd(a.date).toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short'}));
       return {ok:true};
     }},
 
@@ -1394,7 +1952,7 @@ function coachTools(){
         startedAt:end-mins*60000,finishedAt:end,dayNote:'',notes:String(a.notes||''),review:null,ex:ex};
       put('sessions',ses,true);
       sysMsg((old?'Replaced ':'Logged ')
-        +when.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})+' — '+ses.dayName);
+        +when.toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short'})+' — '+ses.dayName);
       return {ok:true,date:String(a.date),exercises:ex.map(function(e){return e.name;}),
         volume_kg:fmt(volume(ses)),replaced:!!old};
     }},
@@ -1481,7 +2039,7 @@ function coachTools(){
 
 function planSnapshot(){
   var L=[],t=new Date();
-  L.push("TODAY: "+t.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'})+" ("+ymd(t)+")");
+  L.push("TODAY: "+t.toLocaleDateString(LOC(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})+" ("+ymd(t)+")");
   L.push('MAIN TRAINING DAYS right now: '+mainDayNames()+'. These come from whichever standing routines are in force.');
   L.push('GYM: '+gym().name+'. Hours: '+[1,2,3,4,5,6,0].map(function(w){
     var h=gymDay(w); return DOW[w]+' '+(h?h[0]+'-'+h[1]:'closed'); }).join(', ')
@@ -1565,7 +2123,7 @@ function coachSend(text){
   put('chat',{id:uid(),role:'user',text:text,at:Date.now()},true);
   S.draft=''; S.busy=true; S.stream=''; render();
   setTimeout(scrollEnd,30);
-  var pm=null; try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(text)?null:parseSetMessage(text); }catch(e){}
+  var pm=null, tx=nlIn(text); try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(tx)?null:parseSetMessage(tx); }catch(e){}
   if(pm){ coachRules(text); return; }                /* exact numbers are logged by the app, not paraphrased by a model */
   if(!S.sample){ if(aiKey()) coachGemini(text); else coachRules(text); return; }
 
@@ -2580,8 +3138,8 @@ function viewWeekly(){
   var lo=num(S.profile.setsLo)||10, hi=num(S.profile.setsHi)||20;
   var names=trackedMuscles();
   var label=off===0?'This week':off===-1?'Last week'
-    :wk.start.toLocaleDateString(undefined,{day:'numeric',month:'short'})
-      +' to '+new Date(wk.end.getTime()-86400000).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+    :wk.start.toLocaleDateString(LOC(),{day:'numeric',month:'short'})
+      +' to '+new Date(wk.end.getTime()-86400000).toLocaleDateString(LOC(),{day:'numeric',month:'short'});
 
   var h='<div class="daynav"><button class="cal-nav" data-act="wk" data-d="-1">‹</button>'
     + '<b>'+esc(label)+'</b>'
@@ -2716,6 +3274,7 @@ function geminiCall(msgs,opts){
       contents[contents.length-1].parts.push({inline_data:{mime_type:/^image\/(png|jpeg|webp|heic|heif)$/.test(ty)?ty:'image/jpeg',data:d}}); });
     var ctl=typeof AbortController!=='undefined'?new AbortController():null, tm=setTimeout(function(){ if(ctl) ctl.abort(); },90000);
     var body={contents:contents}; if(opts.json) body.generationConfig={responseMimeType:'application/json'};
+    if(nlOn()) body.systemInstruction={parts:[{text:NL_AI}]};
     return fetch(GEM+'models/'+encodeURIComponent(model)+':generateContent',{method:'POST',signal:ctl?ctl.signal:undefined,
         headers:{'Content-Type':'application/json','x-goog-api-key':aiKey()},body:JSON.stringify(body)})
       .then(function(r){ clearTimeout(tm); return r.json().catch(function(){ return {}; }).then(function(j){
@@ -2829,7 +3388,7 @@ function localReview(ses){
 
 /* ---------- the built-in coach: understands a fixed set of requests ---------- */
 var DOWFULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-function niceDate(ds){ return fromYmd(ds).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'}); }
+function niceDate(ds){ return fromYmd(ds).toLocaleDateString(LOC(),{weekday:'long',day:'numeric',month:'short'}); }
 function workoutPool(){
   var seen={}, out=[], today=ymd();
   var add=function(w){ var k=String(w.name||'').toLowerCase(); if(!k||seen[k]||!(w.exercises||[]).length) return; seen[k]=1; out.push(w); };
@@ -2867,7 +3426,7 @@ var EXLIB=[
  ['cable-crunch','Cable Crunch',/cable ?crunch|kneeling ?(cable )?crunch|rope ?crunch/i,'abs','Kneel facing a high cable with a rope by your head. Curl your ribs toward your hips by rounding the spine; the hips stay still.','kg',['ab-machine','decline-crunch','leg-raise']],
  ['decline-crunch','Decline Crunch',/decline ?(crunch|sit.?up)/i,'abs','Feet hooked on a decline bench. Curl up until your lower back just lifts, then lower slowly. Hold a plate on your chest to add load.','bw',['ab-machine','cable-crunch','floor-crunch']],
  ['reverse-crunch','Reverse Crunch',/reverse ?crunch/i,'lower abs','Lie on your back, knees bent. Roll your hips off the floor toward your chest using the abs, not a leg swing, then lower slowly.','bw',['leg-raise','floor-crunch','plank']],
- ['ab-machine','Abdominal Crunch Machine',/\babdominals?\b|\bab ?(crunch )?machine|crunch ?machine|ab ?crunch(es)?\b/i,'abs (rectus abdominis)','The seated crunch machine, also called abdominal crunches or the ab machine. Pads on your chest or shoulders, feet hooked. Curl your ribs down toward your hips by rounding the upper back, breathe out at the bottom, pause, come back slowly. Do not pull with the arms or just bend at the hips.','kg',['cable-crunch','decline-crunch','floor-crunch']],
+ ['ab-machine','Abdominal Crunch Machine',/\babdominals? ?(crunch(es)?|machine)\b|\bab ?(crunch )?machine|crunch ?machine|\bab ?crunch(es)?\b/i,'abs (rectus abdominis)','The seated crunch machine, also called abdominal crunches or the ab machine. Pads on your chest or shoulders, feet hooked. Curl your ribs down toward your hips by rounding the upper back, breathe out at the bottom, pause, come back slowly. Do not pull with the arms or just bend at the hips.','kg',['cable-crunch','decline-crunch','floor-crunch']],
  ['floor-crunch','Crunches (floor)',/\bcrunch(es)?\b|sit.?ups?/i,'abs','On your back, knees bent, hands by your temples. Lift your shoulder blades by curling the ribs toward the hips, breathe out at the top, lower slowly. Do not yank your neck.','bw',['ab-machine','reverse-crunch','plank']],
  ['dead-hang','Dead Hang',/dead ?hangs?|bar ?hangs?|(passive|active) ?hangs?|\bhangs?\b(?! ?(clean|snatch|power))(?!ing)/i,'grip and forearms, with a stretch for the lats and shoulders','Hang from a pull-up bar with straight arms and a full grip, shoulders relaxed (passive) or pulled slightly down (active). Hold for time; the reps box is seconds. Stop when your grip starts to open. Add a belt with weight once 60 seconds is easy.','time',['pullup','farmer-carry','shrug']],
  ['farmer-carry','Farmer Carry',/farmer'?s? ?(carry|walk)/i,'grip, traps and core','Heavy dumbbells at your sides, stand tall and walk with short steps. The reps box is seconds.','time',['dead-hang','shrug']],
@@ -2922,6 +3481,9 @@ function exLib(name){
   for(var i=0;i<EXLIB.length;i++) if(EXLIB[i][2].test(n)) return EXBYID[EXLIB[i][0]];
   return null;
 }
+/* "abdominals" / "abs" alone is the muscle group; "abdominal crunches" is the machine */
+function isMuscleWord(n){ return /^\s*(abs|abdominals?|abdominal muscles|stomach|core|buik|buikspieren)\s*$/i.test(String(n||'')); }
+var ABS_MSG='Abdominals is the muscle group, not one exercise. For that group: Abdominal Crunch Machine ("abdominal crunches"), Cable Crunch, Decline Crunch, Leg Raise or Plank.';
 /* one key per exercise, so "Abdominal Machine" and "Abdominal Crunches" share history and weights */
 var EXKEYC={};
 function exKey(name){
@@ -2938,7 +3500,7 @@ function exInfo(l){
 function exGlossary(){
   var seenG={};
   return EXLIB.filter(function(x){ if(seenG[x[0]]) return false; seenG[x[0]]=1; return x[5]!=='cardio'; }).map(function(x){
-    return '  '+x[1]+' ('+x[3]+')'+(x[0]==='ab-machine'?' — "abdominal crunches", "ab machine" and "Abdominal Machine" all mean this seated crunch machine':'');
+    return '  '+x[1]+' ('+x[3]+')'+(x[0]==='ab-machine'?' — "abdominal crunches", "ab machine" and "Abdominal Machine" all mean this seated crunch machine. "Abdominals" or "abs" on its own is the muscle group, not this machine: ask which exercise they mean':'');
   }).join('\n');
 }
 
@@ -3048,7 +3610,8 @@ function changeExercise(o){
   var date=String(o.date||ymd()), today=ymd();
   if(scope==='date'&&(!/^\d{4}-\d{2}-\d{2}$/.test(date))) throw new Error('Unreadable date: '+date);
   var newName=o.new_exercise?canonExName(titleCase(o.new_exercise)):'', lib=newName?exLib(newName):null;
-  if(lib&&/^(crunch(es)?|ab ?machine|abs?)$/i.test(String(o.new_exercise).trim())) newName=lib.name;
+  if(isMuscleWord(o.new_exercise)) throw new Error(ABS_MSG+' Which one should go in?');
+  if(lib&&/^(crunch(es)?|ab ?machine)$/i.test(String(o.new_exercise).trim())) newName=lib.name;
   if((action==='replace'||action==='add')&&!newName) throw new Error('Which exercise should go in?');
   var key='';
   if(action!=='add'){
@@ -3068,7 +3631,7 @@ function changeExercise(o){
   };
   var label=function(t,doc){
     return t.coll==='routines'?(DOW[doc.weekday|0]+'s'+(doc.effectiveFrom&&doc.effectiveFrom>today?' from '+doc.effectiveFrom.slice(5):''))
-      :fromYmd(doc.date).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+      :fromYmd(doc.date).toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short'});
   };
   var targets=upcomingDocs(scope,date);
   if(action==='add'){
@@ -3310,6 +3873,8 @@ function parseSetMessage(text){
   var out=[], cur=null, any=false, times=[];
   String(text||'').split(/\n|;/).forEach(function(line){
     var l=line.trim(); if(!l) return;
+    var l0=l.replace(/^(?:add (?:this )?(?:for )?)?(?:on |for )?(?:(?:last|this|on)\s+)?(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday|today|yesterday|\d+ days ago)\s*,?\s*(?=\d{1,2}[:.]\d{2}\b)/i,'');
+    if(l0!==l&&CLOCKLINE.test(l0)) l=l0;                       /* "last monday 9:42" is a date plus a start time */
     var cm=l.match(CLOCKLINE);
     if(cm&&!(cur&&isTimed({name:cur.name})&&!cm[1])){           /* a clock time, not a hold length */
       var hh=+cm[2]%24; if(/pm/i.test(cm[4]||'')&&hh<12) hh+=12; if(/am/i.test(cm[4]||'')&&hh===12) hh=0;
@@ -3343,10 +3908,11 @@ function nameForToday(raw,lists){
     var sc=Math.max(exScore(fixed,e.name),exScore(raw,e.name)); if(sc>bs){ bs=sc; best=e.name; } }); });
   if(bs>=0.5) return best;
   var l=exLib(fixed);
-  if(l&&/^(crunch(es)?|ab ?machine|abs?)$/i.test(fixed.trim())) return l.name;
+  if(l&&/^(crunch(es)?|ab ?machine)$/i.test(fixed.trim())) return l.name;
   return titleCase(fixed);
 }
 function logSetsToday(entries){
+  if((entries||[]).some(function(e){ return isMuscleWord(e.name); })) throw new Error(ABS_MSG+' Which one did you do?');
   var today=ymd(), s=active(), how='';
   if(!s){
     var fin=finished().filter(function(x){ return ymd(new Date(x.finishedAt))===today; })[0];
@@ -3384,6 +3950,7 @@ function setsLine(sets){
 }
 /* a workout on an earlier day: add to that day's finished session, or make one with the times given */
 function logSetsOn(ds,entries){
+  if((entries||[]).some(function(e){ return isMuscleWord(e.name); })) throw new Error(ABS_MSG+' Which one did you do?');
   var have=finished().filter(function(x){ return ymd(new Date(x.finishedAt))===ds; })[0];
   var plan=plannedFor(ds), d=fromYmd(ds);
   var at=function(hmv,dflt){ var v=hm(hmv); return v==null?dflt:new Date(d.getFullYear(),d.getMonth(),d.getDate(),Math.floor(v/60),v%60).getTime(); };
@@ -3433,7 +4000,10 @@ function setLogReply(r){
 }
 
 function ruleCoach(text){
+  text=nlIn(text);
   var lt=String(text||'').toLowerCase();
+  if(/\b(what|which)\b.*\b(abs|abdominals?)\b(?! ?(crunch|machine))/.test(lt)&&!/\d+\s*[x×]\s*\d+/.test(lt))
+    return ABS_MSG+'\n\n"Abdominal crunches" in a message means the seated crunch machine.';
   var mm=lt.match(/\b(normal|failure|recovery|strength|pump|quick|hypertrophy|heavy|light|easy)[\s-]+(mode|day|session|workout)\b/)
        ||lt.match(/\b(?:switch|go|change|set|put me)\s+(?:back\s+)?(?:to|into|on)\s+(?:a\s+|the\s+)?(normal|failure|recovery|strength|pump|quick|hypertrophy)\b/);
   if(mm&&!/\bwhat\b.*\b(mean|is)\b/.test(lt)){
@@ -3481,6 +4051,7 @@ function ruleCoach(text){
   }
   var isCmd=/\b(swap|replace|switch|instead of|remove|drop|move|reschedule|between)\b|\badd\b.*\b(to|on)\s+(today|tomorrow|mon|tue|wed|thu|fri|sat|sun)|\b(add|put|insert)\b.*\b(after|before)\b|^\s*(after|before)\b/.test(lt);
   var setMsg=isCmd?null:parseSetMessage(text);
+  if(setMsg&&setMsg.some(function(e){ return isMuscleWord(e.name); })) return ABS_MSG+' Which one did you do? For example "abdominal crunches 25x12 25x10".';
   if(setMsg&&setMsg.date&&setMsg.date<ymd()){
     var rp=logSetsOn(setMsg.date,setMsg);
     UNDO={label:'log',items:[rp.before?{coll:'sessions',id:rp.sid,before:rp.before}:{coll:'sessions',id:rp.sid,before:null}]};
@@ -4191,7 +4762,10 @@ function viewYou(){
   var ns=notifyState();
   h+=accountPanel();
   h+=panel('set','Settings','rest timer, weight jumps, reminders',function(){
-    return '<div class="duo" style="margin-top:0">'
+    return '<div class="fld" style="margin-top:0"><label>Taal / Language</label><div class="chips nt" style="margin-top:4px">'
+      + '<button class="'+(nlOn()?'':'on')+'" data-act="set-lang" data-v="en">English</button>'
+      + '<button class="'+(nlOn()?'on':'')+'" data-act="set-lang" data-v="nl">Nederlands</button></div></div>'
+      + '<div class="duo">'
       + '<div class="fld"><label>Rest timer (seconds)</label><input data-fkey="s-rest" data-in="set-rest" '
       + 'type="text" inputmode="numeric" value="'+esc(S.settings.rest)+'"></div>'
       + '<div class="fld"><label>Weight jump (kg)</label><input data-fkey="s-step" data-in="set-step" '
@@ -5032,7 +5606,7 @@ function viewPRs(){
   h+='<div class="hint">Estimated max is what you could probably lift once, worked out from your best set of 12 reps or fewer.</div></div></div>';
   return h;
 }
-function shortDate(t){ return new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
+function shortDate(t){ return new Date(t).toLocaleDateString(LOC(),{day:'numeric',month:'short'}); }
 
 /* ================= WATER ================= */
 function waterOn(d){ return (S.water||[]).filter(function(w){ return w.date===d; })[0]; }
@@ -5309,7 +5883,7 @@ function photosBody(){
 function head(){
   var t={today:'Today',plan:'Plan',food:'Food',coach:'Coach',history:'Stats',you:'You'};
   var n=finished().length, ft=dayTotals(foodDate()), fg=num(S.profile.calGoal);
-  var sub={today:new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'}),
+  var sub={today:new Date().toLocaleDateString(LOC(),{weekday:'long',day:'numeric',month:'long'}),
     plan:mainDayNames(),
     food:fg?Math.round(ft.kcal)+' of '+fg+' kcal':'log what you eat',
     coach:'adjust your week',
@@ -5507,6 +6081,7 @@ function liveChange(fn,msg){
 function liveSwap(ei,name,typed){
   name=String(name||'').trim(); if(!name) return;
   var s=active(); if(!s||!s.ex[ei]) return;
+  if(typed&&isMuscleWord(name)){ toast('Abdominals is the muscle group. Pick an exercise, e.g. abdominal crunches.'); return; }
   var old=s.ex[ei], nm=typed?typedExName(name):name;
   liveChange(function(c){
     var e=c.ex[ei], done=(e.sets||[]).filter(function(x){ return x.done; }).length, left=(e.sets||[]).length-done;
@@ -5518,6 +6093,7 @@ function liveSwap(ei,name,typed){
 }
 function liveAdd(name,at,typed){
   name=String(name||'').trim(); if(!name) return;
+  if(typed&&isMuscleWord(name)){ toast('Abdominals is the muscle group. Pick an exercise, e.g. abdominal crunches.'); return; }
   var nm=typed?typedExName(name):name;
   liveChange(function(c){
     var pos=at!=null?at:c.ex.length;
@@ -5654,7 +6230,7 @@ function viewPlan(){
 
   var h='<div class="card"><div class="card-b" style="padding:15px">'
     + '<div class="cal-h"><button class="cal-nav" data-act="cal" data-d="-1">‹</button>'
-    + '<b>'+first.toLocaleDateString(undefined,{month:'long',year:'numeric'})+'</b>'
+    + '<b>'+first.toLocaleDateString(LOC(),{month:'long',year:'numeric'})+'</b>'
     + '<button class="cal-nav" data-act="cal-today">•</button>'
     + '<button class="cal-nav" data-act="cal" data-d="1">›</button></div>'
     + '<div class="dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>'
@@ -5684,7 +6260,7 @@ function viewPlan(){
     + '<span><i style="background:#4a5330"></i>to fill</span></div></div></div>';
 
   var sd=S.sel, sp=plannedFor(sd), slog=sessionOn(sd), ssk=skipOn(sd), dd=fromYmd(sd);
-  h+='<div class="sec-t">'+esc(dd.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'}))
+  h+='<div class="sec-t">'+esc(dd.toLocaleDateString(LOC(),{weekday:'long',day:'numeric',month:'long'}))
     + (mainDays(sd).indexOf(dd.getDay())>=0?', a main day':'')+'</div>';
 
   if(ssk) h+='<div class="skipcard"><b>Missed — '+esc(ssk.reason)+'</b>'
@@ -5715,9 +6291,9 @@ function viewPlan(){
     h+='<button class="pick" data-act="goto-dow" data-w="'+w+'">'
       + '<span class="t"><b>'+full+'</b><small>'
       + (r&&n?esc(r.name)+', '+n+' item'+(n===1?'':'s')
-          +(r.effectiveFrom?' (since '+esc(fromYmd(r.effectiveFrom).toLocaleDateString(undefined,{day:'numeric',month:'short'}))+')':'')
+          +(r.effectiveFrom?' (since '+esc(fromYmd(r.effectiveFrom).toLocaleDateString(LOC(),{day:'numeric',month:'short'}))+')':'')
         :(r?esc(r.name)+', nothing in it yet':'nothing set'))
-      + (fu?'<br>becomes '+esc(fu.name)+' from '+esc(fromYmd(fu.effectiveFrom).toLocaleDateString(undefined,{day:'numeric',month:'short'})):'')
+      + (fu?'<br>becomes '+esc(fu.name)+' from '+esc(fromYmd(fu.effectiveFrom).toLocaleDateString(LOC(),{day:'numeric',month:'short'})):'')
       + '</small></span><span class="go">›</span></button>';
   });
   h+='<div class="sec-t">Calendar</div>'+calCard();
@@ -5822,7 +6398,7 @@ function viewCoach(){
   h+='<div class="msgs">';
   S.chat.forEach(function(m){
     if(m.role==='sys') h+='<div class="msg s">'+esc(m.text)+'</div>';
-    else if(m.role==='user') h+='<div class="msg u">'+esc(m.text)+'</div>';
+    else if(m.role==='user') h+='<div class="msg u nt">'+esc(m.text)+'</div>';
     else h+='<div class="msg a">'+mdToHtml(m.text)+'</div>';
   });
   if(S.busy) h+='<div class="msg a" id="stream"><p style="color:var(--mut)"><span class="spin"></span>Thinking…</p></div>';
@@ -6183,6 +6759,7 @@ document.addEventListener('click',function(ev){
   if(act==='av-upload'){ var ai=document.getElementById('avatarin'); if(ai){ ai.value=''; ai.click(); } return; }
   if(act==='pick-char'){ saveProfile({coachChar:t.dataset.c}); toast('Coach is now '+(CHARS.filter(function(x){return x.id===t.dataset.c;})[0]||{}).name); return; }
   if(act==='pr-sex'){ saveProfile({sex:t.dataset.v}); return; }
+  if(act==='set-lang'){ if((t.dataset.v==='nl')!==nlOn()) setLang(t.dataset.v); return; }
   if(act==='pr-act'){ saveProfile({activity:t.dataset.v}); return; }
   if(act==='pr-aim'){ saveProfile({aim:t.dataset.v}); return; }
   if(act==='use-measured'){
@@ -6516,6 +7093,7 @@ if(syncOn()){
   window.addEventListener('online',function(){ syncSoon(300); });
   setInterval(function(){ if(!document.hidden) syncNow(); },120000);
 }
+try{ nlStart(); }catch(e){}
 </script>
 </body>
 </html>
