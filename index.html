@@ -934,6 +934,9 @@ var NLD={
 "The CSV opens in Excel or Google Sheets, and Hevy and Strong can import it.":"De CSV opent in Excel of Google Sheets, en Hevy en Strong kunnen hem importeren.",
 "This browser has agreed to keep the app's data, including progress photos, when space runs low.":"Deze browser bewaart de data van de app, ook je voortgangsfoto's, als de ruimte krap wordt.",
 "This browser may clear the app's data when space runs low; installing the app to your home screen protects it.":"Deze browser kan de data van de app wissen als de ruimte krap wordt; de app op je startscherm zetten beschermt hem.",
+"Start it and add as you go":"Start hem en vul aan tijdens het trainen","Fill it in first":"Eerst invullen","is still on":"staat nog op",", now with no exercises":", nu zonder oefeningen",
+"Start it from Today and add exercises as you go, or tell me what you did.":"Start hem bij Vandaag en voeg oefeningen toe terwijl je traint, of vertel me wat je deed.",
+"from your workout in progress":"uit je lopende training","Add exercises as you go with \"+ Add exercise\" or by telling me.":"Voeg oefeningen toe met \"+ Oefening toevoegen\" of door het mij te vertellen.",
 "Language":"Taal","Taal / Language":"Taal / Language",
 "Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
@@ -1047,7 +1050,7 @@ var NLIN=[
  [/\bherstel\s*modus\b|\bherstelmodus\b/g,'recovery mode'],[/\bkracht\s*modus\b|\bkrachtmodus\b/g,'strength mode'],[/\bsnelle\s*modus\b|\bsnelmodus\b/g,'quick mode'],
  [/\bnormale\s*modus\b/g,'normal mode'],[/\b(?:tot\s+)?falen\s*modus\b/g,'failure mode'],[/\bpump\s*modus\b/g,'pump mode'],[/\bcoach\s*modus\b|\bmodi\b/g,'coach mode'],
  [/\bzet (?:op|naar)\b|\bschakel (?:over )?naar\b/g,'switch to'],
- [/\bwissel\s+((?:(?:de\s+)?oefening(?:en)?\s+)?\d{1,2})\s+(?:en|met|om)\s+(\d{1,2})\b/g,'swap $1 and $2'],[/\bverplaats\s+(.+?)\s+(voor|na)\s+(.+)/g,function(m,a,w,b){ return 'move '+a+(w==='voor'?' before ':' after ')+b; }],[/\balleen\b/g,'only'],
+ [/\bwissel\s+((?:(?:de\s+)?oefening(?:en)?\s+)?\d{1,2})\s+(?:en|met|om)\s+(\d{1,2})\b/g,'swap $1 and $2'],[/\bverplaats\s+(.+?)\s+(voor|na)\s+(.+)/g,function(m,a,w,b){ return 'move '+a+(w==='voor'?' before ':' after ')+b; }],[/\balleen\b/g,'only'],[/\bmaak\s+(.+?)\s+leeg\b/g,'empty $1'],[/\bleeg\s*maken\b/g,'empty'],
  [/\bvervang\s+(.+?)\s+(?:door|voor|met)\s+(.+)/g,'swap $1 for $2'],[/\bwissel\s+(.+?)\s+(?:voor|met|door)\s+(.+)/g,'swap $1 for $2'],
  [/\bdoe\s+(.+?)\s+in plaats van\s+(.+)/g,'do $1 instead of $2'],[/\bin plaats van\b/g,'instead of'],
  [/\btussen\s+(.+?)\s+en\s+(.+?)\s+(?:voeg\s+)?(.+?)(?:\s+toe)?$/gm,'between $1 and $2 add $3'],
@@ -1064,7 +1067,7 @@ var NLIN=[
 ];
 function nlIn(text){
   var t=String(text||''), lo=t.toLowerCase();
-  if(!/\b(gisteren|vandaag|eergisteren|geleden|vorige|afgelopen|zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|januari|februari|maart|mei|juni|juli|augustus|oktober|week|begin|eind|einde|klaar|falen|gefaald|weeg|gewicht|gedronken|glas|glazen|fles|modus|zet|schakel|vervang|wissel|doe|tussen|voeg|verwijder|haal|verplaats|ongedaan|verhoog|wat|hoe|hoeveel|eiwit|weekrapport|buikspieren|extra|tot|gestopt|alleen|morgen|vanochtend|vanavond|vanmorgen)\b/.test(lo)) return t;
+  if(!/\b(gisteren|vandaag|eergisteren|geleden|vorige|afgelopen|zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|januari|februari|maart|mei|juni|juli|augustus|oktober|week|begin|eind|einde|klaar|falen|gefaald|weeg|gewicht|gedronken|glas|glazen|fles|modus|zet|schakel|vervang|wissel|doe|tussen|voeg|verwijder|haal|verplaats|ongedaan|verhoog|wat|hoe|hoeveel|eiwit|weekrapport|buikspieren|extra|tot|gestopt|alleen|leeg|maak|morgen|vanochtend|vanavond|vanmorgen)\b/.test(lo)) return t;
   NLIN.forEach(function(r){ lo=lo.replace(r[0],r[1]); });
   return lo;
 }
@@ -1981,6 +1984,10 @@ function coachTools(){
       return {ok:true,date:d.date,exercises:ex.map(function(e){return e.name;})};
     }},
 
+  { name:'clear_workout',
+    description:'Keep the workout on that date (and its name) but take every exercise out, so the person can add exercises as they go. Use for "make today empty", "clear today\'s workout", "random workout today, I will add stuff". During a workout in progress it removes only exercises with nothing ticked.',
+    inputSchema:{type:'object',properties:{date:{type:'string'},name:{type:'string'}}},
+    execute:function(a){ return clearWorkout(a); }},
   { name:'remove_workout',
     description:'Clear the planned workout on a date. For a date that only comes from the standing weekly routine, this writes an empty rest day over it.',
     inputSchema:{type:'object',properties:{date:{type:'string',description:'YYYY-MM-DD'}},required:['date']},
@@ -2215,7 +2222,7 @@ function coachSend(text){
   S.draft=''; S.busy=true; S.stream=''; render();
   setTimeout(scrollEnd,30);
   var pm=null, tx=nlIn(text); try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(tx)?null:parseSetMessage(tx); }catch(e){}
-  if(pm||parseReorder(tx)){ coachRules(text); return; }                /* exact numbers are logged by the app, not paraphrased by a model */
+  if(pm||parseReorder(tx)||parseClear(tx)){ coachRules(text); return; }                /* exact numbers are logged by the app, not paraphrased by a model */
   if(!S.sample){ if(aiKey()) coachGemini(text); else coachRules(text); return; }
 
   var msgs=[{role:'user',content:coachPreamble()+'\n\nReply to this setup message with exactly: Ready.'},
@@ -3642,7 +3649,7 @@ function exScore(query,name){
   var a=exWords(query), b=exWords(name); if(!a.length||!b.length) return 0;
   var hit=a.filter(function(w){ return b.indexOf(w)>=0; }).length;
   var s=hit/a.length;
-  if(lq&&ln&&lq.id!==ln.id) s*=0.5;              /* both known, but different exercises */
+  if(lq&&ln&&lq.id!==ln.id) return 0;           /* both known, and different exercises: never the same one */
   return s;
 }
 function upcomingDocs(scope,date){
@@ -3817,6 +3824,42 @@ function undoChange(){
   return {ok:true};
 }
 
+
+/* ---- empty a workout but keep it on the calendar: "make sure today's workout is empty" ---- */
+function clearWorkout(o){
+  o=o||{};
+  var date=/^\d{4}-\d\d-\d\d$/.test(String(o.date||''))?String(o.date):ymd();
+  var nm=String(o.name||'').trim(), undo=[], live=active();
+  if(date===ymd()&&live){
+    var c=JSON.parse(JSON.stringify(live)), before=c.ex.length;
+    c.ex=c.ex.filter(function(e){ return (e.sets||[]).some(function(x){ return x.done; })||(e.segs||[]).some(function(x){ return x.done; }); });
+    if(nm) c.dayName=nm;
+    undo.push({coll:'sessions',id:c.id,before:JSON.parse(JSON.stringify(live))});
+    put('sessions',c,true); UNDO={label:'clear',items:undo};
+    return {ok:true,live:true,removed:before-c.ex.length,kept:c.ex.length,name:c.dayName||nm};
+  }
+  var p=plannedFor(date), old=S.days.filter(function(d){ return d.date===date; })[0];
+  if(!nm) nm=p&&p.name&&!/^rest/i.test(p.name)?p.name:'Workout';
+  var d={id:old?old.id:uid(),name:nm,date:date,note:'',exercises:[],source:'coach'};
+  undo.push({coll:'days',id:d.id,before:old?JSON.parse(JSON.stringify(old)):null});
+  put('days',d,true); UNDO={label:'clear',items:undo};
+  return {ok:true,live:false,removed:p?(p.exercises||[]).length:0,name:nm,date:date};
+}
+function clearReply(r){
+  var when=r.date&&r.date!==ymd()?dateLabel(r.date).split(' · ')[0]:'today';
+  if(r.live) return 'Done: removed '+r.removed+' exercise'+(r.removed===1?'':'s')+' from your workout in progress'+(r.kept?', kept the '+r.kept+' you already started':'')+'. Add exercises as you go with "+ Add exercise" or by telling me. Say "undo" to put them back.';
+  return 'Done: **'+r.name+'** is still on '+when+', now with no exercises'+(r.removed?' (removed '+r.removed+')':'')+'. Start it from Today and add exercises as you go, or tell me what you did. Say "undo" to put them back.';
+}
+function parseClear(text){
+  var t=String(text||'').toLowerCase();
+  var verb=/\b(empty|clear|wipe|blank|leeg|wis)\b|\bremove (?:all|every(?:thing)?)\b|\bno exercises\b|\bnothing (?:in|on) (?:it|today)\b|\bstart (?:from )?(?:scratch|fresh)\b/.test(t);
+  var obj=/\b(today|todays|today's|tomorrow|workout|session|day|vandaag|training)\b/.test(t);
+  if(!verb||!obj||/\b(chat|conversation|history|gesprek)\b/.test(t)) return null;
+  var o={date:/\btomorrow|morgen\b/.test(t)?shiftYmd(ymd(),1):ymd()};
+  var raw=String(text), nm=raw.match(/["“”]([^"“”]{1,40})["“”]/)||raw.match(/(?:^|\s)'([^']{1,40})'(?=\s|$|[.,!?])/)||raw.match(/\b(?:call|name|noem)\s+(?:it|today|hem|het)\s+([A-Za-zÀ-ÿ][\wÀ-ÿ &-]{0,30}?)\s*[.!]?$/i);
+  if(nm) o.name=nm[1].trim();
+  return o;
+}
 /* ---- reorder: "switch exercise 3 and 5", "move leg press before chest press" ---- */
 function reorderTarget(date){
   var today=ymd(), s=active();
@@ -4181,6 +4224,8 @@ function ruleCoach(text){
   if(/\b(what|which)\b.*\b(abs|core)\b/.test(lt)&&!/\d+\s*[x×]\s*\d+/.test(lt))
     return ABS_MSG+'\n\n"Abdominals" means the B-Fit machine of that name, "abdominal crunches" the seated crunch machine.';
   if(/\b(wrapped|year recap|year in review|my year|jaaroverzicht)\b/.test(lt)) return recapText(recapDefaultYear());
+  var cl=parseClear(text);
+  if(cl){ try{ return clearReply(clearWorkout(cl)); }catch(e){ return String(e.message||e); } }
   var ro=parseReorder(text);
   if(ro){ try{ return reorderReply(reorderExercises(ro)); }catch(e){ return String(e.message||e); } }
   var mm=lt.match(/\b(normal|failure|recovery|strength|pump|quick|hypertrophy|heavy|light|easy)[\s-]+(mode|day|session|workout)\b/)
@@ -4375,7 +4420,8 @@ var ACTION_PROTOCOL=[
  'ACTIONS: followed by a JSON array on that same line. Each item is {"tool":"name","args":{...}}.',
  'Tools and args:',
  '- schedule_workout {date:"YYYY-MM-DD", name, note?, plan}',
- '- remove_workout {date:"YYYY-MM-DD"}',
+ '- remove_workout {date:"YYYY-MM-DD"}  (makes it a rest day)',
+ '- clear_workout {date?, name?}  (keeps the workout but with no exercises, to fill in as you go; pass name to rename it too. "make today empty" is this. schedule_workout always needs at least one exercise line)',
  '- set_routine {weekday:"tuesday", name, effective_from?, note?, plan}',
  '- log_workout {date:"YYYY-MM-DD", name, minutes?, notes?, results}',
  '- change_exercise {action:"replace"|"remove"|"add", exercise?, new_exercise?, when:"all"|"date", date?, weekday?, after?, before?, sets?, reps?, kg?, cue?}  (for "between A and B add C" use after:A)',
@@ -6952,7 +6998,8 @@ function viewToday(){
     if(doneToday) msg='Done for today. Nice work.';
     else if(p&&!(p.exercises||[]).length&&!/^rest/i.test(p.name||'')){
       msg='<b style="color:var(--txt);font-size:16px">'+esc(p.name)+'</b><br>is on today, but it has no exercises yet.';
-      btn='<button class="btn p" style="margin-top:14px" data-act="fill-day" data-id="'+esc(p.id)+'" data-d="'+today+'">Fill it in</button>';
+      btn='<button class="btn p" style="margin-top:14px" data-act="start" data-id="'+esc(p.id)+'">Start it and add as you go</button>'
+        + '<button class="btn g" style="margin-top:8px" data-act="fill-day" data-id="'+esc(p.id)+'" data-d="'+today+'">Fill it in first</button>';
     }
     else if(p) msg=esc(p.name)+'.';
     else msg='Rest day. Nothing scheduled.';
