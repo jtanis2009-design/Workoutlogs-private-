@@ -4093,26 +4093,48 @@ function msgDate(text){
 var CLOCKLINE=/^(?:(start(?:ed)?|begin|began|from|at|end(?:ed)?|finish(?:ed)?|stop(?:ped)?|done|till|until)\s*(?:at\s*)?)?(\d{1,2})[:.](\d{2})\s*(am|pm)?$/i;
 /* returns [{name, sets:[{kg,reps,fail}]}] or null when the message holds no sets; times land on .start/.end */
 function parseSetMessage(text){
-  var out=[], cur=null, any=false, times=[];
+  var out=[], cur=null, any=false, times=[], pend='';
+  var has=function(e){ return !!(e&&(e.sets.length||(e.cardio&&(e.cardio.kmh||e.cardio.min||e.cardio.km||e.cardio.incl)))); };
+  var newEntry=function(e){
+    if(cur&&!has(cur)){ if(cur.t0&&!pend) pend=cur.t0; out.splice(out.indexOf(cur),1); }
+    if(pend){ e.t0=pend; pend=''; }
+    cur=e; out.push(e);
+  };
+  var cardioNums=function(l){
+    var g1=function(re){ var m=l.match(re); if(!m) return 0; for(var i=1;i<m.length;i++) if(m[i]) return num(String(m[i]).replace(',','.')); return 0; };
+    var ck={kmh:g1(/(\d+(?:[.,]\d+)?)\s*(?:km\s*\/\s*h|kmh|kmph|kph|km per hour)/i),
+      incl:g1(/(\d+(?:[.,]\d+)?)\s*(?:°|%|deg\b|degrees?|graden)|(?:incline|helling)\s*(?:of\s*)?(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:incline|helling)/i),
+      min:g1(/(\d+(?:[.,]\d+)?)\s*(?:min(?:ute)?s?|minuten|m)\b/i),
+      km:g1(/(\d+(?:[.,]\d+)?)\s*km\b(?!\s*\/?\s*h|ph|h)/i)};
+    return ck;
+  };
   String(text||'').split(/\n|;/).forEach(function(line){
     var l=line.trim(); if(!l) return;
     var l0=l.replace(/^(?:add (?:this )?(?:for )?)?(?:on |for )?(?:(?:last|this|on)\s+)?(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday|today|yesterday|\d+ days ago)\s*,?\s*(?=\d{1,2}[:.]\d{2}\b)/i,'');
     if(l0!==l&&CLOCKLINE.test(l0)) l=l0;                       /* "last monday 9:42" is a date plus a start time */
     var cm=l.match(CLOCKLINE);
-    if(cm&&!(cur&&isTimed({name:cur.name})&&!cm[1])){           /* a clock time, not a hold length */
+    if(cm&&!(cur&&!cur.cardio&&isTimed({name:cur.name})&&!cm[1])){           /* a clock time, not a hold length */
       var hh=+cm[2]%24; if(/pm/i.test(cm[4]||'')&&hh<12) hh+=12; if(/am/i.test(cm[4]||'')&&hh===12) hh=0;
-      times.push({hm:pad(hh)+':'+cm[3],end:/^(end|finish|stop|done|till|until)/i.test(cm[1]||'')}); return;
+      var hmv=pad(hh)+':'+cm[3], word=String(cm[1]||'').toLowerCase();
+      var isEnd=/^(end|finish|stop|done|till|until)/.test(word), isStart=/^(start|begin|began|from|at)/.test(word);
+      times.push({hm:hmv,end:isEnd});
+      if(isEnd){ if(cur) cur.t1=hmv; }
+      else if(isStart){ if(cur&&!has(cur)&&!cur.t0) cur.t0=hmv; else pend=hmv; }
+      else {                                                    /* a bare time: closes the exercise in progress, or opens the next */
+        if(cur&&has(cur)&&!cur.t1) cur.t1=hmv;
+        else if(cur&&!has(cur)&&!cur.t0) cur.t0=hmv;
+        else pend=hmv;
+      }
+      return;
     }
+    /* cardio: a cardio machine by name, or more numbers for the cardio entry in progress */
     var cw=fixTypos(l.replace(/\d+(?:[.,]\d+)?/g,' ').replace(/\b(km\s*\/\s*h|kmh|kmph|kph|km|min(?:ute)?s?|minuten|incline|helling|speed|snelheid|at|on|for|op|met|graden|degrees?|deg|level|niveau|did|done|then)\b/gi,' ').replace(/[^a-z ]/gi,' ').replace(/\s+/g,' ').trim());
     var clb=cw&&exLib(cw);
-    if(clb&&clb.load==='cardio'){
-      var g1=function(re){ var m=l.match(re); if(!m) return 0; for(var i=1;i<m.length;i++) if(m[i]) return num(String(m[i]).replace(',','.')); return 0; };
-      var ck={kmh:g1(/(\d+(?:[.,]\d+)?)\s*(?:km\s*\/\s*h|kmh|kmph|kph|km per hour)/i),
-        incl:g1(/(\d+(?:[.,]\d+)?)\s*(?:°|%|deg\b|degrees?|graden)|(?:incline|helling)\s*(?:of\s*)?(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:incline|helling)/i),
-        min:g1(/(\d+(?:[.,]\d+)?)\s*(?:min(?:ute)?s?|minuten|m)\b/i),
-        km:g1(/(\d+(?:[.,]\d+)?)\s*km\b(?!\s*\/?\s*h|ph|h)/i)};
-      if(!ck.min){ var mm2=l.match(/\b(\d{1,2}):([0-5]\d)\b/); if(mm2&&!CLOCKLINE.test(l)) ck.min=Math.round(((+mm2[1])+(+mm2[2])/60)*10)/10; }
-      if(ck.kmh||ck.min||ck.km){ cur={name:clb.name,sets:[],cardio:ck}; out.push(cur); any=true; return; }
+    if(clb&&clb.load==='cardio'){ newEntry({name:clb.name,sets:[],cardio:cardioNums(l)}); any=true; return; }
+    if(cur&&cur.cardio&&!cw&&/\d/.test(l)){
+      var ck=cardioNums(l), cc=cur.cardio;
+      ['kmh','incl','min','km'].forEach(function(k){ if(ck[k]) cc[k]=ck[k]; });
+      if(ck.kmh||ck.incl||ck.min||ck.km) return;
     }
     var sets=[], rest=l;
     var failAfter=function(off,str){ return /^\s*[(\[]?\s*(?:to\s+)?(?:failure|failed|fail|f)\b/i.test(str.slice(off)); };
@@ -4124,14 +4146,20 @@ function parseSetMessage(text){
              .replace(/\b(log|logged|i did|did|done|add|added|put in|for|today|todays|today's|yesterday|last|this|on|ago|days?|workout|session|sets?|reps?|kg|please|pls|and|in|my|of|the|to|sunday|monday|tuesday|wednesday|thursday|friday|saturday|jan\w*|feb\w*|mar\w*|apr\w*|may|jun\w*|jul\w*|aug\w*|sep\w*|oct\w*|nov\w*|dec\w*)\b/gi,' ')
              .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b20\d\d-\d\d-\d\d\b|\b\d{1,2}\b/g,' ')
              .replace(/[,:.\-–—()\[\]]+/g,' ').replace(/\s+/g,' ').trim();
-    if(/[a-z]{3}/i.test(rest)){ cur={name:rest,sets:[]}; out.push(cur); }
-    if(sets.length){ any=true; if(!cur){ cur={name:'',sets:[]}; out.push(cur); } cur.sets=cur.sets.concat(sets); }
+    if(/[a-z]{3}/i.test(rest)){
+      if(!sets.length&&cur&&has(cur)&&/\b(could|can|would|please|also|app|struggl|import|as|you|me)\b/i.test(rest)&&!exLib(fixTypos(rest))){ return; }  /* a sentence, not an exercise */
+      newEntry({name:rest,sets:[]});
+    }
+    if(sets.length){ any=true; if(!cur){ newEntry({name:'',sets:[]}); } cur.sets=cur.sets.concat(sets); }
   });
-  out=out.filter(function(e){ return e.sets.length||e.cardio; });
+  out=out.filter(function(e){ return e.sets.length||(e.cardio&&(e.cardio.kmh||e.cardio.min||e.cardio.km)); });
   if(!(any&&out.length)) return null;
   var st=times.filter(function(x){ return !x.end; }), en=times.filter(function(x){ return x.end; });
-  out.start=(st[0]||(times.length>1?times[0]:null)||{}).hm||'';
-  out.end=(en[en.length-1]||(times.length>1?times[times.length-1]:null)||{}).hm||'';
+  var t0s=out.map(function(e){ return e.t0; }).filter(Boolean).sort(), t1s=out.map(function(e){ return e.t1; }).filter(Boolean).sort();
+  out.start=t0s[0]||(st[0]||(times.length>1?times[0]:null)||{}).hm||'';
+  out.end=t1s[t1s.length-1]||(en[en.length-1]||(times.length>1?times[times.length-1]:null)||{}).hm||'';
+  if(out.start&&out.end&&out.end<out.start) out.end='';
+  out.timed=out.some(function(e){ return e.t0||e.t1; });
   out.date=msgDate(text);
   return out;
 }
@@ -4171,7 +4199,8 @@ function logSetsToday(entries){
          target:{sets:sets.length,reps:'',kg:sets[0]?num(sets[0].kg):0},sets:sets,comment:''};
       ses.ex.push(e);
     }
-    done.push({name:e.name,sets:en.sets,planned:planned,targetKg:e.target&&num(e.target.kg),added:!planned});
+    if(en.t0) e.t0=en.t0; if(en.t1) e.t1=en.t1;
+    done.push({name:e.name,sets:en.sets,planned:planned,targetKg:e.target&&num(e.target.kg),added:!planned,t0:en.t0,t1:en.t1});
   });
   put('sessions',ses,true);
   sysMsg('Logged '+done.map(function(d){ return d.name+(d.cardio?'':' ('+d.sets.length+' sets)'); }).join(', '));
@@ -4190,7 +4219,9 @@ function logCardio(ses,en){
   if(e){ var open=(e.segs||[]).filter(function(x){ return !x.done; })[0];
     if(open){ open.act=sg.act; open.done=true; if(!open.detail) open.detail=sg.detail; } else (e.segs=e.segs||[]).push(sg); }
   else { e={id:uid(),kind:'protocol',name:en.name,spec:'',note:'',segs:[sg],comment:''}; ses.ex.push(e); }
-  return {name:e.name,cardio:en.cardio,detail:sg.detail,sets:[]};
+  if(en.t0&&en.t1){ var last=e.segs.filter(function(x){ return x.done; }).pop(); if(last&&!/\d:\d\d/.test(last.label||'')) last.label=en.t0+'–'+en.t1; }
+  if(en.t0&&!e.t0) e.t0=en.t0; if(en.t1) e.t1=en.t1;
+  return {name:e.name,cardio:en.cardio,detail:sg.detail,sets:[],t0:en.t0,t1:en.t1};
 }
 function setsLine(sets){
   var out=[],i=0;
@@ -4216,15 +4247,18 @@ function logSetsOn(ds,entries){
     if(e) e.sets=sets;
     else { e={id:uid(),kind:'strength',name:name,note:pe&&pe.note||'',hint:'',base:0,perSide:false,
       target:{sets:pe?num(pe.sets):sets.length,reps:pe?pe.reps:'',kg:pe?num(pe.kg):num(sets[0].kg)},sets:sets,comment:''}; ses.ex.push(e); }
-    done.push({name:e.name,sets:en.sets,planned:0,targetKg:0,added:false});
+    if(en.t0) e.t0=en.t0; if(en.t1) e.t1=en.t1;
+    done.push({name:e.name,sets:en.sets,planned:0,targetKg:0,added:false,t0:en.t0,t1:en.t1});
   });
   var nsets=ses.ex.reduce(function(a,x){ return a+(x.sets||[]).length+(x.segs||[]).length*3; },0);
   var start=at(entries.start,ses.startedAt||at('18:00')), end=at(entries.end,0);
   if(!end||end<=start) end=ses.finishedAt&&ses.finishedAt>start?ses.finishedAt:start+Math.max(20,nsets*3)*60000;
   ses.startedAt=start; ses.finishedAt=end;
   var strength=ses.ex.filter(function(x){ return x.kind!=='protocol'; });
-  if(strength[0]&&entries.start&&!strength[0].t0) strength[0].t0=entries.start;
-  if(strength.length&&entries.end) strength[strength.length-1].t1=entries.end;
+  if(!entries.timed){
+    if(strength[0]&&entries.start&&!strength[0].t0) strength[0].t0=entries.start;
+    if(strength.length&&entries.end) strength[strength.length-1].t1=entries.end;
+  }
   put('sessions',ses,true);
   sysMsg('Logged '+done.map(function(x){ return x.name; }).join(', ')+' on '+ds);
   return {how:have?'past-add':'past-new',items:done,dayName:ses.dayName,date:ds,start:new Date(start),end:new Date(end),sid:ses.id,before:have?JSON.parse(JSON.stringify(have)):null};
@@ -4232,8 +4266,9 @@ function logSetsOn(ds,entries){
 function setLogReply(r){
   var L=[];
   r.items.forEach(function(d){
-    if(d.cardio){ L.push('**'+d.name+'**: '+(d.detail||'done')+'.'); return; }
-    var t='**'+d.name+'**: '+d.sets.length+' set'+(d.sets.length===1?'':'s')+', '+setsLine(d.sets)+'.';
+    var tt=d.t0||d.t1?' ('+(d.t0||'?')+'–'+(d.t1||'?')+')':'';
+    if(d.cardio){ L.push('**'+d.name+'**'+tt+': '+(d.detail||'done')+'.'); return; }
+    var t='**'+d.name+'**'+tt+': '+d.sets.length+' set'+(d.sets.length===1?'':'s')+', '+setsLine(d.sets)+'.';
     if(d.added) t+=' It was not in today\'s plan, so I added it.';
     else if(d.planned&&d.sets.length!==d.planned) t+=' The plan had '+d.planned+' sets.';
     if(d.targetKg&&d.sets[0]&&Math.abs(d.sets[0].kg-d.targetKg)>=d.targetKg*0.25) t+=' The plan said '+fmt(d.targetKg)+' kg, so check the weight is right.';
@@ -4309,7 +4344,9 @@ function ruleCoach(text){
   var isCmd=/\b(swap|replace|switch|instead of|remove|drop|move|reschedule|between)\b|\badd\b.*\b(to|on)\s+(today|tomorrow|mon|tue|wed|thu|fri|sat|sun)|\b(add|put|insert)\b.*\b(after|before)\b|^\s*(after|before)\b/.test(lt);
   var setMsg=isCmd?null:parseSetMessage(text);
   if(setMsg&&setMsg.some(function(e){ return isMuscleWord(e.name); })) return ABS_MSG+' Which one did you do? For example "abdominal crunches 25x12 25x10".';
-  if(setMsg&&setMsg.date&&setMsg.date<ymd()){
+  if(setMsg&&!active()&&setMsg.end&&(!setMsg.date||setMsg.date===ymd())&&hm(setMsg.end)!=null&&hm(setMsg.end)<=new Date().getHours()*60+new Date().getMinutes()+5) setMsg.date=ymd()+'!';
+  if(setMsg&&setMsg.date&&(setMsg.date<ymd()||/!$/.test(setMsg.date))){
+    setMsg.date=setMsg.date.replace('!','');
     var rp=logSetsOn(setMsg.date,setMsg);
     UNDO={label:'log',items:[rp.before?{coll:'sessions',id:rp.sid,before:rp.before}:{coll:'sessions',id:rp.sid,before:null}]};
     return setLogReply(rp);
@@ -6560,7 +6597,7 @@ function restDone(){
 }
 
 /* ================= NEW VERSION AVAILABLE ================= */
-var APP_VERSION='2026-11-19b';
+var APP_VERSION='2026-11-19c';
 function checkUpdate(){
   try{
     if(hosted()||location.protocol!=='https:') return;
