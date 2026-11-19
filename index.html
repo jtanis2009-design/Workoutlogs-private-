@@ -1938,7 +1938,8 @@ function parseResults(txt){
         segs.push(k<0?{label:sg.trim(),detail:'',done:true}
                      :{label:sg.slice(0,k).trim(),detail:sg.slice(k+1).trim(),done:true});
       });
-      out.push({id:uid(),kind:'protocol',name:p[1]||'Finisher',spec:p[2]||'',note:'',
+      var cl0=exLib(fixTypos(p[1]||''));
+      out.push({id:uid(),kind:'protocol',name:cl0&&cl0.load==='cardio'?cl0.name:(p[1]||'Finisher'),spec:p[2]||'',note:'',
         segs:segs,comment:p[4]||''});
       return;
     }
@@ -3575,8 +3576,11 @@ var EXLIB=[
  ['shrug','Shrug',/shrug/i,'traps','Lift your shoulders straight up toward your ears, hold, lower slowly. No rolling.','kg',['seated-row']],
  ['db-curl','Dumbbell Curl',/(dumbbell|db|barbell|ez|cable|standing|incline|free ?weight) ?(bicep?s? )?curls?/i,'biceps','Elbows still at your sides, curl up, squeeze, lower slowly to straight.','kg',['bicep-machine','hammer-curl']],
  ['bicep-machine','Bicep Curl Machine',/\bcurls?\b/i,'biceps','Upper arms flat on the pad, curl to the top and squeeze, lower slowly to almost straight.','kg',['db-curl','hammer-curl']],
- ['treadmill','Incline Treadmill',/treadmill|incline ?walk/i,'conditioning','Set the incline, walk without holding the rails.','cardio',['bike']],
- ['bike','Exercise Bike',/\bbike\b|cycling|spin/i,'conditioning','Seat at hip height, steady cadence.','cardio',['treadmill']]
+ ['treadmill','Incline Treadmill',/\bt+h?r+e*a*d+ ?m+i+l+s?\b|\bt+h?r+e*a*d+ ?mi+ll?\b|tread ?mill|incline ?walk|loopband|running ?machine|walking ?machine/i,'conditioning','Set the incline, walk without holding the rails.','cardio',['bike','crosstrainer']],
+ ['bike','Exercise Bike',/\bbike\b|cycling|\bspin|hometrainer|fiets/i,'conditioning','Seat at hip height, steady cadence.','cardio',['treadmill','crosstrainer']],
+ ['crosstrainer','Cross Trainer',/cross ?trainer|elliptical|ellipse/i,'conditioning','Stand tall, push and pull with the arms as well as the legs, steady pace.','cardio',['treadmill','bike']],
+ ['rower','Rowing Machine',/rowing ?machine|roeimachine|row ?ergo|\bergo(meter)?\b|\browers?\b/i,'conditioning','Legs, then lean back, then arms; return in reverse. Keep the back straight.','cardio',['bike','crosstrainer']],
+ ['stairs','Stair Climber',/stair ?(climber|master|mill)|stepper|trap ?machine/i,'conditioning','Upright, light hands on the rails, full steps.','cardio',['treadmill','bike']]
 ];
 var EXBYID={}; EXLIB.forEach(function(x){ EXBYID[x[0]]={id:x[0],name:x[1],re:x[2],muscles:x[3],how:x[4],load:x[5],alt:x[6]}; });
 function exLib(name){
@@ -4099,6 +4103,17 @@ function parseSetMessage(text){
       var hh=+cm[2]%24; if(/pm/i.test(cm[4]||'')&&hh<12) hh+=12; if(/am/i.test(cm[4]||'')&&hh===12) hh=0;
       times.push({hm:pad(hh)+':'+cm[3],end:/^(end|finish|stop|done|till|until)/i.test(cm[1]||'')}); return;
     }
+    var cw=fixTypos(l.replace(/\d+(?:[.,]\d+)?/g,' ').replace(/\b(km\s*\/\s*h|kmh|kmph|kph|km|min(?:ute)?s?|minuten|incline|helling|speed|snelheid|at|on|for|op|met|graden|degrees?|deg|level|niveau|did|done|then)\b/gi,' ').replace(/[^a-z ]/gi,' ').replace(/\s+/g,' ').trim());
+    var clb=cw&&exLib(cw);
+    if(clb&&clb.load==='cardio'){
+      var g1=function(re){ var m=l.match(re); if(!m) return 0; for(var i=1;i<m.length;i++) if(m[i]) return num(String(m[i]).replace(',','.')); return 0; };
+      var ck={kmh:g1(/(\d+(?:[.,]\d+)?)\s*(?:km\s*\/\s*h|kmh|kmph|kph|km per hour)/i),
+        incl:g1(/(\d+(?:[.,]\d+)?)\s*(?:°|%|deg\b|degrees?|graden)|(?:incline|helling)\s*(?:of\s*)?(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:incline|helling)/i),
+        min:g1(/(\d+(?:[.,]\d+)?)\s*(?:min(?:ute)?s?|minuten|m)\b/i),
+        km:g1(/(\d+(?:[.,]\d+)?)\s*km\b(?!\s*\/?\s*h|ph|h)/i)};
+      if(!ck.min){ var mm2=l.match(/\b(\d{1,2}):([0-5]\d)\b/); if(mm2&&!CLOCKLINE.test(l)) ck.min=Math.round(((+mm2[1])+(+mm2[2])/60)*10)/10; }
+      if(ck.kmh||ck.min||ck.km){ cur={name:clb.name,sets:[],cardio:ck}; out.push(cur); any=true; return; }
+    }
     var sets=[], rest=l;
     var failAfter=function(off,str){ return /^\s*[(\[]?\s*(?:to\s+)?(?:failure|failed|fail|f)\b/i.test(str.slice(off)); };
     rest=rest.replace(BLOCKTOK,function(m,n,r,kg){ for(var i=0;i<Math.min(15,+n);i++) sets.push({kg:num(String(kg).replace(',','.')),reps:+r}); return ' '; });
@@ -4112,7 +4127,7 @@ function parseSetMessage(text){
     if(/[a-z]{3}/i.test(rest)){ cur={name:rest,sets:[]}; out.push(cur); }
     if(sets.length){ any=true; if(!cur){ cur={name:'',sets:[]}; out.push(cur); } cur.sets=cur.sets.concat(sets); }
   });
-  out=out.filter(function(e){ return e.sets.length; });
+  out=out.filter(function(e){ return e.sets.length||e.cardio; });
   if(!(any&&out.length)) return null;
   var st=times.filter(function(x){ return !x.end; }), en=times.filter(function(x){ return x.end; });
   out.start=(st[0]||(times.length>1?times[0]:null)||{}).hm||'';
@@ -4144,6 +4159,7 @@ function logSetsToday(entries){
   } else how='live';
   var ses=JSON.parse(JSON.stringify(s)), plan=plannedFor(today), done=[];
   entries.forEach(function(en){
+    if(en.cardio){ done.push(logCardio(ses,en)); return; }
     var name=canonExName(nameForToday(en.name||'',[ses.ex,plan&&plan.exercises]));
     var key=exKey(name), e=ses.ex.filter(function(x){ return x.kind!=='protocol'&&exKey(x.name)===key; })[0];
     var sets=en.sets.map(function(x){ return {kg:fmt(x.kg),reps:String(x.reps),rir:x.fail?'0':'',done:true}; });
@@ -4158,8 +4174,23 @@ function logSetsToday(entries){
     done.push({name:e.name,sets:en.sets,planned:planned,targetKg:e.target&&num(e.target.kg),added:!planned});
   });
   put('sessions',ses,true);
-  sysMsg('Logged '+done.map(function(d){ return d.name+' ('+d.sets.length+' sets)'; }).join(', '));
+  sysMsg('Logged '+done.map(function(d){ return d.name+(d.cardio?'':' ('+d.sets.length+' sets)'); }).join(', '));
   return {how:how,items:done,dayName:ses.dayName};
+}
+/* a cardio entry from a message becomes a done block on that machine */
+function cardioSeg(c,label){
+  var bits=[]; if(c.kmh) bits.push(fmt(c.kmh)+' km/h'); if(c.incl) bits.push(fmt(c.incl)+'% incline'); if(c.min) bits.push(fmt(c.min)+' min'); if(c.km) bits.push(fmt(c.km)+' km');
+  var a={}; if(c.kmh) a.kmh=String(c.kmh); if(c.min) a.min=String(c.min); if(c.incl) a.incl=String(c.incl);
+  if(!c.kmh&&c.km&&c.min) a.kmh=String(Math.round(c.km/(c.min/60)*10)/10);
+  return {label:label||'Block',detail:bits.join(' · '),act:a,done:true};
+}
+function logCardio(ses,en){
+  var lb=exLib(en.name), e=ses.ex.filter(function(x){ var l2=exLib(x.name); return x.kind==='protocol'&&(exKey(x.name)===exKey(en.name)||(l2&&lb&&l2.id===lb.id)); })[0];
+  var sg=cardioSeg(en.cardio,en.name);
+  if(e){ var open=(e.segs||[]).filter(function(x){ return !x.done; })[0];
+    if(open){ open.act=sg.act; open.done=true; if(!open.detail) open.detail=sg.detail; } else (e.segs=e.segs||[]).push(sg); }
+  else { e={id:uid(),kind:'protocol',name:en.name,spec:'',note:'',segs:[sg],comment:''}; ses.ex.push(e); }
+  return {name:e.name,cardio:en.cardio,detail:sg.detail,sets:[]};
 }
 function setsLine(sets){
   var out=[],i=0;
@@ -4177,6 +4208,7 @@ function logSetsOn(ds,entries){
     dayName:plan&&(plan.exercises||[]).length?plan.name:'Workout',dayNote:'',notes:'',review:null,ex:[],startedAt:0,finishedAt:0};
   var done=[];
   entries.forEach(function(en){
+    if(en.cardio){ done.push(logCardio(ses,en)); return; }
     var name=canonExName(nameForToday(en.name||'',[ses.ex,plan&&plan.exercises]));
     var key=exKey(name), e=ses.ex.filter(function(x){ return x.kind!=='protocol'&&exKey(x.name)===key; })[0];
     var pe=plan&&(plan.exercises||[]).filter(function(x){ return x.kind!=='protocol'&&exKey(x.name)===key; })[0];
@@ -4186,7 +4218,7 @@ function logSetsOn(ds,entries){
       target:{sets:pe?num(pe.sets):sets.length,reps:pe?pe.reps:'',kg:pe?num(pe.kg):num(sets[0].kg)},sets:sets,comment:''}; ses.ex.push(e); }
     done.push({name:e.name,sets:en.sets,planned:0,targetKg:0,added:false});
   });
-  var nsets=ses.ex.reduce(function(a,x){ return a+(x.sets||[]).length; },0);
+  var nsets=ses.ex.reduce(function(a,x){ return a+(x.sets||[]).length+(x.segs||[]).length*3; },0);
   var start=at(entries.start,ses.startedAt||at('18:00')), end=at(entries.end,0);
   if(!end||end<=start) end=ses.finishedAt&&ses.finishedAt>start?ses.finishedAt:start+Math.max(20,nsets*3)*60000;
   ses.startedAt=start; ses.finishedAt=end;
@@ -4200,6 +4232,7 @@ function logSetsOn(ds,entries){
 function setLogReply(r){
   var L=[];
   r.items.forEach(function(d){
+    if(d.cardio){ L.push('**'+d.name+'**: '+(d.detail||'done')+'.'); return; }
     var t='**'+d.name+'**: '+d.sets.length+' set'+(d.sets.length===1?'':'s')+', '+setsLine(d.sets)+'.';
     if(d.added) t+=' It was not in today\'s plan, so I added it.';
     else if(d.planned&&d.sets.length!==d.planned) t+=' The plan had '+d.planned+' sets.';
@@ -6527,7 +6560,7 @@ function restDone(){
 }
 
 /* ================= NEW VERSION AVAILABLE ================= */
-var APP_VERSION='2026-11-18f';
+var APP_VERSION='2026-11-19b';
 function checkUpdate(){
   try{
     if(hosted()||location.protocol!=='https:') return;
