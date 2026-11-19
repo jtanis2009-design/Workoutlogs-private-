@@ -937,6 +937,7 @@ var NLD={
 "Start it and add as you go":"Start hem en vul aan tijdens het trainen","Fill it in first":"Eerst invullen","is still on":"staat nog op",", now with no exercises":", nu zonder oefeningen",
 "Start it from Today and add exercises as you go, or tell me what you did.":"Start hem bij Vandaag en voeg oefeningen toe terwijl je traint, of vertel me wat je deed.",
 "from your workout in progress":"uit je lopende training","Add exercises as you go with \"+ Add exercise\" or by telling me.":"Voeg oefeningen toe met \"+ Oefening toevoegen\" of door het mij te vertellen.",
+"now runs":"loopt nu van","and is still going":"en is nog bezig","The end time comes before the start time, so nothing changed.":"De eindtijd ligt voor de begintijd, dus er is niets veranderd.","There is no workout logged on":"Er is geen training gelogd op","to change. Log it first, or paste the whole workout with its times.":"om aan te passen. Log hem eerst, of plak de hele training met de tijden.",
 "Language":"Taal","Taal / Language":"Taal / Language",
 "Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
@@ -1535,9 +1536,11 @@ setInterval(function(){
 try{ var rs0=JSON.parse(localStorage.getItem('wl_rest')||'null'); if(rs0&&rs0.until>Date.now()-20000) S.rest=rs0; }catch(e){}
 setInterval(function(){ try{ if(active()) wakeOn(); else wakeOff(); }catch(e){} },5000);
 document.addEventListener('visibilitychange',function(){
-  if(document.visibilityState==='visible'){ try{ paintRest(); wakeOn(); checkUpdate(); breakCheck(); }catch(e){} }
+  if(document.visibilityState==='visible'){ try{ paintRest(); wakeOn(); checkUpdate(); breakCheck(); repairJunkLogs(); }catch(e){} }
 });
 setTimeout(function(){ try{ breakCheck(); checkUpdate(); }catch(e){} },8000);
+setTimeout(function(){ try{ repairJunkLogs(); }catch(e){} },4000);
+setTimeout(function(){ try{ repairJunkLogs(); }catch(e){} },20000);
 setInterval(function(){ try{ checkUpdate(); }catch(e){} },30*60000);
 
 /* ---------------- progress charts ---------------- */
@@ -1985,6 +1988,10 @@ function coachTools(){
       return {ok:true,date:d.date,exercises:ex.map(function(e){return e.name;})};
     }},
 
+  { name:'set_session_time',
+    description:'Change when a logged workout (or the one in progress) started or ended. Times as HH:MM.',
+    inputSchema:{type:'object',properties:{date:{type:'string'},start:{type:'string'},end:{type:'string'}}},
+    execute:function(a){ return {ok:true,text:setSessionTime({date:/^\d{4}-\d\d-\d\d$/.test(a.date||'')?a.date:ymd(),start:a.start,end:a.end})}; }},
   { name:'clear_workout',
     description:'Keep the workout on that date (and its name) but take every exercise out, so the person can add exercises as they go. Use for "make today empty", "clear today\'s workout", "random workout today, I will add stuff". During a workout in progress it removes only exercises with nothing ticked.',
     inputSchema:{type:'object',properties:{date:{type:'string'},name:{type:'string'}}},
@@ -2223,6 +2230,7 @@ function coachSend(text){
   S.draft=''; S.busy=true; S.stream=''; render();
   setTimeout(scrollEnd,30);
   var pm=null, tx=nlIn(text); try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(tx)?null:parseSetMessage(tx); }catch(e){}
+  if(parseSessionTime(tx)){ coachRules(text); return; }
   if(pm||parseReorder(tx)||parseClear(tx)){ coachRules(text); return; }                /* exact numbers are logged by the app, not paraphrased by a model */
   if(!S.sample){ if(aiKey()) coachGemini(text); else coachRules(text); return; }
 
@@ -3829,6 +3837,45 @@ function undoChange(){
 }
 
 
+
+/* "I started today's workout at 20:20", "it ended at 21:10", "begonnen om 20:20" */
+function parseSessionTime(text){
+  var t=String(text||'').toLowerCase();
+  if(/\d+\s*[x×*]\s*\d+/.test(t)) return null;
+  var st=t.match(/\b(?:start(?:ed)?|began|begun|begon(?:nen)?|gestart|arrived|got there)\b[^0-9\n]{0,40}?(\d{1,2})[:.](\d{2})\b/);
+  var en=t.match(/\b(?:end(?:ed)?|finish(?:ed)?|stopped|left|done|klaar|gestopt|eind(?:igde)?)\b[^0-9\n]{0,40}?(\d{1,2})[:.](\d{2})\b/);
+  if(!st&&!en) return null;
+  if(!/\b(workout|session|training|gym|today|todays|yesterday|i|we|it|ik|wij|het|vandaag|gisteren|sportschool)\b/.test(t)) return null;
+  var o={date:/\byesterday|gisteren\b/.test(t)?shiftYmd(ymd(),-1):ymd()};
+  if(st) o.start=pad(+st[1]%24)+':'+st[2];
+  if(en) o.end=pad(+en[1]%24)+':'+en[2];
+  return o;
+}
+function setSessionTime(o){
+  var s=(o.date===ymd()&&active())||finished().filter(function(x){ return ymd(new Date(x.finishedAt))===o.date; }).sort(function(a,b){ return b.finishedAt-a.finishedAt; })[0];
+  if(!s) throw new Error('There is no workout logged on '+(o.date===ymd()?'today':dateLabel(o.date).split(' · ')[0])+' to change. Log it first, or paste the whole workout with its times.');
+  var d=fromYmd(o.date), at=function(v){ var m=hm(v); return new Date(d.getFullYear(),d.getMonth(),d.getDate(),Math.floor(m/60),m%60).getTime(); };
+  var c=JSON.parse(JSON.stringify(s)), was={a:s.startedAt,b:s.finishedAt};
+  if(o.start) c.startedAt=at(o.start);
+  if(o.end&&c.finishedAt) c.finishedAt=at(o.end);
+  if(c.finishedAt&&c.finishedAt<=c.startedAt) throw new Error('The end time comes before the start time, so nothing changed.');
+  UNDO={label:'time',items:[{coll:'sessions',id:s.id,before:JSON.parse(JSON.stringify(s))}]};
+  put('sessions',c,true);
+  var hmOf=function(ts){ var x=new Date(ts); return pad(x.getHours())+':'+pad(x.getMinutes()); };
+  return 'Done: **'+(c.dayName||'Workout')+'** now runs '+hmOf(c.startedAt)+(c.finishedAt?' to '+hmOf(c.finishedAt)+' ('+Math.round((c.finishedAt-c.startedAt)/60000)+' min)':' and is still going')+'. Say "undo" to put it back.';
+}
+/* one-off repair: sentences that were logged as exercises with a clock time as a hold */
+function repairJunkLogs(){
+  var bad=/^(?:it|that|i|this|add|we)\b/i;
+  finished().forEach(function(s){
+    var keep=(s.ex||[]).filter(function(e){
+      var lb=exLib(e.name);
+      if(e.kind==='protocol'||(lb&&lb.load==='time')||!bad.test(e.name||'')) return true;
+      return !(e.sets||[]).every(function(x){ return !num(x.kg)&&num(x.reps)>=300; });
+    });
+    if(keep.length!==(s.ex||[]).length){ var c=JSON.parse(JSON.stringify(s)); c.ex=keep; put('sessions',c,true); }
+  });
+}
 /* ---- empty a workout but keep it on the calendar: "make sure today's workout is empty" ---- */
 function clearWorkout(o){
   o=o||{};
@@ -4057,10 +4104,11 @@ function editDist(a,b){
   return d[a.length][b.length];
 }
 /* fixes typos word by word against gym vocabulary: "abomdinal" -> "abdominal" */
+var PLAINWORDS=' started start starting began begin ended ending finished finish stopped that this then than there their they what when where with today todays tonight workout session added adding could would should about after before around again also still just only really very time times hour hours minute minutes seconds at the and you your mine made make make sure said says told think thought want wanted need needed please today yesterday tomorrow morning evening night begon begonnen gestart klaar '.split(' ');
 function fixTypos(s){
   var voc=exVocab();
   return String(s||'').toLowerCase().replace(/[a-z]+/g,function(w){
-    if(w.length<4||voc.indexOf(w)>=0) return w;
+    if(w.length<4||voc.indexOf(w)>=0||PLAINWORDS.indexOf(w)>=0) return w;
     var best='',bd=9; voc.forEach(function(c){ var d=editDist(w,c); if(d<bd){ bd=d; best=c; } });
     return bd<=(w.length<=5?1:2)?best:w;
   });
@@ -4140,14 +4188,17 @@ function parseSetMessage(text){
     var failAfter=function(off,str){ return /^\s*[(\[]?\s*(?:to\s+)?(?:failure|failed|fail|f)\b/i.test(str.slice(off)); };
     rest=rest.replace(BLOCKTOK,function(m,n,r,kg){ for(var i=0;i<Math.min(15,+n);i++) sets.push({kg:num(String(kg).replace(',','.')),reps:+r}); return ' '; });
     rest=rest.replace(SETTOK,function(m,kg,r,off,str){ sets.push({kg:num(String(kg).replace(',','.')),reps:+r,fail:failAfter(off+m.length,str)}); return ' '; });
+    var holdOK=function(){ var nm=l.replace(/[\d:.,]+|\b(?:s|sec|secs|seconds)\b/gi,' ').trim(); var lb=nm&&exLib(fixTypos(nm));
+      if(lb) return lb.load==='time'||isTimed({name:lb.name}); return !nm&&cur&&isTimed({name:cur.name}); };
     rest=rest.replace(/\b(\d+):([0-5]\d)\b|\b(\d+)\s*(?:s|sec|secs|seconds)\b/gi,function(m,mi,se,sec){
+      if(!sec&&!holdOK()){ times.push({hm:pad(+mi%24)+':'+se,end:false}); return ' '; }
       sets.push({kg:0,reps:sec?+sec:(+mi)*60+(+se)}); return ' '; });
     rest=rest.replace(/\(\s*(?:to\s+)?(?:failure|failed|fail|f)\s*\)|\b(?:to\s+)?failure\b/gi,' ')
              .replace(/\b(log|logged|i did|did|done|add|added|put in|for|today|todays|today's|yesterday|last|this|on|ago|days?|workout|session|sets?|reps?|kg|please|pls|and|in|my|of|the|to|sunday|monday|tuesday|wednesday|thursday|friday|saturday|jan\w*|feb\w*|mar\w*|apr\w*|may|jun\w*|jul\w*|aug\w*|sep\w*|oct\w*|nov\w*|dec\w*)\b/gi,' ')
              .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b20\d\d-\d\d-\d\d\b|\b\d{1,2}\b/g,' ')
              .replace(/[,:.\-–—()\[\]]+/g,' ').replace(/\s+/g,' ').trim();
     if(/[a-z]{3}/i.test(rest)){
-      if(!sets.length&&cur&&has(cur)&&/\b(could|can|would|please|also|app|struggl|import|as|you|me)\b/i.test(rest)&&!exLib(fixTypos(rest))){ return; }  /* a sentence, not an exercise */
+      if(!exLib(fixTypos(rest))&&(rest.split(' ').length>3||/^(?:i|it|that|this|we|he|she|you|my|could|can|would|please|also|so|then|but)\b|\b(?:i|me|my|you|app|import|struggl\w*|started|ended|finished|was|were|is|am)\b/i.test(rest))){ return; }  /* a sentence, not an exercise */
       newEntry({name:rest,sets:[]});
     }
     if(sets.length){ any=true; if(!cur){ newEntry({name:'',sets:[]}); } cur.sets=cur.sets.concat(sets); }
@@ -4202,6 +4253,11 @@ function logSetsToday(entries){
     if(en.t0) e.t0=en.t0; if(en.t1) e.t1=en.t1;
     done.push({name:e.name,sets:en.sets,planned:planned,targetKg:e.target&&num(e.target.kg),added:!planned,t0:en.t0,t1:en.t1});
   });
+  if(entries.start||entries.end){
+    var dd=new Date(), atT=function(v){ var m=hm(v); return m==null?0:new Date(dd.getFullYear(),dd.getMonth(),dd.getDate(),Math.floor(m/60),m%60).getTime(); };
+    if(entries.start&&atT(entries.start)&&(how!=='live'||atT(entries.start)<ses.startedAt)) ses.startedAt=Math.min(ses.startedAt||Infinity,atT(entries.start));
+    if(entries.end&&ses.finishedAt&&atT(entries.end)>ses.startedAt) ses.finishedAt=Math.max(ses.finishedAt,atT(entries.end));
+  }
   put('sessions',ses,true);
   sysMsg('Logged '+done.map(function(d){ return d.name+(d.cardio?'':' ('+d.sets.length+' sets)'); }).join(', '));
   return {how:how,items:done,dayName:ses.dayName};
@@ -4292,6 +4348,8 @@ function ruleCoach(text){
   if(/\b(what|which)\b.*\b(abs|core)\b/.test(lt)&&!/\d+\s*[x×]\s*\d+/.test(lt))
     return ABS_MSG+'\n\n"Abdominals" means the B-Fit machine of that name, "abdominal crunches" the seated crunch machine.';
   if(/\b(wrapped|year recap|year in review|my year|jaaroverzicht)\b/.test(lt)) return recapText(recapDefaultYear());
+  var stm=parseSessionTime(text);
+  if(stm){ try{ return setSessionTime(stm); }catch(e){ return String(e.message||e); } }
   var cl=parseClear(text);
   if(cl){ try{ return clearReply(clearWorkout(cl)); }catch(e){ return String(e.message||e); } }
   var ro=parseReorder(text);
@@ -4491,6 +4549,7 @@ var ACTION_PROTOCOL=[
  'Tools and args:',
  '- schedule_workout {date:"YYYY-MM-DD", name, note?, plan}',
  '- remove_workout {date:"YYYY-MM-DD"}  (makes it a rest day)',
+ '- set_session_time {date?, start?:"HH:MM", end?:"HH:MM"}  (fix when a logged or running workout started/ended; never log a clock time as a set)',
  '- clear_workout {date?, name?}  (keeps the workout but with no exercises, to fill in as you go; pass name to rename it too. "make today empty" is this. schedule_workout always needs at least one exercise line)',
  '- set_routine {weekday:"tuesday", name, effective_from?, note?, plan}',
  '- log_workout {date:"YYYY-MM-DD", name, minutes?, notes?, results}',
@@ -6597,7 +6656,7 @@ function restDone(){
 }
 
 /* ================= NEW VERSION AVAILABLE ================= */
-var APP_VERSION='2026-11-19c';
+var APP_VERSION='2026-11-19d';
 function checkUpdate(){
   try{
     if(hosted()||location.protocol!=='https:') return;
