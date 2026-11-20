@@ -944,6 +944,8 @@ var NLD={
 "workouts started before 9:00":"trainingen gestart voor 9:00","workouts started after 20:00":"trainingen gestart na 20:00","hours trained":"uur getraind","minutes of cardio":"minuten cardio","months with a workout":"maanden met een training",
 "days you hit your water goal":"dagen je waterdoel gehaald","measurement days":"meetdagen","meals logged":"maaltijden gelogd","kg lifted in total":"kg getild in totaal",
 "Closest to unlocking:":"Bijna vrijgespeeld:","unlocked":"vrijgespeeld","Unlocks at":"Gaat open bij","you have":"je hebt","Character:":"Personage:","Look:":"Skin:","Colour:":"Kleur:","Title:":"Titel:",
+"work in progress, waiting for your watch":"in ontwikkeling, wacht op je horloge","Morning card":"Ochtendkaart","Check-in from the watch":"Check-in van het horloge","Treadmill from the watch":"Loopband van het horloge","Heart rate per workout":"Hartslag per training","Exact workout times":"Precieze trainingstijden","Strength from the watch":"Kracht van het horloge","Steps and active calories":"Stappen en actieve calorieën","Watch unlockables":"Horloge-unlockables","Running":"Hardlopen",
+"Planned once your watch is here. First step: import activity files exported from Garmin Connect; automatic sync gets tested after that.":"Gepland zodra je horloge er is. Eerste stap: activiteitsbestanden importeren die je uit Garmin Connect exporteert; automatisch synchroniseren wordt daarna getest.",
 "Language":"Taal","Taal / Language":"Taal / Language",
 "Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
@@ -5176,6 +5178,20 @@ function viewYou(){
   var ns=notifyState();
   h+=accountPanel();
   h+=panel('move','Move to new training days',S.profile.movedFrom?'moved from '+dateLabel(S.profile.movedFrom).split(' · ')[0]:'new days and machines at '+gym().name,mvPanelBody);
+  h+=panel('garmin','Garmin Forerunner 70','work in progress, waiting for your watch',function(){
+    var L=[['Morning card','sleep, HRV, resting heart rate and readiness on Today; poor nights suggest Recovery mode'],
+      ['Check-in from the watch','sleep and recovery filled in for you, you only rate energy'],
+      ['Treadmill from the watch','time, distance, heart rate and calories straight into your cardio blocks'],
+      ['Heart rate per workout','average, max and time in each zone on every session'],
+      ['Exact workout times','start and end taken from the watch'],
+      ['Strength from the watch','sets and reps it counted, as a draft you check before it is saved'],
+      ['Steps and active calories','next to your measured burn, with a warning when you move less on a cut'],
+      ['Watch unlockables','steps, cardio distance and sleep streaks, plus watch stats in the year recap'],
+      ['Running','run log, pace PRs like your fastest 5 km, weekly distance']];
+    return '<div class="hint" style="margin:0 0 8px">Planned once your watch is here. First step: import activity files exported from Garmin Connect; automatic sync gets tested after that.</div>'
+      + L.map(function(x,i){ return '<div class="hline" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><b>'+(i+1)+'. '+esc(x[0])+'</b><span style="color:var(--mut2);font-size:11.5px;flex:none">WIP</span></div>'
+        + '<div style="font-size:12px;color:var(--mut);margin-top:2px">'+esc(x[1])+'</div></div>'; }).join('');
+  });
   h+=panel('set','Settings','rest timer, weight jumps, reminders',function(){
     return '<div class="fld" style="margin-top:0"><label>Taal / Language</label><div class="chips nt" style="margin-top:4px">'
       + '<button class="'+(nlOn()?'':'on')+'" data-act="set-lang" data-v="en">English</button>'
@@ -6757,7 +6773,7 @@ function restDone(){
 }
 
 /* ================= NEW VERSION AVAILABLE ================= */
-var APP_VERSION='2026-11-20a';
+var APP_VERSION='2026-11-20b';
 function checkUpdate(){
   try{
     if(hosted()||location.protocol!=='https:') return;
