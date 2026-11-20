@@ -994,6 +994,9 @@ var NLD={
 "4 weeks":"4 weken","5 weeks":"5 weken","6 weeks":"6 weken","8 weeks":"8 weken",
 "is now on":"staat nu op","is a rest day":"is een rustdag","Heads up:":"Let op:","is closed that day.":"is die dag dicht.","The gym is open":"De sportschool is open","You have a workout in progress today. Finish or discard it first.":"Je hebt vandaag een training bezig. Rond hem eerst af of gooi hem weg.","I need two real dates to move a workout.":"Ik heb twee echte datums nodig om een training te verplaatsen.","already has":"heeft al","to trade them, or clear it first.":"om ze te ruilen, of maak hem eerst leeg.",
 "Only part of that went through, so check the note above: what it says did not happen.":"Maar een deel is gelukt, dus check de melding hierboven: wat daar staat is niet gebeurd.",
+"Do it":"Doen","Here is the change. Nothing happens until you tap Do it:":"Dit is de wijziging. Er gebeurt niets tot je op Doen tikt:","Cancelled. Nothing changed.":"Geannuleerd. Er is niets veranderd.","✓ Done":"✓ Gedaan","Cancelled":"Geannuleerd",
+"Done, all":"Klaar, alle","changes went through.":"wijzigingen zijn gelukt.","That did not go through, so nothing changed.":"Dat is niet gelukt, dus er is niets veranderd.","Only part of that went through:":"Maar een deel is gelukt:","Say \"undo\" to take back the last one.":"Zeg \"undo\" om de laatste terug te draaien.",
+"Move the workout on":"Verplaats de training van","Swap the workouts on":"Ruil de trainingen van","a rest day":"een rustdag","Make next week a deload (half the sets)":"Maak volgende week een deload (de helft van de sets)",
 "Language":"Taal","Taal / Language":"Taal / Language",
 "Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
@@ -2249,10 +2252,10 @@ function coachPreamble(){
   '',
   'How to behave:',
   '- Short, plain answers. A couple of sentences plus a tight list. No preamble, no hype, no medical advice.',
-  '- When they ask for a change, MAKE IT with the tools, then say in one or two lines what you changed. Do not ask permission for ordinary changes.',
+  '- When they ask for a change, call the tools for it; the app previews it and they confirm (see HOW CHANGES WORK).',
   '- When they tell you what they actually lifted in a past session, call log_workout to put it in their history. That is what the charts and weight suggestions read, so get the numbers exactly as given and never invent a set they did not report.',
   '- Use schedule_workout for a single date. Use set_routine for lasting week-to-week changes, with effective_from when the change should start later (e.g. "from two weeks" means the Monday-to-Sunday week starting then) so the current routine keeps running until that date.',
-  '- Respect their main training days (Tuesday, Thursday, Sunday) unless they say otherwise. Leave at least one rest day between hard sessions for the same muscles where you can.',
+  '- Respect their main training days ('+mainDays(ymd()).slice().sort(function(a,b){ return ((a+6)%7)-((b+6)%7); }).map(function(w){ return DOWFULL[w]; }).join(', ')+') unless they say otherwise. Leave at least one rest day between hard sessions for the same muscles where you can.',
   '- Pick weights from what they have ACTUALLY LOGGED, never from the old targets. If every rep was hit at the top of the range, add about '+STEP+'kg. If they fell short, keep the weight and tell them to beat the reps. Call get_exercise_history when you need the detail.',
   '- Keep their coaching cues when you reuse an exercise, and write a short cue for anything new.',
   '- When they send sets they did today (e.g. "abdominal crunches 25x12 25x10"), call log_sets. Read each pair as kg x reps, fix obvious typos in the name, and confirm what was logged in one line.',
@@ -2289,10 +2292,9 @@ function coachSend(text){
   put('chat',{id:uid(),role:'user',text:text,at:Date.now()},true);
   S.draft=''; S.busy=true; S.stream=''; render();
   setTimeout(scrollEnd,30);
-  var pm=null, tx=nlIn(text); try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(tx)?null:parseSetMessage(tx); }catch(e){}
-  if(parseSessionTime(tx)||parseBusy(tx)||parseMoveWorkout(tx)){ coachRules(text); return; }
-  if(pm||parseReorder(tx)||parseClear(tx)){ coachRules(text); return; }                /* exact numbers are logged by the app, not paraphrased by a model */
-  if(!S.sample){ if(aiKey()) coachGemini(text); else coachRules(text); return; }
+  var rt=routeOf(text);
+  if(rt!=='gemini'){ coachRules(text); return; }                /* exact things are done by the app itself, not paraphrased by a model */
+  if(!S.sample){ coachGemini(text); return; }
 
   var msgs=[{role:'user',content:coachPreamble()+'\n\nReply to this setup message with exactly: Ready.'},
             {role:'assistant',content:'Ready.'}];
@@ -3454,22 +3456,25 @@ function geminiCall(msgs,opts){
   if(typeof msgs==='string') msgs=[{role:'user',content:msgs}];
   var tried=[];
   var once=function(model,b64){
-    var contents=msgs.map(function(m){ return {role:m.role==='assistant'?'model':'user',parts:[{text:String(m.content)}]}; });
+    var contents=msgs.map(function(m){ return {role:m.role==='assistant'?'model':'user',parts:m.parts||[{text:String(m.content)}]}; });
     b64.forEach(function(d,i){ var ty=String(((opts.images||[])[i]||{}).type||'');
       contents[contents.length-1].parts.push({inline_data:{mime_type:/^image\/(png|jpeg|webp|heic|heif)$/.test(ty)?ty:'image/jpeg',data:d}}); });
     var ctl=typeof AbortController!=='undefined'?new AbortController():null, tm=setTimeout(function(){ if(ctl) ctl.abort(); },90000);
     var body={contents:contents}; if(opts.json) body.generationConfig={responseMimeType:'application/json'};
     if(nlOn()) body.systemInstruction={parts:[{text:NL_AI}]};
+    if(opts.tools&&opts.tools.length){ body.tools=[{functionDeclarations:opts.tools}]; body.toolConfig={functionCallingConfig:{mode:'AUTO'}}; }
     return fetch(GEM+'models/'+encodeURIComponent(model)+':generateContent',{method:'POST',signal:ctl?ctl.signal:undefined,
         headers:{'Content-Type':'application/json','x-goog-api-key':aiKey()},body:JSON.stringify(body)})
       .then(function(r){ clearTimeout(tm); return r.json().catch(function(){ return {}; }).then(function(j){
         if(!r.ok) throw gemErrInfo(r,j);
         var cand=(j.candidates||[])[0]||{}, c=cand.content;
         var t=((c&&c.parts)||[]).filter(function(p){ return !p.thought; }).map(function(p){ return p.text||''; }).join('');
+        var calls=((c&&c.parts)||[]).filter(function(p){ return p.functionCall; }).map(function(p){ return {name:p.functionCall.name,args:p.functionCall.args||{}}; });
+        if(!t&&calls.length){ try{ localStorage.setItem('wl_aimodel',model); }catch(x){} return {text:'',calls:calls,raw:c,model:model}; }
         if(!t){ var e=new Error(cand.finishReason==='SAFETY'||(j.promptFeedback&&j.promptFeedback.blockReason)?'Gemini blocked this request as unsafe':'Gemini sent back an empty reply');
           e.status=0; e.empty=true; throw e; }
         try{ localStorage.setItem('wl_aimodel',model); }catch(x){}
-        return {text:t,model:model};
+        return {text:t,calls:calls,raw:c,model:model};
       }); },function(e){ clearTimeout(tm); var x=new Error(e&&e.name==='AbortError'?'Gemini took too long to answer':'Could not reach Gemini (no connection?)'); x.status=0; x.net=true; throw x; });
   };
   return Promise.all((opts.images||[]).map(blobB64)).then(function(b64){
@@ -4734,24 +4739,165 @@ function runActions(raw){
   });
   return n;
 }
-function coachGemini(text){
-  var msgs=[{role:'user',content:coachPreamble()+'\n\n'+ACTION_PROTOCOL+'\n\nReply to this setup message with exactly: Ready.'},
+/* ================= COACH: Gemini proposes, the app shows it, you confirm ================= */
+/* logging what you did is instant; anything that changes your plan waits for "Do it" */
+var INSTANT_TOOLS={log_sets:1,log_body_weight:1,log_water:1,log_measurements:1,undo_last_change:1,set_mode:1,set_session_time:1,get_exercise_history:1};
+var READ_TOOLS={get_exercise_history:1};
+
+/* which part of the app answers a message: exact things go to the app's own rules, the rest to Gemini */
+function routeOf(text){
+  var tx=nlIn(String(text||''));
+  try{ if(parseSessionTime(tx)) return 'time'; }catch(e){}
+  try{ if(parseBusy(tx)) return 'busy'; }catch(e){}
+  try{ if(parseMoveWorkout(tx)) return 'move'; }catch(e){}
+  try{ if(parseReorder(tx)) return 'reorder'; }catch(e){}
+  try{ if(parseClear(tx)) return 'clear'; }catch(e){}
+  var pm=null; try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(tx)?null:parseSetMessage(tx); }catch(e){}
+  if(pm) return 'sets';
+  return aiKey()?'gemini':'rules';
+}
+
+/* the next two weeks spelled out, so Gemini copies dates instead of working them out */
+function calendarBrief(){
+  var L=['DATES (copy these exactly; never work a date out yourself):'];
+  for(var i=-7;i<=14;i++){
+    var ds=shiftYmd(ymd(),i), w=DOWFULL[fromYmd(ds).getDay()], tag=i===0?' = TODAY':i===1?' = TOMORROW':i===-1?' = YESTERDAY':'';
+    var log=sessionOn(ds), p=plannedFor(ds), what;
+    if(log) what='done: '+(log.dayName||'workout');
+    else if(p&&(p.exercises||[]).length) what='planned: '+p.name+' ('+p.exercises.length+' exercises)';
+    else if(p&&!/^rest/i.test(p.name||'')) what='planned: '+p.name+' (empty)';
+    else what='rest';
+    L.push(ds+' '+w+tag+': '+what);
+  }
+  return L.join('\n');
+}
+
+/* Gemini's function declarations, from the same tools the app already has */
+function gemSchema(s){
+  if(!s||typeof s!=='object') return undefined;
+  var o={type:String(s.type||'string').toUpperCase()};
+  if(s.description) o.description=String(s.description);
+  if(s.enum) o.enum=s.enum.map(String);
+  if(s.items) o.items=gemSchema(s.items);
+  if(s.properties){ var ks=Object.keys(s.properties); if(!ks.length) return undefined; o.properties={}; ks.forEach(function(k){ o.properties[k]=gemSchema(s.properties[k]); }); }
+  if(s.required&&s.required.length) o.required=s.required.slice();
+  return o;
+}
+function toolDecls(){
+  return coachTools().map(function(t){ var d={name:t.name,description:String(t.description||t.name).slice(0,1000)}, p=gemSchema(t.inputSchema); if(p) d.parameters=p; return d; });
+}
+
+/* one plain line per change, for the preview and the result */
+function niceArg(d){ try{ var v=fixToolDates({date:d}).date; return v?dateLabel(v).split(' · ')[0]:String(d||''); }catch(e){ return String(d||'?'); } }
+function planCount(p){ return String(p||'').split('\n').filter(function(l){ return /\S/.test(l)&&!/^\s*(note|#)/i.test(l); }).length; }
+function describeCall(c){
+  var a=c.args||{}, n=c.name;
+  if(n==='schedule_workout') return 'Put “'+(a.name||'Workout')+'” on '+niceArg(a.date)+' ('+planCount(a.plan)+' exercises)';
+  if(n==='set_routine') return 'Change your standing '+String(a.weekday||'day')+' to “'+(a.name||'Workout')+'” ('+planCount(a.plan)+' exercises)'+(a.effective_from?' from '+niceArg(a.effective_from):'');
+  if(n==='log_workout') return 'Log “'+(a.name||'Workout')+'” as done on '+niceArg(a.date);
+  if(n==='move_workout') return (a.swap?'Swap the workouts on ':'Move the workout on ')+niceArg(a.from)+(a.swap?' and ':' to ')+niceArg(a.to);
+  if(n==='remove_workout') return 'Make '+niceArg(a.date)+' a rest day';
+  if(n==='clear_workout') return 'Empty the workout on '+niceArg(a.date||ymd())+(a.name?' and call it “'+a.name+'”':'');
+  if(n==='make_deload') return a.undo?'Remove next week\'s deload':'Make next week a deload (half the sets)';
+  if(n==='reorder_exercises') return (a.mode&&a.mode!=='swap'?'Move '+a.a+' '+a.mode+' '+a.b:'Swap the places of '+a.a+' and '+a.b)+(a.date?' on '+niceArg(a.date):' today');
+  if(n==='change_exercise'){
+    var when=a.when==='date'&&a.date?' on '+niceArg(a.date):' from now on';
+    if(a.action==='replace') return 'Swap '+(a.exercise||'?')+' for '+(a.new_exercise||'?')+when;
+    if(a.action==='remove') return 'Remove '+(a.exercise||'?')+when;
+    if(a.action==='add') return 'Add '+(a.new_exercise||'?')+(a.after?' after '+a.after:a.before?' before '+a.before:'')+(a.weekday?' on '+a.weekday+'s':when);
+  }
+  if(n==='log_sets') return 'Log '+(a.exercise||'?')+': '+(a.sets||'');
+  if(n==='log_body_weight') return 'Log body weight '+(a.kg||'?')+' kg';
+  if(n==='log_water') return 'Log '+(a.ml||'?')+' ml water';
+  if(n==='set_mode') return 'Switch coach mode to '+(a.mode||'?');
+  if(n==='set_session_time') return 'Set the workout time'+(a.start?' start '+a.start:'')+(a.end?' end '+a.end:'');
+  if(n==='undo_last_change') return 'Undo the last change';
+  return n.replace(/_/g,' ');
+}
+function runCalls(calls){
+  var tools={}; coachTools().forEach(function(t){ tools[t.name]=t; });
+  return calls.map(function(c){
+    var t=tools[c.name], r={name:c.name,desc:describeCall(c),ok:false};
+    if(!t){ r.err='the app has no action called '+c.name; return r; }
+    try{ var out=t.execute(fixToolDates(c.args||{})); r.ok=true; r.out=out; r.text=out&&typeof out.text==='string'?out.text:''; }
+    catch(e){ r.err=String(e.message||e); }
+    return r;
+  });
+}
+function resultText(rs){
+  var ok=rs.filter(function(r){ return r.ok; }).length, bad=rs.length-ok, L=[];
+  if(!bad) L.push(rs.length===1?'Done.':'Done, all '+rs.length+' changes went through.');
+  else if(!ok) L.push('That did not go through, so nothing changed.');
+  else L.push('Only part of that went through:');
+  rs.forEach(function(r){ L.push((r.ok?'✓ ':'✗ ')+r.desc+(r.ok?'':': '+r.err)); if(r.ok&&r.text) L.push(r.text); });
+  if(ok) L.push('Say "undo" to take back the last one.');
+  return L.join('\n');
+}
+
+/* the conversation, Gemini's turn */
+var COACH_FLOW=[
+ 'HOW CHANGES WORK IN THIS APP (follow exactly):',
+ '- To change anything, call the matching function. The app shows the person what each call will do and waits for them to tap "Do it". So when you call a function that changes the plan, write your text as a short proposal ("I\'ll move Shanaya to Saturday."), never as if it is already done.',
+ '- Logging what they did (log_sets, log_body_weight, log_water, log_measurements), set_mode, set_session_time and undo_last_change happen straight away.',
+ '- Dates: copy them from DATES below. "today", "tomorrow" and weekday names map to the dates listed there.',
+ '- One request = the fewest calls that do it. Moving a workout is ONE move_workout call. Never remove a workout and schedule it again to move it.',
+ '- If you are not sure what they mean, ask one short question instead of calling anything.',
+ '- Never say a change worked; the app reports the result itself.'
+].join('\n');
+
+function coachGemini(text,useText){
+  var msgs=[{role:'user',content:coachPreamble()+'\n\n'+COACH_FLOW+'\n\n'+calendarBrief()+(useText?'\n\n'+ACTION_PROTOCOL:'')+'\n\nReply to this setup message with exactly: Ready.'},
             {role:'assistant',content:'Ready.'}];
   S.chat.filter(function(m){ return m.role==='user'||m.role==='assistant'; }).slice(-14).forEach(function(m){
-    msgs.push({role:m.role,content:m.text}); });
+    msgs.push({role:m.role,content:optsSplit(m.text).body||' '}); });
   if(msgs[msgs.length-1].role!=='user') msgs.push({role:'user',content:text});
-  var settle=function(t){ S.busy=false; S.stream='';
-    put('chat',{id:uid(),role:'assistant',text:t||'(no reply)',at:Date.now()},true); setTimeout(scrollEnd,30); };
-  geminiCall(msgs).then(function(res){
-    var t=String(res.text||''), i=t.lastIndexOf('ACTIONS:');
-    if(i>=0){ var done=runActions(t.slice(i+8)); t=t.slice(0,i).trim();
-      if(RUNFAIL&&!done) t='That did not go through, so nothing changed. The note above says why; try saying it another way.';
-      else if(RUNFAIL) t='Only part of that went through, so check the note above: what it says did not happen.\n\n'+t; }
-    settle(t||'Done.');
-  }).catch(function(e){
+  var settle=function(t,extra){ S.busy=false; S.stream='';
+    put('chat',Object.assign({id:uid(),role:'assistant',text:t||'(no reply)',at:Date.now()},extra||{}),true); setTimeout(scrollEnd,30); };
+  var handle=function(t,calls){
+    t=String(t||'').trim();
+    var instant=calls.filter(function(c){ return INSTANT_TOOLS[c.name]; }), change=calls.filter(function(c){ return !INSTANT_TOOLS[c.name]; });
+    var ri=instant.length?runCalls(instant):[];
+    var badI=ri.filter(function(r){ return !r.ok; }).length;
+    if(change.length){
+      var head=badI?resultText(ri)+'\n\n':(t?t+'\n\n':'');
+      settle(head+'**Here is the change. Nothing happens until you tap Do it:**\n'+change.map(function(c){ return '- '+describeCall(c); }).join('\n'),
+        {pending:change,pid:uid()});
+      return;
+    }
+    if(!ri.length){ settle(t||'Done.'); return; }
+    settle(badI?resultText(ri):(t||resultText(ri)));
+  };
+  var round=function(m,left){
+    return geminiCall(m,{tools:useText?null:toolDecls()}).then(function(res){
+      var calls=res.calls||[], reads=calls.filter(function(c){ return READ_TOOLS[c.name]; });
+      if(reads.length&&left>0){                       /* answer look-ups and let Gemini continue */
+        var rr=runCalls(reads);
+        m=m.concat([{role:'assistant',parts:res.raw&&res.raw.parts||[]},
+          {role:'user',parts:rr.map(function(r){ return {functionResponse:{name:r.name,response:{result:r.ok?(r.out||{}):{error:r.err}}}}; })}]);
+        return round(m,left-1);
+      }
+      var t=String(res.text||'');
+      if(useText){ var i=t.lastIndexOf('ACTIONS:'); if(i>=0){ calls=textCalls(t.slice(i+8)); t=t.slice(0,i); } }
+      handle(t,calls.filter(function(c){ return !READ_TOOLS[c.name]; }));
+    });
+  };
+  round(msgs,2).catch(function(e){
+    if(!useText&&e&&(e.status===400||e.empty)&&!/api key/i.test(String(e.message||''))) return coachGemini(text,true);   /* this model will not take functions: fall back to text actions */
     var fb=''; try{ fb=ruleCoach(text); }catch(x){}
-    settle((fb?fb+'\n\n':'')+'_Gemini did not answer, so this came from the built-in coach. '+aiErr(e)+'_');
+    settle((fb?fb+'\n\n':'')+'Gemini did not answer, so this came from the built-in coach. '+aiErr(e));
   });
+}
+function textCalls(raw){
+  var a=raw.indexOf('['), b=raw.lastIndexOf(']'); if(a<0||b<a) return [];
+  try{ var l=JSON.parse(raw.slice(a,b+1)); return (Array.isArray(l)?l:[]).filter(function(x){ return x&&x.tool; }).map(function(x){ return {name:x.tool,args:x.args||{}}; }); }catch(e){ return []; }
+}
+function pendingDo(id,yes){
+  var m=S.chat.filter(function(x){ return x.pid===id; })[0]; if(!m||m.resolved) return;
+  var c=JSON.parse(JSON.stringify(m)); c.resolved=yes?'done':'cancel'; put('chat',c,true);
+  if(!yes){ put('chat',{id:uid(),role:'sys',text:'Cancelled. Nothing changed.',at:Date.now()},true); return; }
+  var rs=runCalls(m.pending||[]);
+  put('chat',{id:uid(),role:'assistant',text:resultText(rs),at:Date.now()},true);
+  setTimeout(scrollEnd,30);
 }
 
 /* ================= GYM ================= */
@@ -6935,7 +7081,7 @@ function restDone(){
 }
 
 /* ================= NEW VERSION AVAILABLE ================= */
-var APP_VERSION='2026-11-20d';
+var APP_VERSION='2026-11-20e';
 function checkUpdate(){
   try{
     if(hosted()||location.protocol!=='https:') return;
@@ -8125,7 +8271,11 @@ function viewCoach(){
     if(m.role==='sys') h+='<div class="msg s">'+esc(m.text)+'</div>';
     else if(m.role==='user') h+='<div class="msg u nt">'+esc(m.text)+'</div>';
     else { var os=optsSplit(m.text), last=m===S.chat[S.chat.length-1];
-      h+='<div class="msg a">'+mdToHtml(os.body)+(os.opts.length&&last?'<div class="chips" style="margin:10px 0 0">'+os.opts.map(function(o){ return '<button data-act="sugg" data-q="'+esc(o[1])+'">'+esc(o[0])+'</button>'; }).join('')+'</div>':'')+'</div>'; }
+      if(m.pending) os.body+='';
+      h+='<div class="msg a">'+mdToHtml(os.body)
+        + (m.pending?(m.resolved?'<div class="hint" style="margin-top:8px">'+(m.resolved==='done'?'✓ Done':'Cancelled')+'</div>'
+            :'<div class="duo" style="margin-top:10px"><button class="btn p" data-act="pend-ok" data-id="'+esc(m.pid)+'">Do it</button><button class="btn" data-act="pend-no" data-id="'+esc(m.pid)+'">Cancel</button></div>'):'')
+        + (os.opts.length&&last?'<div class="chips" style="margin:10px 0 0">'+os.opts.map(function(o){ return '<button data-act="sugg" data-q="'+esc(o[1])+'">'+esc(o[0])+'</button>'; }).join('')+'</div>':'')+'</div>'; }
   });
   if(S.busy) h+='<div class="msg a" id="stream"><p style="color:var(--mut)"><span class="spin"></span>Thinking…</p></div>';
   h+='<div id="end"></div></div>';
@@ -8566,6 +8716,7 @@ document.addEventListener('click',function(ev){
   }
   if(act==='send'){ coachSend(S.draft); return; }
   if(act==='sugg'){ coachSend(t.dataset.q); return; }
+  if(act==='pend-ok'||act==='pend-no'){ pendingDo(t.dataset.id,act==='pend-ok'); render(); return; }
 
   if(act==='ex-side'){
     var sd2=resolveDay(t.dataset.id); if(!sd2) return;
