@@ -992,6 +992,8 @@ var NLD={
 "For example 6 weeks of Strength, then a lighter week, then it starts again. Every workout in the block starts in that mode by itself.":"Bijvoorbeeld 6 weken Kracht, dan een lichtere week, en dan begint het opnieuw. Elke training in het blok start vanzelf in die modus.",
 "During a block every workout starts in the block's mode, and the deload week starts in Recovery mode. You can still change the mode for a single workout.":"Tijdens een blok start elke training in de modus van het blok, en de deloadweek in Herstelmodus. Je kunt de modus voor één training nog steeds wijzigen.",
 "4 weeks":"4 weken","5 weeks":"5 weken","6 weeks":"6 weken","8 weeks":"8 weken",
+"is now on":"staat nu op","is a rest day":"is een rustdag","Heads up:":"Let op:","is closed that day.":"is die dag dicht.","The gym is open":"De sportschool is open","You have a workout in progress today. Finish or discard it first.":"Je hebt vandaag een training bezig. Rond hem eerst af of gooi hem weg.","I need two real dates to move a workout.":"Ik heb twee echte datums nodig om een training te verplaatsen.","already has":"heeft al","to trade them, or clear it first.":"om ze te ruilen, of maak hem eerst leeg.",
+"Only part of that went through, so check the note above: what it says did not happen.":"Maar een deel is gelukt, dus check de melding hierboven: wat daar staat is niet gebeurd.",
 "Language":"Taal","Taal / Language":"Taal / Language",
 "Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
@@ -1105,7 +1107,7 @@ var NLIN=[
  [/\bherstel\s*modus\b|\bherstelmodus\b/g,'recovery mode'],[/\bkracht\s*modus\b|\bkrachtmodus\b/g,'strength mode'],[/\bsnelle\s*modus\b|\bsnelmodus\b/g,'quick mode'],
  [/\bnormale\s*modus\b/g,'normal mode'],[/\b(?:tot\s+)?falen\s*modus\b/g,'failure mode'],[/\bpump\s*modus\b/g,'pump mode'],[/\bcoach\s*modus\b|\bmodi\b/g,'coach mode'],
  [/\bzet (?:op|naar)\b|\bschakel (?:over )?naar\b/g,'switch to'],
- [/\bwissel\s+((?:(?:de\s+)?oefening(?:en)?\s+)?\d{1,2})\s+(?:en|met|om)\s+(\d{1,2})\b/g,'swap $1 and $2'],[/\bverplaats\s+(.+?)\s+(voor|na)\s+(.+)/g,function(m,a,w,b){ return 'move '+a+(w==='voor'?' before ':' after ')+b; }],[/\balleen\b/g,'only'],[/\bis bezet\b|\bbezet\b/g,'is busy'],[/\bmaak\s+(.+?)\s+leeg\b/g,'empty $1'],[/\bleeg\s*maken\b/g,'empty'],
+ [/\bwissel\s+((?:(?:de\s+)?oefening(?:en)?\s+)?\d{1,2})\s+(?:en|met|om)\s+(\d{1,2})\b/g,'swap $1 and $2'],[/\bverplaats\s+(.+?)\s+(voor|na)\s+(.+)/g,function(m,a,w,b){ return 'move '+a+(w==='voor'?' before ':' after ')+b; }],[/\balleen\b/g,'only'],[/\bverplaats\s+(?:de\s+)?training\s+van\s+(\S+)\s+naar\s+(\S+)/g,'move $1 workout to $2'],[/\bis bezet\b|\bbezet\b/g,'is busy'],[/\bmaak\s+(.+?)\s+leeg\b/g,'empty $1'],[/\bleeg\s*maken\b/g,'empty'],
  [/\bvervang\s+(.+?)\s+(?:door|voor|met)\s+(.+)/g,'swap $1 for $2'],[/\bwissel\s+(.+?)\s+(?:voor|met|door)\s+(.+)/g,'swap $1 for $2'],
  [/\bdoe\s+(.+?)\s+in plaats van\s+(.+)/g,'do $1 instead of $2'],[/\bin plaats van\b/g,'instead of'],
  [/\btussen\s+(.+?)\s+en\s+(.+?)\s+(?:voeg\s+)?(.+?)(?:\s+toe)?$/gm,'between $1 and $2 add $3'],
@@ -2050,6 +2052,10 @@ function coachTools(){
     description:'Keep the workout on that date (and its name) but take every exercise out, so the person can add exercises as they go. Use for "make today empty", "clear today\'s workout", "random workout today, I will add stuff". During a workout in progress it removes only exercises with nothing ticked.',
     inputSchema:{type:'object',properties:{date:{type:'string'},name:{type:'string'}}},
     execute:function(a){ return clearWorkout(a); }},
+  { name:'move_workout',
+    description:'Move the whole workout from one date to another (the old date becomes a rest day). Set swap true to trade two days that both have workouts.',
+    inputSchema:{type:'object',properties:{from:{type:'string'},to:{type:'string'},swap:{type:'boolean'}},required:['from','to']},
+    execute:function(a){ return {ok:true,text:moveWorkout(a.from,a.to,a.swap)}; }},
   { name:'remove_workout',
     description:'Clear the planned workout on a date. For a date that only comes from the standing weekly routine, this writes an empty rest day over it.',
     inputSchema:{type:'object',properties:{date:{type:'string',description:'YYYY-MM-DD'}},required:['date']},
@@ -2284,7 +2290,7 @@ function coachSend(text){
   S.draft=''; S.busy=true; S.stream=''; render();
   setTimeout(scrollEnd,30);
   var pm=null, tx=nlIn(text); try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(tx)?null:parseSetMessage(tx); }catch(e){}
-  if(parseSessionTime(tx)||parseBusy(tx)){ coachRules(text); return; }
+  if(parseSessionTime(tx)||parseBusy(tx)||parseMoveWorkout(tx)){ coachRules(text); return; }
   if(pm||parseReorder(tx)||parseClear(tx)){ coachRules(text); return; }                /* exact numbers are logged by the app, not paraphrased by a model */
   if(!S.sample){ if(aiKey()) coachGemini(text); else coachRules(text); return; }
 
@@ -3958,6 +3964,7 @@ function setSessionTime(o){
 }
 /* one-off repair: sentences that were logged as exercises with a clock time as a hold */
 function repairJunkLogs(){
+  (S.days||[]).forEach(function(d){ if(!/^20\d\d-\d\d-\d\d$/.test(String(d.date||''))||isNaN(fromYmd(d.date).getTime())) drop('days',d.id); });
   var bad=/^(?:it|that|i|this|add|we)\b/i;
   finished().forEach(function(s){
     var keep=(s.ex||[]).filter(function(e){
@@ -3967,6 +3974,54 @@ function repairJunkLogs(){
     });
     if(keep.length!==(s.ex||[]).length){ var c=JSON.parse(JSON.stringify(s)); c.ex=keep; put('sessions',c,true); }
   });
+}
+
+/* ---- move a whole workout to another day: "move today's workout to tomorrow" ---- */
+var DAYWORDS=/\b(today|todays|today's|tonight|tomorrow|tomorrows|tomorrow's|yesterday|vandaag|morgen|overmorgen|(?:next |this |on )?(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*|(?:maan|dins|woens|donder|vrij|zater|zon)dag|\d{4}-\d\d-\d\d)\b/g;
+function dayWordDate(k){
+  var t=String(k||'').toLowerCase().replace(/^(on|this) /,'').replace(/'s$|s$/,function(m){ return /^(today|tomorrow)/.test(k)?'':m; }), today=ymd();
+  if(/^\d{4}-\d\d-\d\d$/.test(t)) return t;
+  if(/^(today|todays|tonight|vandaag)/.test(t)) return today;
+  if(/^(tomorrow|morgen)/.test(t)) return shiftYmd(today,1);
+  if(/^overmorgen/.test(t)) return shiftYmd(today,2);
+  if(/^yesterday/.test(t)) return shiftYmd(today,-1);
+  var nl={maan:1,dins:2,woens:3,donder:4,vrij:5,zater:6,zon:0}, w=-1, m=t.match(/(maan|dins|woens|donder|vrij|zater|zon)dag/);
+  if(m) w=nl[m[1]]; else { var en=t.replace(/^next /,'').slice(0,3); w=['sun','mon','tue','wed','thu','fri','sat'].indexOf(en); }
+  if(w<0) return '';
+  var next=/^next /.test(t);
+  for(var i=next?7:0;i<14;i++){ var ds=shiftYmd(today,i); if(fromYmd(ds).getDay()===w) return ds; }
+  return '';
+}
+function parseMoveWorkout(text){
+  var t=String(text||'').toLowerCase();
+  if(!/\b(move|shift|reschedule|push|postpone|verplaats|verschuif|swap|switch|wissel|trade)\b/.test(t)) return null;
+  if(/\d+\s*[x×]\s*\d+/.test(t)) return null;
+  var ds=[]; t.replace(DAYWORDS,function(m){ var d=dayWordDate(m); if(d) ds.push(d); return m; });
+  if(ds.length<2&&/\b(push|postpone)\b/.test(t)&&ds.length===1) ds.push(shiftYmd(ds[0],1));
+  if(ds.length<2||ds[0]===ds[1]) return null;
+  if(/\b(exercise|set|before|after)\b/.test(t)&&!/\b(workout|session|training|day)\b/.test(t)) return null;
+  return {from:ds[0],to:ds[1],swap:/\b(swap|switch|wissel)\b/.test(t)};
+}
+function moveWorkout(from,to,swap){
+  if(!/^\d{4}-\d\d-\d\d$/.test(from||'')||!/^\d{4}-\d\d-\d\d$/.test(to||'')) throw new Error('I need two real dates to move a workout.');
+  var p=plannedFor(from);
+  if(!p||(!(p.exercises||[]).length&&/^rest/i.test(p.name||''))) throw new Error('There is nothing planned on '+niceDate(from)+' to move.');
+  if(from===ymd()&&active()) throw new Error('You have a workout in progress today. Finish or discard it first.');
+  var q=plannedFor(to), qBusy=q&&((q.exercises||[]).length||!/^rest/i.test(q.name||''));
+  if(qBusy&&!swap) throw new Error(niceDate(to)+' already has '+q.name+'. Say "swap '+DOWFULL[fromYmd(from).getDay()].toLowerCase()+' and '+DOWFULL[fromYmd(to).getDay()].toLowerCase()+'" to trade them, or clear it first.');
+  var undo=[], oldF=S.days.filter(function(d){ return d.date===from; })[0], oldT=S.days.filter(function(d){ return d.date===to; })[0];
+  undo.push({coll:'days',id:oldF?oldF.id:'',before:oldF?JSON.parse(JSON.stringify(oldF)):null});
+  undo.push({coll:'days',id:oldT?oldT.id:'',before:oldT?JSON.parse(JSON.stringify(oldT)):null});
+  var nt={id:oldT?oldT.id:uid(),name:p.name,date:to,note:p.note||'',exercises:cloneEx(p.exercises||[]),source:'coach'};
+  var nf=qBusy?{id:oldF?oldF.id:uid(),name:q.name,date:from,note:q.note||'',exercises:cloneEx(q.exercises||[]),source:'coach'}
+              :{id:oldF?oldF.id:uid(),name:'Rest day',date:from,note:'Moved to '+niceDate(to)+'.',exercises:[],source:'coach'};
+  undo[0].id=nf.id; undo[1].id=nt.id;
+  put('days',nt,true); put('days',nf,true);
+  UNDO={label:'move',items:undo};
+  sysMsg((qBusy?'Swapped ':'Moved ')+p.name+' to '+niceDate(to));
+  var closed=!gymDay(fromYmd(to).getDay());
+  return '**'+p.name+'** is now on '+niceDate(to)+(qBusy?', and **'+q.name+'** moved to '+niceDate(from):', and '+niceDate(from)+' is a rest day')+'.'
+    + (closed?' Heads up: '+gym().name+' is closed that day.':' The gym is open '+gymLine(to)+'.')+' Say "undo" to put it back.';
 }
 /* ---- empty a workout but keep it on the calendar: "make sure today's workout is empty" ---- */
 function clearWorkout(o){
@@ -4528,17 +4583,8 @@ function ruleCoach(text){
   }
 
   /* move a workout */
-  if(has('move','swap','shift','reschedule')&&days.length>=2){
-    var from=toDate(days[0]), to=toDate(days[1]), p=plannedFor(from);
-    if(!p||!(p.exercises||[]).length) return 'There is nothing planned on '+niceDate(from)+' to move.';
-    if(busy(to)) return niceDate(to)+' already has a workout. Clear it first, or pick another day.';
-    if(!gymDay(fromYmd(to).getDay())) return gym().name+' is closed on '+niceDate(to)+'.';
-    put('days',{id:uid(),name:p.name,date:to,note:p.note||'',exercises:cloneEx(p.exercises),source:'coach'},true);
-    if(p._virtual) put('days',{id:uid(),name:'Rest day',date:from,note:'Moved to '+niceDate(to)+'.',exercises:[],source:'coach'},true);
-    else drop('days',p.id);
-    sysMsg('Moved '+p.name+' to '+niceDate(to));
-    return '**'+p.name+'** is now on '+niceDate(to)+' (gym open '+gymLine(to)+'), and '+niceDate(from)+' is free.';
-  }
+  var mvw=parseMoveWorkout(text);
+  if(mvw){ try{ return moveWorkout(mvw.from,mvw.to,mvw.swap); }catch(e){ return String(e.message||e); } }
 
   /* an extra session this week */
   if(has('extra','one more','another','additional')&&has('session','workout','time','train','day')){
@@ -4642,6 +4688,7 @@ var ACTION_PROTOCOL=[
  'ACTIONS: followed by a JSON array on that same line. Each item is {"tool":"name","args":{...}}.',
  'Tools and args:',
  '- schedule_workout {date:"YYYY-MM-DD", name, note?, plan}',
+ '- move_workout {from:"YYYY-MM-DD", to:"YYYY-MM-DD", swap?}  ("move today to tomorrow" is this one call, never remove + schedule)',
  '- remove_workout {date:"YYYY-MM-DD"}  (makes it a rest day)',
  '- set_session_time {date?, start?:"HH:MM", end?:"HH:MM"}  (fix when a logged or running workout started/ended; never log a clock time as a set)',
  '- clear_workout {date?, name?}  (keeps the workout but with no exercises, to fill in as you go; pass name to rename it too. "make today empty" is this. schedule_workout always needs at least one exercise line)',
@@ -4662,6 +4709,19 @@ var ACTION_PROTOCOL=[
  'Never claim a change in your reply unless it is in the ACTIONS line. Leave ACTIONS out when nothing changes.'
 ].join('\n');
 var RUNFAIL=0;
+/* tools only ever see real YYYY-MM-DD dates: "tomorrow", "friday" become dates, anything else stops the tool */
+function fixToolDates(a){
+  var o=JSON.parse(JSON.stringify(a||{}));
+  ['date','from','to','start_date','end_date'].forEach(function(k){
+    if(o[k]==null||o[k]==='') return;
+    var v=String(o[k]).trim();
+    if(/^\d{4}-\d\d-\d\d$/.test(v)&&!isNaN(fromYmd(v).getTime())) return;
+    var d=dayWordDate(v.toLowerCase());
+    if(!d) throw new Error('"'+v+'" is not a date I can use.');
+    o[k]=d;
+  });
+  return o;
+}
 function runActions(raw){
   RUNFAIL=0;
   var a=raw.indexOf('['), b=raw.lastIndexOf(']'); if(a<0||b<a) return 0;
@@ -4670,7 +4730,7 @@ function runActions(raw){
   (Array.isArray(list)?list:[]).forEach(function(it){
     var t=tools[it&&it.tool];
     if(!t){ sysMsg('Unknown action skipped: '+String(it&&it.tool)); return; }
-    try{ t.execute(it.args||{}); n++; }catch(e){ RUNFAIL++; sysMsg('Could not '+it.tool+': '+String(e.message||e).slice(0,80)); }
+    try{ var ar=fixToolDates(it.args||{}); t.execute(ar); n++; }catch(e){ RUNFAIL++; sysMsg('Could not '+it.tool+': '+String(e.message||e).slice(0,80)); }
   });
   return n;
 }
@@ -4686,7 +4746,7 @@ function coachGemini(text){
     var t=String(res.text||''), i=t.lastIndexOf('ACTIONS:');
     if(i>=0){ var done=runActions(t.slice(i+8)); t=t.slice(0,i).trim();
       if(RUNFAIL&&!done) t='That did not go through, so nothing changed. The note above says why; try saying it another way.';
-      else if(RUNFAIL) t+='\n\n_Part of that did not go through, see the note above._'; }
+      else if(RUNFAIL) t='Only part of that went through, so check the note above: what it says did not happen.\n\n'+t; }
     settle(t||'Done.');
   }).catch(function(e){
     var fb=''; try{ fb=ruleCoach(text); }catch(x){}
@@ -6875,7 +6935,7 @@ function restDone(){
 }
 
 /* ================= NEW VERSION AVAILABLE ================= */
-var APP_VERSION='2026-11-20c';
+var APP_VERSION='2026-11-20d';
 function checkUpdate(){
   try{
     if(hosted()||location.protocol!=='https:') return;
