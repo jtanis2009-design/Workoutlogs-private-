@@ -323,6 +323,8 @@
   .thumbs{display:flex;gap:7px;margin-bottom:12px}
   .thumbs img{flex:1;min-width:0;height:118px;object-fit:cover;border-radius:12px}
 
+  .rkb{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:800;color:var(--rk);border:1.5px solid var(--rk);background:color-mix(in srgb,var(--rk) 14%,transparent);white-space:nowrap}
+  .chipi{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:var(--card2,rgba(255,255,255,.05));font-size:12.5px}
   .mleg{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin:10px 0 4px;
     font-size:10.5px;font-weight:700;color:var(--mut2)}
   .mleg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
@@ -997,6 +999,9 @@ var NLD={
 "Do it":"Doen","Here is the change. Nothing happens until you tap Do it:":"Dit is de wijziging. Er gebeurt niets tot je op Doen tikt:","Cancelled. Nothing changed.":"Geannuleerd. Er is niets veranderd.","✓ Done":"✓ Gedaan","Cancelled":"Geannuleerd",
 "Done, all":"Klaar, alle","changes went through.":"wijzigingen zijn gelukt.","That did not go through, so nothing changed.":"Dat is niet gelukt, dus er is niets veranderd.","Only part of that went through:":"Maar een deel is gelukt:","Say \"undo\" to take back the last one.":"Zeg \"undo\" om de laatste terug te draaien.",
 "Move the workout on":"Verplaats de training van","Swap the workouts on":"Ruil de trainingen van","a rest day":"een rustdag","Make next week a deload (half the sets)":"Maak volgende week een deload (de helft van de sets)",
+"Strength ranks":"Krachtrangen","Gold":"Goud","how you compare, per muscle":"hoe je je verhoudt, per spier","account, strength ranks, milestones":"account, krachtrangen, mijlpalen","Brand":"Merk","Type of leg press":"Soort leg press","Seated / horizontal":"Zittend / horizontaal","Sled, 45°":"Slede, 45°","Vertical (own progress)":"Verticaal (eigen voortgang)","Compared with other gyms, this machine":"Vergeleken met andere sportscholen voelt deze machine","feels light":"licht","normal":"normaal","feels heavy":"zwaar","Top rank.":"Hoogste rang.","Iron":"IJzer","Bronze":"Brons","Silver":"Zilver","Platinum":"Platina","Diamond":"Diamant","Male":"Man","Female":"Vrouw","Silver lining":"Zilveren randje","Gold standard":"Gouden standaard",
+"Log a few weighted machine sets and your ranks show up here.":"Log een paar sets op machines en je rangen verschijnen hier.","Ranks compare you with lifters of your sex, age and bodyweight. Fill these in first:":"Rangen vergelijken je met sporters van jouw geslacht, leeftijd en gewicht. Vul dit eerst in:",
+"machines at Silver or higher":"machines op Zilver of hoger","machines at Gold or higher":"machines op Goud of hoger","machines at Platinum or higher":"machines op Platina of hoger","machines at Diamond":"machines op Diamant",
 "Language":"Taal","Taal / Language":"Taal / Language",
 "Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
@@ -1008,6 +1013,9 @@ var NLD={
 };
 /* numeric and ordering patterns; applied before phrase matching */
 var NLR=[
+ [/^stronger than about (\d+)% of lifters \((.+)\)/,'sterker dan ongeveer $1% van de sporters ($2)'],[/^your own progress: ([+-]?\d+)% since your first log/,'eigen voortgang: $1% sinds je eerste log'],
+ [/^(Bronze|Silver|Gold|Platinum|Diamond) at about (\S+) kg 1-rep max, e\.g\. (\S+) kg × (\d+)$/,function(m,a,b,c,d){ return ({Bronze:'Brons',Silver:'Zilver',Gold:'Goud',Platinum:'Platina',Diamond:'Diamant'})[a]+' bij ongeveer '+b+' kg 1RM, bijv. '+c+' kg × '+d; }],
+ [/^best: (.+) (Iron|Bronze|Silver|Gold|Platinum|Diamond)$/,function(m,a,b){ return 'beste: '+a+' '+({Iron:'IJzer',Bronze:'Brons',Silver:'Zilver',Gold:'Goud',Platinum:'Platina',Diamond:'Diamant'})[b]; }],
  [/^Today\b/,'Vandaag'],[/\bweeks\)$/,'weken)'],[/^Every (\d+) weeks$/,'Elke $1 weken'],[/\bget (\d+) reps\b/,'haal $1 reps'],[/^Logged (.+) on (\d{4}-\d\d-\d\d)$/,'Gelogd: $1 op $2'],[/\b(\d\d:\d\d) to (\d\d:\d\d)\b/g,'$1 tot $2'],[/(\S) Today\b/g,'$1 vandaag'],[/(\S) Tomorrow\b/g,'$1 morgen'],[/^Tomorrow\b/,'Morgen'],[/^Yesterday\b/,'Gisteren'],
  [/\b(\d+(?:[.,]\d+)?) of (\d+(?:[.,]\d+)?)\b/g,'$1 van $2'],
  [/\bin (\d+) days\b/g,'over $1 dagen'],[/\b(\d+) days ago\b/g,'$1 dagen geleden'],[/\b1 day ago\b/g,'1 dag geleden'],
@@ -2279,6 +2287,7 @@ function coachPreamble(){
   (function(){ var pgp=proteinGap(ymd()); return pgp&&!pgp.done?'PROTEIN TO GO TODAY: '+pgp.gap+' g'+(pgp.opts&&pgp.opts[0]?' (their own foods that would close it: '+pgp.opts.map(function(o){ return o.label+' '+o.protein+' g'; }).join('; ')+')':'')+'.':''; })(),
   'WATER TODAY: '+fmt(((waterOn(ymd())||{}).ml||0)/1000)+' of '+fmt(waterGoal(ymd()).ml/1000)+' L.',
   coachWeekBrief(),
+  (function(){ try{ return ranksBrief(); }catch(e){ return ''; } })(),
   '',
   'EXERCISE GLOSSARY:',
   exGlossary(),
@@ -4900,6 +4909,187 @@ function pendingDo(id,yes){
   setTimeout(scrollEnd,30);
 }
 
+/* ================= STRENGTH RANKS =================
+   Machine averages by bodyweight and sex: Strength Level community standards (strengthlevel.com), 1-rep max in kg.
+   Columns: bodyweight, Beginner, Novice, Intermediate, Advanced, Elite. Those levels are roughly stronger than
+   5 / 20 / 50 / 80 / 95 percent of lifters. Averages mix every brand, so a rank is a rough guide. */
+var RSTD={
+ 'hlp':{name:'horizontal leg press',m:[[50,41,74,118,174,237],[60,53,90,139,199,265],[70,65,105,158,221,291],[80,76,119,175,241,314],[90,87,133,191,260,335],[100,97,145,206,277,355],[120,116,168,233,308,390]],
+        f:[[40,28,53,88,131,181],[50,34,61,98,144,196],[60,39,68,107,155,209],[70,44,75,115,165,220],[80,49,81,123,173,230],[90,53,86,129,181,239],[110,60,95,141,195,254]]},
+ 'slp':{name:'sled leg press (45°)',m:[[50,51,89,141,204,275],[60,71,115,173,242,319],[70,90,139,202,277,359],[80,109,162,230,309,395],[90,127,184,255,338,429],[100,144,205,280,366,460],[120,176,243,324,417,516]],
+        f:[[40,28,58,102,158,223],[50,39,73,122,183,252],[60,49,87,140,204,277],[70,58,100,155,223,299],[80,67,111,170,240,319],[90,76,122,183,256,337],[110,91,142,206,284,369]]},
+ 'chp':{name:'chest press machine',m:[[50,20,37,59,87,119],[60,27,45,70,100,134],[70,33,53,80,112,147],[80,39,61,89,123,160],[90,45,68,98,132,171],[100,50,74,105,142,181],[120,60,87,120,158,200]],
+        f:[[40,7,16,29,46,66],[50,9,19,33,50,71],[60,11,21,36,54,75],[70,12,23,38,57,79],[80,14,25,41,60,82],[90,15,27,43,63,85],[110,17,30,46,67,90]]},
+ 'fly':{name:'machine chest fly',m:[[50,21,36,56,81,108],[60,29,46,68,95,124],[70,36,55,79,107,139],[80,42,63,89,119,152],[90,49,71,98,130,164],[100,55,78,107,140,175],[120,67,92,123,158,195]],
+        f:[[40,7,15,26,41,58],[50,10,19,32,48,66],[60,13,23,37,54,74],[70,15,26,41,59,80],[80,18,30,45,64,85],[90,20,33,49,69,91],[110,25,38,56,77,100]]},
+ 'lpd':{name:'lat pulldown',m:[[50,29,43,60,79,101],[60,35,50,69,90,113],[70,42,57,77,99,123],[80,47,64,85,108,133],[90,52,70,92,116,142],[100,57,76,98,123,150],[120,66,86,110,136,164]],
+        f:[[40,17,26,38,51,66],[50,20,30,42,56,72],[60,23,33,46,60,76],[70,25,36,49,64,81],[80,27,38,52,68,85],[90,29,41,55,71,88],[110,33,45,59,76,94]]},
+ 'row':{name:'seated cable row',m:[[50,26,40,57,78,101],[60,33,49,68,90,115],[70,40,57,78,102,128],[80,47,65,87,112,140],[90,53,72,96,122,150],[100,59,79,104,131,160],[120,70,92,118,147,178]],
+        f:[[40,14,23,35,50,66],[50,18,28,41,56,73],[60,21,32,45,62,79],[70,24,35,50,66,85],[80,26,38,53,71,89],[90,29,41,57,75,94],[110,33,47,63,82,102]]},
+ 'shp':{name:'machine shoulder press',m:[[50,11,25,44,70,100],[60,17,33,56,84,116],[70,23,42,66,97,131],[80,29,50,76,109,145],[90,35,57,86,120,158],[100,41,64,94,130,170],[120,52,78,111,149,191]],
+        f:[[40,4,12,23,38,56],[50,6,14,27,43,62],[60,8,17,30,47,66],[70,9,19,32,50,71],[80,10,21,35,53,74],[90,12,22,37,56,78],[110,14,26,41,61,84]]},
+ 'bic':{name:'machine bicep curl',m:[[50,13,24,39,57,77],[60,18,30,45,65,86],[70,22,35,52,72,95],[80,25,39,57,79,102],[90,29,44,63,85,109],[100,32,48,67,91,116],[120,38,55,76,101,127]],
+        f:[[40,6,12,20,32,45],[50,7,14,23,35,49],[60,8,16,26,38,52],[70,10,17,28,40,55],[80,11,19,30,43,58],[90,12,20,31,45,60],[110,14,23,34,48,64]]},
+ 'tri':{name:'tricep pushdown',m:[[50,10,21,36,55,78],[60,14,26,43,64,89],[70,18,31,50,73,98],[80,22,36,56,80,107],[90,25,41,62,87,115],[100,29,46,67,93,122],[120,35,54,77,105,135]],
+        f:[[40,5,11,20,33,47],[50,7,14,24,38,53],[60,9,17,28,42,59],[70,11,19,31,46,63],[80,12,22,34,50,67],[90,14,24,37,53,71],[110,17,28,42,59,78]]},
+ 'lex':{name:'leg extension',m:[[50,29,49,75,106,142],[60,36,57,85,119,156],[70,42,65,95,130,169],[80,48,72,103,140,180],[90,53,79,111,149,191],[100,58,85,119,158,201],[120,68,97,132,173,218]],
+        f:[[40,16,30,49,73,101],[50,19,34,55,80,109],[60,22,38,59,86,115],[70,24,41,64,91,121],[80,27,44,67,95,126],[90,29,47,71,99,131],[110,33,52,76,106,138]]},
+ 'lcu':{name:'seated leg curl',m:[[50,23,38,58,83,111],[60,29,45,67,94,123],[70,34,52,76,103,134],[80,39,58,83,112,144],[90,44,64,90,120,152],[100,48,69,96,127,161],[120,56,79,107,140,175]],
+        f:[[40,14,25,39,57,77],[50,17,28,43,62,83],[60,19,31,47,67,88],[70,21,34,51,70,93],[80,23,36,53,74,97],[90,25,39,56,77,100],[110,28,42,61,83,106]]}
+};
+/* which average each exercise is compared with; leg press asks which type it is */
+var RMAP={'leg-press':'hlp','chest-press':'chp','pec-deck':'fly','lat-pulldown':'lpd','seated-row':'row','low-row':'row',
+  'shoulder-press':'shp','bicep-machine':'bic','pushdown':'tri','tricep-press':'tri','leg-ext':'lex','leg-curl':'lcu'};
+var RANKS=[['Iron','#7a808c'],['Bronze','#c07a43'],['Silver','#b9c2cf'],['Gold','#e5b73b'],['Platinum','#56d0c3'],['Diamond','#8fb2ff']];
+var RPCT=[0,5,20,50,80,95,99];
+
+/* strength vs a 23–40 year old: rough factors from age-graded lifting tables */
+function ageFactor(a){
+  a=num(a); if(!a) return 1;
+  var T=[[13,.66],[14,.72],[15,.78],[16,.84],[17,.89],[18,.92],[19,.95],[20,.97],[21,.98],[22,.99],[23,1],[40,1],[45,.96],[50,.91],[55,.85],[60,.79],[65,.72],[70,.65],[80,.52]];
+  if(a<=T[0][0]) return T[0][1]; if(a>=80) return .52;
+  for(var i=1;i<T.length;i++) if(a<=T[i][0]){ var p=T[i-1],q=T[i]; return p[1]+(q[1]-p[1])*(a-p[0])/(q[0]-p[0]); }
+  return 1;
+}
+function rankBW(){ var tr=trendWeights(); return tr.length?tr[tr.length-1].trend:num(S.profile.weightKg); }
+function rankSex(){ return S.profile.sex==='f'?'f':S.profile.sex==='m'?'m':''; }
+/* the five thresholds for this machine type, at this bodyweight, sex and age */
+function stdFor(key,bw,sex,age){
+  var tb=RSTD[key]; if(!tb||!bw) return null;
+  var rows=function(s){ var R=tb[s], i; if(bw<=R[0][0]) return R[0].slice(1).map(function(v){ return v*Math.pow(bw/R[0][0],.67); });
+    if(bw>=R[R.length-1][0]){ var L=R[R.length-1]; return L.slice(1).map(function(v){ return v*Math.pow(bw/L[0],.67); }); }
+    for(i=1;i<R.length;i++) if(bw<=R[i][0]){ var p=R[i-1],q=R[i],f=(bw-p[0])/(q[0]-p[0]); return p.slice(1).map(function(v,j){ return v+(q[j+1]-v)*f; }); } };
+  var t=sex?rows(sex):rows('m').map(function(v,j){ return (v+rows('f')[j])/2; }), af=ageFactor(age);
+  return t.map(function(v){ return v*af; });
+}
+function rankScore(v,t){
+  if(!t||!v) return 0;
+  if(v<t[0]) return Math.max(0,v/t[0]);
+  for(var i=0;i<4;i++) if(v<t[i+1]) return i+1+(v-t[i])/(t[i+1]-t[i]);
+  return Math.min(5.99,5+(v-t[4])/t[4]);
+}
+function scorePct(s){ var i=Math.floor(s); if(i>=6) return 99; return Math.round(RPCT[i]+(RPCT[i+1]-RPCT[i])*(s-i)); }
+function machType(name){
+  var lb=exLib(name); if(!lb) return '';
+  var m=machOf(name);
+  if(lb.id==='leg-press') return m.mtype==='sled'?'slp':m.mtype==='vert'?'':'hlp';
+  return RMAP[lb.id]||'';
+}
+var BRAND_FEEL=[['light','feels light',.9],['',' normal',1],['heavy','feels heavy',1.1]];
+function feelOf(name){ var f=machOf(name).feel||''; return (BRAND_FEEL.filter(function(x){ return x[0]===f; })[0]||BRAND_FEEL[1])[2]; }
+
+/* best estimated 1-rep max per exercise: the last 12 weeks, or older if that is all there is */
+var RKC={k:'',v:null};
+function rankData(){
+  var fin=finished(), ck=fin.length+':'+(fin[0]?fin[0].finishedAt:0)+':'+rankBW()+':'+rankSex()+':'+S.profile.age+':'+JSON.stringify(S.profile.mach||{});
+  if(RKC.k===ck&&RKC.v) return RKC.v;
+  var cut=Date.now()-84*864e5, ex={};
+  fin.slice().sort(function(a,b){ return a.finishedAt-b.finishedAt; }).forEach(function(s){
+    (s.ex||[]).forEach(function(e){
+      if(e.kind==='protocol'||isTimed(e)) return;
+      var lb=exLib(e.name); if(!lb||lb.load!=='kg') return;
+      var k=lb.id, o=ex[k]||(ex[k]={id:k,name:lb.name,logName:e.name,first:0,best:0,bestOld:0,bestSet:null});
+      (e.sets||[]).forEach(function(x){ if(!x.done) return; var v=e1rm(e,x); if(!v) return;
+        if(!o.first) o.first=v;
+        if(s.finishedAt>=cut){ if(v>o.best){ o.best=v; o.bestSet={kg:num(x.kg),reps:num(x.reps)}; } }
+        else if(v>o.bestOld) o.bestOld=v; });
+      o.logName=e.name;
+    });
+  });
+  var bw=rankBW(), sex=rankSex(), age=S.profile.age, out=[];
+  Object.keys(ex).forEach(function(k){
+    var o=ex[k], v=o.best||o.bestOld; if(!v) return;
+    o.old=!o.best; o.e1=v*feelOf(o.logName);
+    var ty=machType(o.logName), m=machOf(o.logName);
+    o.brand=m.brand||''; o.type=ty;
+    if(ty&&bw){ o.t=stdFor(ty,bw,sex,age); o.score=rankScore(o.e1,o.t); o.pct=scorePct(o.score); o.how='avg'; o.vs=RSTD[ty].name; }
+    else {                                              /* no average for this one: rank on your own progress */
+      var g=o.first?v/o.first-1:0, T=[0,.15,.3,.5,.75];
+      o.t=T.map(function(x){ return o.first*(1+x)*feelOf(o.logName); });
+      o.score=g<0?1:Math.min(5.99,1+ (g<.15?g/.15:g<.3?1+(g-.15)/.15:g<.5?2+(g-.3)/.2:g<.75?3+(g-.5)/.25:4+Math.min(.99,(g-.75)/.75)));
+      o.how='self'; o.gain=g;
+    }
+    o.rank=Math.min(5,Math.floor(o.score));
+    out.push(o);
+  });
+  out.sort(function(a,b){ return b.score-a.score; });
+  RKC={k:ck,v:out}; return out;
+}
+/* each muscle: the average of the exercises that train it directly */
+function muscleRanks(){
+  var acc={};
+  rankData().forEach(function(o){ if(o.how!=='avg') return;            /* own-progress ranks are not a comparison, so they stay off the map */
+    var w=musclesFor(o.logName)||musclesFor(o.name)||{};
+    Object.keys(w).forEach(function(m){ if(w[m]<.8) return; (acc[m]=acc[m]||[]).push(o.score); }); });
+  var r={}; Object.keys(acc).forEach(function(m){ var a=acc[m]; r[m]=a.reduce(function(x,y){ return x+y; },0)/a.length; });
+  return r;
+}
+function rankBadge(i,small){ var R=RANKS[i]; return '<span class="rkb" style="--rk:'+R[1]+(small?';font-size:11px;padding:1px 7px':'')+'">'+R[0]+'</span>'; }
+/* what it takes to reach the next rank, as a set you could actually do */
+function nextRankText(o){
+  if(o.rank>=5||!o.t) return 'Top rank.';
+  var need=o.t[o.rank]/feelOf(o.logName), reps=8, kg=need/(1+reps/30), st=machStep(o.logName)||2.5;
+  kg=Math.ceil(kg/st)*st;
+  return RANKS[o.rank+1][0]+' at about '+fmt(Math.round(need))+' kg 1-rep max, e.g. '+fmt(kg)+' kg × '+reps;
+}
+function rankStats(){
+  var d=rankData();
+  return {rankGold:d.filter(function(o){ return o.how==='avg'&&o.rank>=3; }).length,
+          rankPlat:d.filter(function(o){ return o.how==='avg'&&o.rank>=4; }).length,
+          rankDiamond:d.filter(function(o){ return o.how==='avg'&&o.rank>=5; }).length,
+          rankSilver:d.filter(function(o){ return o.how==='avg'&&o.rank>=2; }).length};
+}
+function ranksBody(){
+  var p=S.profile, bw=rankBW(), d=rankData(), h='';
+  if(!rankSex()||!num(p.age)||!bw){
+    h+='<div class="hint" style="margin:0 0 8px">Ranks compare you with lifters of your sex, age and bodyweight. Fill these in first:</div>';
+    if(!rankSex()) h+='<div class="chips" style="margin:0 0 8px">'+[['m','Male'],['f','Female']].map(function(o){ return '<button data-act="pr-sex" data-v="'+o[0]+'">'+o[1]+'</button>'; }).join('')+'</div>';
+    if(!num(p.age)||!bw) h+='<div class="duo">'
+      + (!num(p.age)?'<div class="fld"><label>Age</label><input data-fkey="rka" data-in="pr-age" type="text" inputmode="numeric" value=""></div>':'')
+      + (!bw?'<div class="fld"><label>Weight (kg)</label><input data-fkey="rkw" data-in="pr-weight" type="text" inputmode="decimal" value=""></div>':'')+'</div>';
+    if(!d.length) return h;
+  }
+  if(!d.length) return h+'<div class="hint" style="margin:0">Log a few weighted machine sets and your ranks show up here.</div>';
+  var mr=muscleRanks();
+  h+=bodySVG(function(m){ return mr[m]!=null?RANKS[Math.min(5,Math.floor(mr[m]))][1]:'#262b38'; });
+  h+='<div class="mleg">'+RANKS.map(function(r){ return '<span><i style="background:'+r[1]+'"></i>'+r[0]+'</span>'; }).join('')+'</div>';
+  var ms=Object.keys(mr).sort(function(a,b){ return mr[b]-mr[a]; });
+  if(ms.length) h+='<div class="chips" style="margin:8px 0 4px">'+ms.map(function(m){ return '<span class="chipi">'+esc(MNAME[m]||m)+' '+rankBadge(Math.min(5,Math.floor(mr[m])),1)+'</span>'; }).join('')+'</div>';
+  d.forEach(function(o,i){
+    var open=S.rkOpen===o.id, m=machOf(o.logName);
+    h+='<div style="padding:11px 0;border-top:1px solid var(--line)">'
+      + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center" data-act="rk-open" data-id="'+o.id+'">'
+      + '<div style="min-width:0"><b>'+esc(o.name)+'</b>'+(o.brand?' <span style="color:var(--mut2);font-size:12px">'+esc(o.brand)+'</span>':'')
+      + '<div style="font-size:12px;color:var(--mut2)">'
+      + (o.how==='avg'?'stronger than about '+o.pct+'% of lifters ('+esc(o.vs)+')':'your own progress: '+(o.gain>=0?'+':'')+Math.round(o.gain*100)+'% since your first log')
+      + (o.old?' · from an older workout':'')+'</div></div>'+rankBadge(o.rank)+'</div>'
+      + '<div style="font-size:12px;color:var(--mut2);margin-top:3px">'+esc(nextRankText(o))+'</div>';
+    if(open){
+      h+='<div class="fld" style="margin-top:8px"><label>Brand</label><input data-fkey="rkb'+i+'" data-in="rk-brand" data-n="'+esc(o.logName)+'" value="'+esc(m.brand||'')+'" placeholder="e.g. Technogym" list="rk-brands"></div>';
+      if(o.id==='leg-press') h+='<div style="font-size:12px;color:var(--mut2);margin:8px 0 4px">Type of leg press</div><div class="chips" style="margin:0">'
+        + [['','Seated / horizontal'],['sled','Sled, 45°'],['vert','Vertical (own progress)']].map(function(x){ return '<button class="'+((m.mtype||'')===x[0]?'on':'')+'" data-act="rk-type" data-n="'+esc(o.logName)+'" data-v="'+x[0]+'">'+x[1]+'</button>'; }).join('')+'</div>';
+      h+='<div style="font-size:12px;color:var(--mut2);margin:8px 0 4px">Compared with other gyms, this machine</div><div class="chips" style="margin:0">'
+        + BRAND_FEEL.map(function(x){ return '<button class="'+((m.feel||'')===x[0]?'on':'')+'" data-act="rk-feel" data-n="'+esc(o.logName)+'" data-v="'+x[0]+'">'+x[1].trim()+'</button>'; }).join('')+'</div>'
+        + '<div class="hint" style="margin-top:6px">"Feels heavy" counts your weights 10% higher, "feels light" 10% lower.</div>';
+    }
+    h+='</div>';
+  });
+  var brands={}; Object.keys(S.profile.mach||{}).forEach(function(k){ var b=(S.profile.mach[k]||{}).brand; if(b) brands[b]=1; });
+  ['Technogym','Life Fitness','Matrix','Hammer Strength','Gym80','Panatta','Precor','Cybex','Nautilus','Star Trac'].forEach(function(b){ brands[b]=1; });
+  h+='<datalist id="rk-brands">'+Object.keys(brands).map(function(b){ return '<option value="'+esc(b)+'">'; }).join('')+'</datalist>';
+  h+='<div class="hint" style="margin-top:10px">Tap a machine to set its brand and type. Ranks use your best estimated 1-rep max from the last 12 weeks, compared with Strength Level averages for your sex, age ('+esc(String(num(p.age)||'?'))+') and bodyweight ('+fmt(Math.round(bw*10)/10)+' kg). Those averages mix every brand, so a rank can be a tier off. Machines with no average rank on your own progress.</div>';
+  return h;
+}
+function ranksSub(){
+  var d=rankData().filter(function(o){ return o.how==='avg'; }); if(!d.length) return 'how you compare, per muscle';
+  var top=d[0]; return 'best: '+top.name+' '+RANKS[top.rank][0];
+}
+function ranksBrief(){
+  var d=rankData(); if(!d.length) return '';
+  return 'STRENGTH RANKS (rough, vs Strength Level averages for their sex/age/bodyweight; tiers Iron<Bronze<Silver<Gold<Platinum<Diamond): '
+    + d.slice(0,10).map(function(o){ return o.name+' '+RANKS[o.rank][0]+(o.how==='self'?' (own progress)':' (~'+o.pct+'th percentile)'); }).join('; ')+'.';
+}
+
 /* ================= GYM ================= */
 /* seeded from the listed hours for B-Fit Middelharnis; editable, because gyms change them */
 var GYM_DEFAULT={name:'B-Fit Middelharnis',hours:{
@@ -5093,7 +5283,11 @@ var TITLES=[
  {id:'t19',name:'Heavyweight',need:{k:'topSet',n:150}},
  {id:'t20',name:'Grinder',need:{k:'hours',n:50}},
  {id:'t21',name:'Iron year',need:{k:'months',n:12}},
- {id:'t22',name:'Check-in champ',need:{k:'checkins',n:12}}
+ {id:'t22',name:'Check-in champ',need:{k:'checkins',n:12}},
+ {id:'t23',name:'Silver lining',need:{k:'rankSilver',n:3}},
+ {id:'t24',name:'Gold standard',need:{k:'rankGold',n:3}},
+ {id:'t25',name:'Platinum',need:{k:'rankPlat',n:1}},
+ {id:'t26',name:'Diamond',need:{k:'rankDiamond',n:1}}
 ];
 function applyTheme(){
   var ms=milestones();
@@ -5250,7 +5444,7 @@ function weeksOnTarget(){
 var MSC={t:0,v:null};
 function milestones(){
   if(MSC.v&&Date.now()-MSC.t<400) return MSC.v;
-  MSC.v=milestonesRaw(); MSC.t=Date.now(); return MSC.v;
+  MSC.v=milestonesRaw(); try{ Object.assign(MSC.v,rankStats()); }catch(e){} MSC.t=Date.now(); return MSC.v;
 }
 function milestonesRaw(){
   var fin=finished();
@@ -5291,7 +5485,8 @@ var NEED_LABEL={sessions:'workouts logged',streak:'weeks in a row',onTarget:'wee
   bestWeek:'kg in a single week',topSet:'kg on a single set',foodDays:'days of food logged',
   weighIns:'weigh-ins',checkins:'weekly check-ins',prs:'PRs set',earlyBird:'workouts started before 9:00',
   nightOwl:'workouts started after 20:00',hours:'hours trained',cardioMin:'minutes of cardio',months:'months with a workout',
-  waterDays:'days you hit your water goal',measures:'measurement days',meals:'meals logged',volume:'kg lifted in total'};
+  waterDays:'days you hit your water goal',measures:'measurement days',meals:'meals logged',volume:'kg lifted in total',
+  rankSilver:'machines at Silver or higher',rankGold:'machines at Gold or higher',rankPlat:'machines at Platinum or higher',rankDiamond:'machines at Diamond'};
 function unlocked(c,ms){ return !c.need || (ms[c.need.k]||0)>=c.need.n; }
 function unlockList(ms){
   var L=[];
@@ -5461,6 +5656,7 @@ function viewYouInner(){
   h+=panel('body','Goals and body',
     (num(S.profile.calGoal)?num(S.profile.calGoal)+' kcal a day':'no calorie goal yet'),profileBody);
 
+  h+=panel('ranks','Strength ranks',ranksSub(),ranksBody);
   var allU=unlockList(ms), gotU=allU.filter(function(u){ return u.ok; }).length;
   h+=panel('miles','Milestones',gotU+' of '+allU.length+' unlocked',function(){
     var b='<div class="hint" style="margin:0 0 6px">Closest to unlocking:</div>';
@@ -7081,7 +7277,7 @@ function restDone(){
 }
 
 /* ================= NEW VERSION AVAILABLE ================= */
-var APP_VERSION='2026-11-20e';
+var APP_VERSION='2026-11-20f';
 function checkUpdate(){
   try{
     if(hosted()||location.protocol!=='https:') return;
@@ -7160,7 +7356,7 @@ function exportCSV(){
 /* ================= YOU TAB IN FOUR GROUPS ================= */
 var YOUG=null;
 var YOU_GROUPS=[
- ['me','Profile','account and milestones',['acct','miles']],
+ ['me','Profile','account, strength ranks, milestones',['acct','ranks','miles']],
  ['body','Body and food','goals, measurements, photos',['body','meas','photos']],
  ['coach','Coach and looks','character, looks, colours, titles, home screen',['coach','look','home']],
  ['app','App and data','settings, backups, gym, Garmin',['set','move','garmin']]
@@ -7249,6 +7445,7 @@ function exSettingsHTML(e,ei){
     + '<div class="fld"><label>Rep range</label><input data-fkey="mg'+ei+'" data-in="mach-reps" data-ei="'+ei+'" value="'+esc(m.reps||'')+'" placeholder="'+esc((e.target&&e.target.reps)||'8-10')+' (plan)"></div></div>'
     + '<div style="font-size:12px;color:var(--mut2);margin:10px 0 4px">Set style</div><div class="chips" style="margin:0">'
     + SET_STYLES.map(function(s){ return '<button class="'+((m.style||'')===s[0]?'on':'')+'" data-act="mach-style" data-ei="'+ei+'" data-v="'+s[0]+'">'+esc(s[1])+'</button>'; }).join('')+'</div>'
+    + '<div class="fld" style="margin-top:10px"><label>Brand</label><input data-fkey="mb'+ei+'" data-in="mach-brand" data-ei="'+ei+'" value="'+esc(m.brand||'')+'" placeholder="e.g. Technogym"></div>'
     + '<div class="fld" style="margin-top:10px"><label>When it is busy, my swaps (in order, commas)</label><input data-fkey="ma'+ei+'" data-in="mach-alts" data-ei="'+ei+'" value="'+esc(m.alts||'')+'" placeholder="e.g. Hack Squat, Leg Extension"></div>'
     + '<div class="hint" style="margin-top:6px">These settings belong to this exercise and come back every time it is in a workout.</div>'
     + '<button class="lnk" data-act="mach-done">Done</button></div>';
@@ -8651,6 +8848,9 @@ document.addEventListener('click',function(ev){
   if(act==='lock-info'){ var lk=t.dataset.k, ms0=milestones(); toast('Unlocks at '+fmt(+t.dataset.n)+' '+(NEED_LABEL[lk]||lk)+' (you have '+fmt(ms0[lk]||0)+')'); return; }
   if(act==='mach-edit'){ S.machEdit=parseInt(t.dataset.ei,10); render(); return; }
   if(act==='mach-done'){ S.machEdit=null; render(); return; }
+  if(act==='rk-open'){ S.rkOpen=S.rkOpen===t.dataset.id?null:t.dataset.id; render(); return; }
+  if(act==='rk-type'){ setMach(t.dataset.n,{mtype:t.dataset.v}); render(); return; }
+  if(act==='rk-feel'){ setMach(t.dataset.n,{feel:t.dataset.v}); render(); return; }
   if(act==='mach-style'){ var ms0=(active()||{ex:[]}).ex[parseInt(t.dataset.ei,10)]; if(ms0) setMach(ms0.name,{style:t.dataset.v}); render(); return; }
   if(act==='ygrp'){ toggleYouGroup(t.dataset.g); render(); return; }
   if(act==='pick-base'){ saveProfile({base:t.dataset.v}); applyBase(); render(); return; }
@@ -8829,7 +9029,8 @@ function inputMain(ev){
   var kind=el.dataset['in'], v=el.value;
 
   if(kind.indexOf('mv-')===0&&mvInput(kind,el)) return;
-  if(/^mach-(set|step|rest|reps|alts)$/.test(kind)){ var me=(active()||{ex:[]}).ex[parseInt(el.dataset.ei,10)]; if(me){ var pt={}; var f=kind.slice(5); pt[f]=f==='step'||f==='rest'?num(v):v; setMach(me.name,pt); } return; }
+  if(kind==='rk-brand'){ setMach(el.dataset.n,{brand:String(v).trim()}); return; }
+  if(/^mach-(set|step|rest|reps|alts|brand)$/.test(kind)){ var me=(active()||{ex:[]}).ex[parseInt(el.dataset.ei,10)]; if(me){ var pt={}; var f=kind.slice(5); pt[f]=f==='step'||f==='rest'?num(v):v; setMach(me.name,pt); } return; }
   if(kind==='dt-date'){ S.dtDate=v; return; }
   if(kind==='dt-name'){ S.dtName=v; return; }
   if(kind==='by-prot'||kind==='by-kcal'){ S.food[kind]=v; setByMacro(kind,v); render(); return; }
