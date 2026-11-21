@@ -1002,6 +1002,7 @@ var NLD={
 "Strength ranks":"Krachtrangen","Gold":"Goud","how you compare, per muscle":"hoe je je verhoudt, per spier","account, strength ranks, milestones":"account, krachtrangen, mijlpalen","Brand":"Merk","Type of leg press":"Soort leg press","Seated / horizontal":"Zittend / horizontaal","Sled, 45°":"Slede, 45°","Vertical (own progress)":"Verticaal (eigen voortgang)","Compared with other gyms, this machine":"Vergeleken met andere sportscholen voelt deze machine","feels light":"licht","normal":"normaal","feels heavy":"zwaar","Top rank.":"Hoogste rang.","Iron":"IJzer","Bronze":"Brons","Silver":"Zilver","Platinum":"Platina","Diamond":"Diamant","Male":"Man","Female":"Vrouw","Silver lining":"Zilveren randje","Gold standard":"Gouden standaard",
 "Log a few weighted machine sets and your ranks show up here.":"Log een paar sets op machines en je rangen verschijnen hier.","Ranks compare you with lifters of your sex, age and bodyweight. Fill these in first:":"Rangen vergelijken je met sporters van jouw geslacht, leeftijd en gewicht. Vul dit eerst in:",
 "machines at Silver or higher":"machines op Zilver of hoger","machines at Gold or higher":"machines op Goud of hoger","machines at Platinum or higher":"machines op Platina of hoger","machines at Diamond":"machines op Diamant",
+"Caffeine":"Cafeïne","Caffeine today":"Cafeïne vandaag","Espresso":"Espresso","Coffee":"Koffie","Big coffee":"Grote koffie","Black tea":"Zwarte thee","Green tea":"Groene thee","Energy drink":"Energiedrank","Caffeine pill":"Cafeïnepil","Other (mg)":"Anders (mg)","Bedtime":"Bedtijd","Type the mg first":"Typ eerst de mg",
 "Language":"Taal","Taal / Language":"Taal / Language",
 "Abs is the muscle group, not one exercise.":"Buikspieren is de spiergroep, geen oefening.","Abdominals (the B-Fit machine),":"Abdominals (de B-Fit-machine),",
 "Which one did you mean?":"Welke bedoelde je?","Which one should go in?":"Welke moet erin?",
@@ -1013,6 +1014,7 @@ var NLD={
 };
 /* numeric and ordering patterns; applied before phrase matching */
 var NLR=[
+ [/^In you now: about (\d+) mg · at bedtime \((.+)\): (\d+) mg$/,'Nu in je lijf: ongeveer $1 mg · bij bedtijd ($2): $3 mg'],[/^For good sleep, no coffee after about (\S+)\. Bedtime:/,'Voor goed slapen geen koffie na ongeveer $1. Bedtijd:'],[/^Over the daily limit/,'Boven de daglimiet'],
  [/^stronger than about (\d+)% of lifters \((.+)\)/,'sterker dan ongeveer $1% van de sporters ($2)'],[/^your own progress: ([+-]?\d+)% since your first log/,'eigen voortgang: $1% sinds je eerste log'],
  [/^(Bronze|Silver|Gold|Platinum|Diamond) at about (\S+) kg 1-rep max, e\.g\. (\S+) kg × (\d+)$/,function(m,a,b,c,d){ return ({Bronze:'Brons',Silver:'Zilver',Gold:'Goud',Platinum:'Platina',Diamond:'Diamant'})[a]+' bij ongeveer '+b+' kg 1RM, bijv. '+c+' kg × '+d; }],
  [/^best: (.+) (Iron|Bronze|Silver|Gold|Platinum|Diamond)$/,function(m,a,b){ return 'beste: '+a+' '+({Iron:'IJzer',Bronze:'Brons',Silver:'Zilver',Gold:'Goud',Platinum:'Platina',Diamond:'Diamant'})[b]; }],
@@ -2172,6 +2174,13 @@ function coachTools(){
     inputSchema:{type:'object',properties:{ml:{type:'string'}},required:['ml']},
     execute:function(a){ var m=num(a.ml); if(!(m>0&&m<=5000)) throw new Error('Give ml between 1 and 5000'); var t2=addWater(Math.round(m),ymd()); return {ok:true,today_ml:t2,goal_ml:waterGoal(ymd()).ml}; }},
 
+  { name:'log_caffeine',
+    description:'Log caffeine they had today: give mg if they said it, otherwise the drink (espresso, coffee, mug, latte, tea, green, cola, redbull, monster, energy, pre, pill) and how many.',
+    inputSchema:{type:'object',properties:{mg:{type:'string'},drink:{type:'string',enum:CAF_DRINKS.map(function(x){ return x[0]; })},count:{type:'string'}}},
+    execute:function(a){ var dr=CAF_DRINKS.filter(function(x){ return x[0]===a.drink; })[0], n=Math.max(1,num(a.count)||1), mg=num(a.mg)||(dr?dr[2]*n:0);
+      if(!mg) throw new Error('Say which drink or how many mg');
+      var st=addCaf(mg,dr?(n>1?n+'× ':'')+dr[1]:'Caffeine',ymd()); return {ok:true,text:st,today_mg:cafTotal(ymd())}; }},
+
   { name:'log_measurements',
     description:'Save body measurements for today in cm (waist, chest, arm, thigh, hips, neck) and body fat % (bf). Only include what they gave.',
     inputSchema:{type:'object',properties:{waist:{type:'string'},chest:{type:'string'},arm:{type:'string'},thigh:{type:'string'},hips:{type:'string'},neck:{type:'string'},bf:{type:'string'}}},
@@ -2286,6 +2295,7 @@ function coachPreamble(){
   measBrief(),
   (function(){ var pgp=proteinGap(ymd()); return pgp&&!pgp.done?'PROTEIN TO GO TODAY: '+pgp.gap+' g'+(pgp.opts&&pgp.opts[0]?' (their own foods that would close it: '+pgp.opts.map(function(o){ return o.label+' '+o.protein+' g'; }).join('; ')+')':'')+'.':''; })(),
   'WATER TODAY: '+fmt(((waterOn(ymd())||{}).ml||0)/1000)+' of '+fmt(waterGoal(ymd()).ml/1000)+' L.',
+  (function(){ try{ return cafBrief(); }catch(e){ return ''; } })(),
   coachWeekBrief(),
   (function(){ try{ return ranksBrief(); }catch(e){ return ''; } })(),
   '',
@@ -2870,6 +2880,7 @@ function viewFood(){
     + '</div></div></div>';
 
   h+=waterCard(d);
+  try{ h+=cafCard(d); }catch(e){}
   h+=gapCard(d);
   var wToday=S.weights.filter(function(w){ return w.date===d; })[0];
   if(wToday&&!S.food.wEdit) h+='<div class="hint" style="margin:-4px 2px 12px">Weighed in at <b>'+fmt(num(wToday.kg))+' kg</b>'
@@ -4511,6 +4522,8 @@ function ruleCoach(text){
   if(/\b(wrapped|year recap|year in review|my year|jaaroverzicht)\b/.test(lt)) return recapText(recapDefaultYear());
   var bz=parseBusy(text);
   if(bz) return busyReply(bz);
+  var pcf=parseCaf(text);
+  if(pcf) return cafReply(pcf);
   var stm=parseSessionTime(text);
   if(stm){ try{ return setSessionTime(stm); }catch(e){ return String(e.message||e); } }
   var cl=parseClear(text);
@@ -4714,6 +4727,7 @@ var ACTION_PROTOCOL=[
  '- log_body_weight {kg, date?}',
  '- make_deload {undo?}',
  '- log_water {ml}',
+ '- log_caffeine {mg | drink, count}',
  '- log_measurements {waist?, chest?, arm?, thigh?, hips?, neck?, bf?}  (cm, bf in %)',
  '- set_mode {mode: normal|failure|recovery|strength|pump|quick}',
  '- undo_last_change {}',
@@ -4750,7 +4764,7 @@ function runActions(raw){
 }
 /* ================= COACH: Gemini proposes, the app shows it, you confirm ================= */
 /* logging what you did is instant; anything that changes your plan waits for "Do it" */
-var INSTANT_TOOLS={log_sets:1,log_body_weight:1,log_water:1,log_measurements:1,undo_last_change:1,set_mode:1,set_session_time:1,get_exercise_history:1};
+var INSTANT_TOOLS={log_sets:1,log_body_weight:1,log_water:1,log_caffeine:1,log_measurements:1,undo_last_change:1,set_mode:1,set_session_time:1,get_exercise_history:1};
 var READ_TOOLS={get_exercise_history:1};
 
 /* which part of the app answers a message: exact things go to the app's own rules, the rest to Gemini */
@@ -4759,6 +4773,7 @@ function routeOf(text){
   try{ if(parseSessionTime(tx)) return 'time'; }catch(e){}
   try{ if(parseBusy(tx)) return 'busy'; }catch(e){}
   try{ if(parseMoveWorkout(tx)) return 'move'; }catch(e){}
+  try{ if(parseCaf(tx)) return 'caf'; }catch(e){}
   try{ if(parseReorder(tx)) return 'reorder'; }catch(e){}
   try{ if(parseClear(tx)) return 'clear'; }catch(e){}
   var pm=null; try{ pm=/\b(swap|replace|switch|instead of|remove|drop|move|between|after|before)\b/i.test(tx)?null:parseSetMessage(tx); }catch(e){}
@@ -4818,6 +4833,7 @@ function describeCall(c){
   if(n==='log_sets') return 'Log '+(a.exercise||'?')+': '+(a.sets||'');
   if(n==='log_body_weight') return 'Log body weight '+(a.kg||'?')+' kg';
   if(n==='log_water') return 'Log '+(a.ml||'?')+' ml water';
+  if(n==='log_caffeine') return 'Log caffeine'+(a.mg?' '+a.mg+' mg':a.drink?': '+(a.count&&num(a.count)>1?a.count+'× ':'')+a.drink:'');
   if(n==='set_mode') return 'Switch coach mode to '+(a.mode||'?');
   if(n==='set_session_time') return 'Set the workout time'+(a.start?' start '+a.start:'')+(a.end?' end '+a.end:'');
   if(n==='undo_last_change') return 'Undo the last change';
@@ -7277,7 +7293,7 @@ function restDone(){
 }
 
 /* ================= NEW VERSION AVAILABLE ================= */
-var APP_VERSION='2026-11-20f';
+var APP_VERSION='2026-11-21a';
 function checkUpdate(){
   try{
     if(hosted()||location.protocol!=='https:') return;
@@ -7611,7 +7627,7 @@ function blockBody(){
 
 /* ================= TODAY LAYOUT ================= */
 var TODAY_CARDS=[['next','Today\'s workout or status',true],['week','This week',true],['stats','Week numbers',true],['tip','Coach tip',true],
-  ['protein','Protein left today',false],['water','Water today',false],['gym','Gym opening hours',true],['body','Body weight trend',true],['coming','Coming up',true]];
+  ['protein','Protein left today',false],['water','Water today',false],['caf','Caffeine today',false],['gym','Gym opening hours',true],['body','Body weight trend',true],['coming','Coming up',true]];
 function todayLayout(){
   var saved=S.profile.todayLayout||[], out=[], seen={};
   saved.forEach(function(x){ var d=TODAY_CARDS.filter(function(c){ return c[0]===x.id; })[0]; if(d&&!seen[x.id]){ seen[x.id]=1; out.push({id:x.id,on:x.on!==false,label:d[1]}); } });
@@ -7682,6 +7698,104 @@ function waterCard(d){
     + '<button class="btn g" data-act="water" data-ml="-250"'+(ml?'':' disabled')+'>−<small>undo glass</small></button></div>'
     + (g.train?'<div class="hint" style="margin-top:6px">+0.5 L on training days for what you sweat out.</div>':'')
     + '</div></div>';
+}
+
+/* ================= CAFFEINE =================
+   Kept on the day's water entry (field caf: [[time, mg, label], ...]) so it syncs and backs up with it.
+   Limits: EFSA 2015. Adults up to 400 mg a day and 200 mg at once; under 18, 3 mg per kg a day.
+   Caffeine halves in the body roughly every 5 hours (3 to 7 for most people). */
+var CAF_DRINKS=[
+ ['espresso','Espresso',63,'single shot'],['coffee','Coffee',90,'cup, 200 ml'],['mug','Big coffee',140,'mug, 350 ml'],
+ ['latte','Cappuccino / latte',63,'one shot'],['tea','Black tea',40,'cup'],['green','Green tea',30,'cup'],
+ ['cola','Cola',32,'can, 330 ml'],['redbull','Red Bull',80,'can, 250 ml'],['monster','Monster',160,'can, 500 ml'],
+ ['energy','Energy drink',80,'250 ml'],['pre','Pre-workout',200,'1 scoop, check the tub'],['pill','Caffeine pill',200,'tablet']
+];
+var CAF_HALF=5;
+function cafLog(d){ var w=waterOn(d||foodDate()); return (w&&w.caf)||[]; }
+function cafTotal(d){ return cafLog(d).reduce(function(s,x){ return s+num(x[1]); },0); }
+function cafLimit(){
+  var a=num(S.profile.age), kg=bodyState().kg||num(S.profile.weightKg);
+  if(a&&a<18) return {day:kg?Math.round(kg*3/10)*10:200,once:kg?Math.round(kg*3/10)*10:200,teen:true};
+  return {day:400,once:200,teen:false};
+}
+function cafBed(){ var b=String(S.profile.bedtime||'23:00'); return /^\d{1,2}:\d\d$/.test(b)?b:'23:00'; }
+/* how much is still in the body at a moment, from today's and yesterday's drinks */
+function cafLeft(at){
+  at=at||Date.now(); var L=cafLog(ymd()).concat(cafLog(shiftYmd(ymd(),-1)));
+  return Math.round(L.reduce(function(s,x){ var h=(at-x[0])/36e5; return h<0?s:s+num(x[1])*Math.pow(.5,h/CAF_HALF); },0));
+}
+function bedAt(){ var p=cafBed().split(':'), d=new Date(); d.setHours(+p[0],+p[1],0,0); if(d.getTime()<Date.now()-3*36e5) d.setDate(d.getDate()+1); return d.getTime(); }
+/* the last time a coffee (90 mg) would still be under 50 mg at bedtime */
+function cafCutoff(){ var h=CAF_HALF*Math.log(90/50)/Math.log(2), t=new Date(bedAt()-h*36e5); return pad2(t.getHours())+':'+pad2(t.getMinutes()); }
+function pad2(n){ return (n<10?'0':'')+n; }
+function addCaf(mg,label,d,at){
+  d=d||foodDate(); mg=Math.round(num(mg)); if(!(mg>0&&mg<=1000)) throw new Error('Give caffeine between 1 and 1000 mg');
+  var w=waterOn(d), cur=w?JSON.parse(JSON.stringify(w)):{id:'wa-'+d,date:d,ml:0,log:[]};
+  cur.caf=(cur.caf||[]).concat([[at||Date.now(),mg,String(label||'Caffeine').slice(0,40)]]).slice(-30);
+  put('water',cur,true);
+  return cafStatus(d);
+}
+function removeCaf(d,i){
+  var w=waterOn(d); if(!w||!w.caf||!w.caf[i]) return;
+  var cur=JSON.parse(JSON.stringify(w)); cur.caf.splice(i,1); put('water',cur,true);
+}
+function cafStatus(d){
+  d=d||ymd(); var t=cafTotal(d), lim=cafLimit(), bed=d===ymd()?cafLeft(bedAt()):0, L=[];
+  L.push(t+' mg caffeine today (limit '+lim.day+' mg).');
+  if(t>lim.day) L.push('That is over the daily limit'+(lim.teen?' for under-18s':'')+'. Water or decaf from here.');
+  else if(t>lim.day*.8) L.push('Close to your limit for today.');
+  if(d===ymd()&&bed>50) L.push('About '+bed+' mg will still be in you at bedtime ('+cafBed()+'), which can make it harder to fall asleep and sleep deeply.');
+  return L.join(' ');
+}
+function cafCard(d){
+  var log=cafLog(d), t=cafTotal(d), lim=cafLimit(), pct=Math.min(100,t/lim.day*100), now=d===ymd();
+  var col=t>lim.day?'#e05555':t>lim.day*.8?'#e5a03b':'#a0703c', left=now?cafLeft():0, bed=now?cafLeft(bedAt()):0;
+  var h='<div class="card"><div class="card-b" style="padding-top:13px">'
+    + '<div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:14.5px;flex:1">Caffeine</b>'
+    + '<span style="font-weight:800">'+t+'</span><span style="color:var(--mut2);font-size:12.5px">/ '+lim.day+' mg</span></div>'
+    + '<div class="bar" style="margin:8px 0 8px"><i style="width:'+pct.toFixed(1)+'%;background:'+col+'"></i></div>';
+  if(now&&(left||t)) h+='<div style="font-size:12.5px;color:var(--mut2);margin-bottom:8px">In you now: about <b style="color:var(--txt)">'+left+' mg</b> · at bedtime ('+cafBed()+'): <b style="color:'+(bed>50?'#e5a03b':'var(--txt)')+'">'+bed+' mg</b></div>';
+  h+='<div class="chips" style="margin:0">'+CAF_DRINKS.map(function(x){ return '<button data-act="caf-add" data-k="'+x[0]+'">'+esc(x[1])+' <small style="color:var(--mut2)">'+x[2]+'</small></button>'; }).join('')+'</div>'
+    + '<div class="duo" style="margin-top:8px;align-items:end"><div class="fld" style="margin:0"><label>Other (mg)</label><input data-fkey="cafmg" id="cafmg" type="text" inputmode="numeric" placeholder="e.g. 150"></div>'
+    + '<button class="btn" data-act="caf-other">Add</button></div>';
+  if(log.length){
+    h+='<div style="margin-top:8px">';
+    log.forEach(function(x,i){ var tt=new Date(x[0]);
+      h+='<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px">'
+        + '<span style="color:var(--mut2);width:42px">'+pad2(tt.getHours())+':'+pad2(tt.getMinutes())+'</span><span style="flex:1">'+esc(x[2])+'</span><b>'+num(x[1])+' mg</b>'
+        + '<button class="lnk" data-act="caf-del" data-d="'+esc(d)+'" data-i="'+i+'" aria-label="Remove">✕</button></div>'; });
+    h+='</div>';
+  }
+  if(now&&t>lim.day) h+='<div class="hint" style="margin-top:6px;color:#e05555">Over the daily limit'+(lim.teen?' for under-18s (3 mg per kg)':'')+'.</div>';
+  else if(now) h+='<div class="hint" style="margin-top:6px">For good sleep, no coffee after about '+cafCutoff()+'. Bedtime: <button class="lnk" data-act="caf-bed">'+cafBed()+'</button></div>';
+  if(S.cafBedEdit) h+='<div class="duo" style="margin-top:6px;align-items:end"><div class="fld" style="margin:0"><label>Bedtime</label><input data-fkey="cafbed" data-in="caf-bed" type="time" value="'+esc(cafBed())+'"></div><button class="btn" data-act="caf-bed">Done</button></div>';
+  return h+'</div></div>';
+}
+/* "had a monster", "2 coffees", "200mg caffeine", "pre workout scoop", "koffie" */
+function parseCaf(text){
+  var t=String(text||'').toLowerCase();
+  if(/\b(how much|hoeveel|what|wat|why|waarom|when|wanneer|should|can i|is it|limit|grens)\b/.test(t)&&!/\b(had|drank|log|took|dronk|gedronken|genomen)\b/.test(t)) return null;
+  var mgm=t.match(/(\d{2,4})\s*mg\b/), out=[];
+  var words=[['espresso','espresso'],['latte','latte|cappuccino|flat white'],['mug','big coffee|mug of coffee|grote koffie'],['coffee','coffees?|koffie|bakje'],
+    ['green','green tea|groene thee'],['tea','\\btea\\b|\\bthee\\b'],['cola','\\bcola|coke|pepsi'],['redbull','red ?bull'],['monster','monster'],
+    ['energy','energy ?drinks?|energiedrank(je)?'],['pre','pre.?workout|preworkout|pre.?work'],['pill','caffeine (pill|tablet)|cafeïne ?(pil|tablet)']];
+  var hit=null;
+  for(var i=0;i<words.length;i++){ var m=t.match(new RegExp('(?:(\\d|one|two|three|een|twee|drie|a|an)\\s+)?(?:cups? of |kopjes? |cans? of |blikjes? )?(?:'+words[i][1]+')')); if(m){ hit=[words[i][0],m[1]]; break; } }
+  if(!hit&&!mgm) return null;
+  if(!hit&&!/caff?eine|cafe[iï]ne|caf\b/.test(t)) return null;
+  if(!/\b(had|drank|drink|drinking|took|take|log|add|just|dronk|gedronken|genomen|nam|op)\b|^\s*(\d|a|an|one|two|een|twee)?\s*\w+\s*$/.test(t)&&!mgm) return null;
+  var nmap={one:1,two:2,three:3,een:1,twee:2,drie:3,a:1,an:1};
+  var n=hit&&hit[1]?(nmap[hit[1]]||parseInt(hit[1],10)||1):1;
+  var dr=hit?CAF_DRINKS.filter(function(x){ return x[0]===hit[0]; })[0]:null;
+  return {mg:mgm?parseInt(mgm[1],10):dr[2]*n,label:dr?(n>1?n+'× ':'')+dr[1]:'Caffeine',yesterday:/\byesterday|gisteren\b/.test(t)};
+}
+function cafReply(pc){
+  try{ var d=pc.yesterday?shiftYmd(ymd(),-1):ymd(); addCaf(pc.mg,pc.label,d); return 'Logged '+pc.label+' ('+pc.mg+' mg). '+cafStatus(d); }
+  catch(e){ return String(e.message||e); }
+}
+function cafBrief(){
+  var t=cafTotal(ymd()); if(!t) return '';
+  return 'CAFFEINE TODAY: '+t+' mg of '+cafLimit().day+' mg limit; about '+cafLeft()+' mg in them now, '+cafLeft(bedAt())+' mg at bedtime '+cafBed()+'.';
 }
 
 /* ================= BODY MEASUREMENTS ================= */
@@ -8018,6 +8132,7 @@ function viewToday(){
       + '<div style="font-size:13.5px;line-height:1.5">'+(bl?esc(bl)+'.<br>':'')+tp+'</div></div></div>':''; };
   M.protein=function(){ return proteinCard(); };
   M.water=function(){ try{ return waterCard(today); }catch(e){ return ''; } };
+  M.caf=function(){ try{ return cafCard(today); }catch(e){ return ''; } };
   M.coming=function(){ var o='';
     nextWorkouts(3).filter(function(x){ return x.date!==today||doneToday||a; }).forEach(function(d,i){
       if(!i) o+='<div class="sec-t">Coming up</div>';
@@ -8665,6 +8780,10 @@ document.addEventListener('click',function(ev){
   if(act==='recap-x'){ try{ localStorage.setItem('wl_recap_seen',t.dataset.y); }catch(e){} render(); return; }
   if(act==='dbl-go'){ var dd=doubleLogs(); S.view='history'; S.histTab='log';
     finished().forEach(function(z){ if(dd.indexOf(ymd(new Date(z.finishedAt)))>=0) S.openSes[z.id]=true; }); render(); return; }
+  if(act==='caf-add'){ var cd0=CAF_DRINKS.filter(function(x){ return x[0]===t.dataset.k; })[0]; if(cd0){ addCaf(cd0[2],cd0[1]); var bl0=foodDate()===ymd()?cafLeft(bedAt()):0; toast(cd0[1]+': '+cafTotal()+' mg today'+(bl0>50?' · '+bl0+' mg left at bedtime':'')); render(); } return; }
+  if(act==='caf-other'){ var cin=document.getElementById('cafmg'), cv=num(cin&&cin.value); if(cv>0&&cv<=1000){ addCaf(cv,'Caffeine'); toast(cafTotal()+' mg today'); render(); } else toast('Type the mg first'); return; }
+  if(act==='caf-del'){ removeCaf(t.dataset.d,parseInt(t.dataset.i,10)); render(); return; }
+  if(act==='caf-bed'){ S.cafBedEdit=!S.cafBedEdit; render(); return; }
   if(act==='water'){ var nm=addWater(parseInt(t.dataset.ml,10)); if(parseInt(t.dataset.ml,10)>0) toast('Water: '+fmt(nm/1000)+' L'); return; }
   if(act==='pr-more'){ S.prMore=!S.prMore; render(); return; }
   if(act==='meas-go'){ S.view='you'; S.panels.meas=true; render(); return; }
@@ -9029,6 +9148,7 @@ function inputMain(ev){
   var kind=el.dataset['in'], v=el.value;
 
   if(kind.indexOf('mv-')===0&&mvInput(kind,el)) return;
+  if(kind==='caf-bed'){ if(/^\d{1,2}:\d\d$/.test(v)) saveProfile({bedtime:v}); return; }
   if(kind==='rk-brand'){ setMach(el.dataset.n,{brand:String(v).trim()}); return; }
   if(/^mach-(set|step|rest|reps|alts|brand)$/.test(kind)){ var me=(active()||{ex:[]}).ex[parseInt(el.dataset.ei,10)]; if(me){ var pt={}; var f=kind.slice(5); pt[f]=f==='step'||f==='rest'?num(v):v; setMach(me.name,pt); } return; }
   if(kind==='dt-date'){ S.dtDate=v; return; }
